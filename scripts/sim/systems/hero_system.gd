@@ -10,21 +10,18 @@ extends RefCounted
 ## это не удаётся. Павшие герои отправляются на суд Судьбы (FateSystem).
 
 ## Предел живых героев: BASE + живые государства / PER_NATIONS.
-const BASE_LIMIT := 4
-const PER_NATIONS := 3
+const BASE_LIMIT := 6
+const PER_NATIONS := 2
 ## Великие деяния: шанс в год попытаться (для героя от MIN_GREAT_LEVEL уровня).
-const GREAT_DEED_CHANCE := 0.03
+const GREAT_DEED_CHANCE := 0.012
 const MIN_GREAT_LEVEL := 7
 
 
 ## Появление героя в регионе государства. Возвращает героя или null (лимит;
 ## force — игнорировать лимит, для панели Бога).
 static func spawn(world: World, nation: Nation, region: Region, force: bool = false) -> Hero:
-	var alive := 0
+	var alive := world.wandering_heroes().size()
 	var nations := 0
-	for h in world.heroes:
-		if h.alive and not h.is_ruler:
-			alive += 1
 	for n in world.nations:
 		if n.alive:
 			nations += 1
@@ -51,6 +48,7 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 	hero.cell = region.cells[rng.randi_range(0, region.cells.size() - 1)]
 	hero.move_in = rng.randi_range(1, 4)
 	world.heroes.append(hero)
+	world.add_wandering(hero)
 	hero.add_deed(world, "объявился в регионе %s" % region.name)
 	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
 		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
@@ -60,17 +58,21 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 
 ## Каждый герой действует раз в месяц — в «свой» день.
 func tick_day(world: World) -> void:
-	var acting: Array[Hero] = []
-	for hero in world.heroes:
-		if hero.alive and not hero.is_ruler and hero.id % Simulation.DAYS == world.day:
-			acting.append(hero)
+	# Сила героев в армиях — раз в месяц (уровни растут медленно).
+	if world.day == 0:
+		_update_power(world)
+	var acting := world.heroes_acting_on(world.day)
 	if acting.is_empty():
 		return
-	for hero in acting:
+	for hero: Hero in acting:
+		if not hero.alive or hero.is_ruler:
+			continue
 		if hero.id % Simulation.MONTHS == world.month:
 			_yearly(world, hero)
 		if not hero.alive:
 			continue
+		# Дорога учит: немного опыта каждый месяц.
+		hero.add_xp(world, 0.1)
 		hero.move_in -= 1
 		if hero.move_in <= 0:
 			_move(world, hero)
@@ -78,20 +80,24 @@ func tick_day(world: World) -> void:
 		if hero.goal_cell >= 0 and world.region_of[hero.cell] == world.region_of[hero.goal_cell]:
 			_throne_attempt(world, hero)
 	# Встречи: действующий герой встречает любого героя в своём регионе.
-	for hero in acting:
-		if not hero.alive or hero.cell < 0:
+	var wandering := world.wandering_heroes()
+	var region_of := world.region_of
+	for hero: Hero in acting:
+		if not hero.alive or hero.is_ruler or hero.cell < 0:
 			continue
-		var rid := world.region_of[hero.cell]
-		for other in world.heroes:
-			if other == hero or not other.alive or other.is_ruler or other.cell < 0:
+		var rid := region_of[hero.cell]
+		for other in wandering:
+			if other.cell < 0 or region_of[other.cell] != rid or other == hero or not other.alive or other.is_ruler:
 				continue
-			if acting.has(other) and other.id < hero.id:
+			if other.id % Simulation.DAYS == world.day and other.id < hero.id:
 				continue  # пара уже рассмотрена
-			if world.region_of[other.cell] == rid and world.rng.randf() < _duel_chance(world, hero, other):
-				duel(world, hero, other, world.regions[rid].name if rid >= 0 else "диких землях")
+			var where := world.regions[rid].name if rid >= 0 else "диких землях"
+			if world.rng.randf() < _duel_chance(world, hero, other):
+				duel(world, hero, other, where)
 				if not hero.alive:
 					break
-	_update_power(world)
+			elif world.rng.randf() < 0.5:
+				HeroRelations.meet(world, hero, other, where)
 
 
 ## Годовые дела героя: возраст, служба, поступки, великие деяния, трон.
@@ -103,6 +109,7 @@ func _yearly(world: World, hero: Hero) -> void:
 			hero.display_name(), hero.hero_class.display_name.to_lower(), hero.deeds.size()], PackedInt32Array())
 		hero.die(world)
 		return
+	HeroRelations.yearly(world, hero)
 	if hero.nation_id >= 0:
 		var n := world.nations[hero.nation_id]
 		# Слабому или проигрывающему государству служить невыгодно; злодеи предают чаще.
@@ -174,8 +181,9 @@ func _good_deed(world: World, hero: Hero) -> void:
 	hero.karma = minf(1.0, hero.karma + 0.03)
 	var roll := rng.randf()
 	if roll < 0.35:
-		# Чудовище: опасно, но славно.
-		if rng.randf() < 0.07:
+		# Чудовище: опасно, но славно (в отряде и с опытом — безопаснее).
+		var risk := (0.035 if hero.level < 4 else 0.015) * (0.5 if hero.party_leader >= 0 else 1.0)
+		if rng.randf() < risk:
 			world.log_event(&"hero", "Герой %s погиб в схватке с чудовищем в регионе %s." % [hero.display_name(), where], ids)
 			hero.die(world)
 			return
@@ -326,7 +334,7 @@ const FAILURES := {
 
 func _great_failure(world: World, hero: Hero, deed: StringName) -> void:
 	var text: String = FAILURES.get(deed, "задумал великое, но не преуспел")
-	var dies := world.rng.randf() < 0.4
+	var dies := world.rng.randf() < 0.25
 	if dies:
 		world.log_event(&"great", "Неудача: %s %s." % [hero.display_name(), text], PackedInt32Array())
 		hero.die(world)
@@ -489,6 +497,21 @@ func _move(world: World, hero: Hero) -> void:
 	# К цели идут без остановок, остальные — не спеша.
 	hero.move_in = 1 if hero.goal_cell >= 0 else rng.randi_range(2, 6)
 	var target_region := -1
+	# Отряд и супруги держатся вместе; мститель идёт за врагом.
+	if hero.party_leader >= 0 and world.heroes[hero.party_leader].alive:
+		hero.cell = world.heroes[hero.party_leader].cell
+		return
+	if hero.spouse >= 0 and world.heroes[hero.spouse].alive and rng.randf() < 0.7:
+		hero.cell = world.heroes[hero.spouse].cell
+		return
+	if hero.vendetta >= 0 and world.heroes[hero.vendetta].alive and hero.goal_cell < 0:
+		hero.cell = world.heroes[hero.vendetta].cell if rng.randf() < 0.3 else hero.cell
+	if hero.ally_nation >= 0:
+		for war in world.diplomacy.wars_of(hero.ally_nation):
+			if war.siege_region >= 0:
+				var cells := world.regions[war.siege_region].cells
+				hero.cell = cells[rng.randi_range(0, cells.size() - 1)]
+				return
 	if hero.goal_cell >= 0:
 		# Путь к цели — прямо через регионы, по шагу за раз.
 		var region := world.region_at(hero.cell)
@@ -528,15 +551,18 @@ func _move(world: World, hero: Hero) -> void:
 
 
 func _duel_chance(world: World, a: Hero, b: Hero) -> float:
+	var mod := HeroRelations.duel_modifier(a, b)
+	if mod < 0.0:
+		return 0.0
 	if a.nation_id >= 0 and b.nation_id >= 0:
 		if a.nation_id == b.nation_id:
 			return 0.0
 		if world.diplomacy.war_between(a.nation_id, b.nation_id) != null:
-			return 0.3
+			return 0.3 + mod
 	var hostility := maxf(0.0, -a.race.relation_to(b.race) - 0.3)
 	# Добро и зло не уживаются в одном краю.
 	var moral := maxf(0.0, absf(a.karma - b.karma) - 0.8) * 0.15
-	return 0.01 + hostility * 0.08 * (a.hero_class.aggression + b.hero_class.aggression) + moral
+	return 0.01 + hostility * 0.08 * (a.hero_class.aggression + b.hero_class.aggression) + moral + mod
 
 
 ## Поединок: побеждает сильнейший (с удачей); проигравший гибнет или бежит.
@@ -556,12 +582,16 @@ static func duel(world: World, a: Hero, b: Hero, where: String) -> void:
 	for n in [winner.nation_id, loser.nation_id]:
 		if n >= 0:
 			ids.append(n)
-	if rng.randf() < 0.75:
+	if winner.vendetta == loser.id:
+		winner.vendetta = -1
+		winner.add_deed(world, "отомстил герою %s" % loser.name)
+	# Добрые герои чаще щадят побеждённых.
+	if rng.randf() < 0.4 - winner.karma * 0.15:
 		winner.add_deed(world, "сразил в поединке героя %s" % loser.name)
 		world.log_event(&"hero", "Поединок в регионе %s: %s (%s) сразил героя %s (%s)." % [
 			where, winner.display_name(), winner.hero_class.display_name.to_lower(),
 			loser.display_name(), loser.hero_class.display_name.to_lower()], ids)
-		loser.die(world)
+		loser.die(world, winner)
 	else:
 		loser.level = maxi(1, loser.level - 1)
 		loser.move_in = 0
@@ -574,17 +604,16 @@ static func duel(world: World, a: Hero, b: Hero, where: String) -> void:
 static func on_battle(world: World, war: War, winner: int) -> void:
 	var rng := world.rng
 	var sides := {1: [], -1: []}
-	for side in [1, -1]:
-		for m in war.members(side):
-			for hid in world.nations[m].hero_ids:
-				var h := world.heroes[hid]
-				if h.alive:
+	for h in world.wandering_heroes():
+		for side in [1, -1]:
+			for m in war.members(side):
+				if h.fights_for(m) and not sides[side].has(h):
 					sides[side].append(h)
 	for h in sides[winner]:
 		h.add_xp(world, 1.0)
 	for h in sides[-winner]:
-		if rng.randf() < 0.04:
-			var nation := world.nations[h.nation_id].short_name
+		if rng.randf() < 0.015:
+			var nation := world.nations[war.leader(-winner)].short_name
 			world.log_event(&"hero", "Герой %s пал в битве за %s." % [h.display_name(), nation], PackedInt32Array([war.leader(-winner)]))
 			h.die(world)
 	if not sides[1].is_empty() and not sides[-1].is_empty() and rng.randf() < 0.4:
@@ -598,6 +627,9 @@ static func on_battle(world: World, war: War, winner: int) -> void:
 func _update_power(world: World) -> void:
 	for n in world.nations:
 		n.hero_power = 0.0
-	for h in world.heroes:
-		if h.alive and h.nation_id >= 0 and not h.is_ruler:
-			world.nations[h.nation_id].hero_power += h.power()
+	for h in world.wandering_heroes():
+		if h.alive and not h.is_ruler:
+			if h.nation_id >= 0:
+				world.nations[h.nation_id].hero_power += h.power()
+			if h.ally_nation >= 0 and h.ally_nation != h.nation_id:
+				world.nations[h.ally_nation].hero_power += h.power()

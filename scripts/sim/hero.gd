@@ -41,6 +41,34 @@ var returns := 0
 ## Куда герой направляется (клетка цели — например, проклятый трон), -1 — бродит.
 var goal_cell := -1
 
+# --- Связи с другими героями ---
+## Отношение к другим героям: id → -1 (враг) … +1 (друг).
+var bonds: Dictionary[int, float] = {}
+var spouse := -1
+var mentor := -1
+## Вожак отряда, за которым герой следует (-1 — сам по себе или сам вожак).
+var party_leader := -1
+## Временная помощь государству на войне (за друга или за золото) до года ally_until.
+var ally_nation := -1
+var ally_until := 0
+## Кому герой поклялся отомстить (-1 — никому).
+var vendetta := -1
+var killed_by := -1
+
+
+func bond(other_id: int) -> float:
+	return bonds.get(other_id, 0.0)
+
+
+func add_bond(other: Hero, amount: float) -> void:
+	bonds[other.id] = clampf(bond(other.id) + amount, -1.0, 1.0)
+	other.bonds[id] = clampf(other.bond(id) + amount, -1.0, 1.0)
+
+
+## За кого герой сражается: государство, которому присягнул, или которому временно помогает.
+func fights_for(nation: int) -> bool:
+	return nation >= 0 and (nation_id == nation or ally_nation == nation)
+
 
 ## Сколько воинов стоит герой в бою.
 func power() -> float:
@@ -53,8 +81,8 @@ func display_name() -> String:
 
 func add_xp(world: World, amount: float) -> void:
 	xp += amount
-	while xp >= level * 2.0 and level < 20:
-		xp -= level * 2.0
+	while xp >= level * 1.5 and level < 20:
+		xp -= level * 1.5
 		level += 1
 		if level == 5 or level == 10 or level == 15:
 			world.log_event(&"hero", "Слава героя %s (%s, %s) гремит по миру: он достиг %d-го уровня." % [
@@ -78,9 +106,19 @@ func leave_service(world: World) -> void:
 
 
 ## Смерть: герой уходит со службы и встаёт в очередь на суд Судьбы.
-func die(world: World) -> void:
+func die(world: World, killer: Hero = null) -> void:
 	leave_service(world)
 	alive = false
+	ally_nation = -1
+	party_leader = -1
+	if killer != null:
+		killed_by = killer.id
+		# Друзья и супруг клянутся отомстить.
+		for other_id in bonds:
+			var other := world.heroes[other_id]
+			if other.alive and (bonds[other_id] > 0.5 or other.spouse == id) and other.vendetta < 0:
+				other.vendetta = killer.id
+				other.add_deed(world, "поклялся отомстить %s за гибель %s" % [killer.name, name])
 	fate = &""
 	goal_cell = -1
 	if not world.fate_queue.has(id):

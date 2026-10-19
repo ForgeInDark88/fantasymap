@@ -4,8 +4,6 @@ extends RefCounted
 ## землетрясения, наводнения, Золотой век, вулканы. Эпидемии перекидываются
 ## на соседей на следующий год.
 
-## Отложенные события (эпидемии, пришедшие от соседей): [nation_id, event_id].
-var _pending: Array = []
 
 
 func tick(world: World, nation: Nation) -> void:
@@ -17,8 +15,8 @@ func tick(world: World, nation: Nation) -> void:
 
 ## Эпидемии с прошлого года — до обхода государств.
 func flush_pending(world: World) -> void:
-	var pending := _pending
-	_pending = []
+	var pending := world.pending_events
+	world.pending_events = []
 	for item in pending:
 		var nation := world.nations[item[0]]
 		if nation.alive:
@@ -84,7 +82,7 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 	if e.spread_chance > 0.0:
 		for other in nation.borders:
 			if rng.randf() < e.spread_chance:
-				_pending.append([other, e.id])
+				world.pending_events.append([other, e.id])
 
 	var hero := NameGenerator.person_name(nation.race, rng) if e.text.contains("{hero}") else ""
 	var text := e.text.format({

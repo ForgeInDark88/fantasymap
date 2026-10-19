@@ -114,6 +114,18 @@ func _run() -> void:
 	print("year %d, nations alive %d, heroes %d, avg month %.2f ms" % [
 		world.year, world.nations.filter(func(n: RefCounted) -> bool: return n.alive).size(),
 		world.heroes.size(), ws.get("avg_tick_ms")])
+
+	# Сохранение и загрузка через интерфейс.
+	cam.call("fit_to", renderer.call("get_map_rect"))
+	ws.call("save_game", "Скриншот")
+	_panel(hud, "Сохранения", true)
+	await _frames(4)
+	_shot(out_dir, "saves.png")
+	ws.call("load_game", "Скриншот")
+	await bus.world_generated
+	await _frames(4)
+	_shot(out_dir, "loaded.png")
+	print("loaded: year %d" % ws.world.year)
 	print("screenshots saved to ", out_dir)
 	quit(0)
 

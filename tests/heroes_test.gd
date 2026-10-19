@@ -26,8 +26,10 @@ func _initialize() -> void:
 
 	# Источники силы: не больше двух.
 	var h2 := HeroSystem.spawn(world, nation, region, true)
-	_expect(HeroSystem.power_source(world, h2, nation.cells[1]) != null, "первый источник не создан")
-	_expect(HeroSystem.power_source(world, h2, nation.cells[2]) != null, "второй источник не создан")
+	# (за 40 лет герои могли уже открыть источник сами)
+	var existing := world.active_landmarks(&"source").size()
+	for i in Landmark.MAX_SOURCES - existing:
+		_expect(HeroSystem.power_source(world, h2, nation.cells[1 + i]) != null, "источник %d не создан" % (existing + i + 1))
 	_expect(HeroSystem.power_source(world, h2, nation.cells[3]) == null, "создан третий источник")
 	sim.step(world)
 	_expect(nation.sources >= 1 or world.sources_of(nation.id) == 0, "государство не получает силу источника")
