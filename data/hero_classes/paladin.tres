@@ -13,5 +13,6 @@ default_weight = 0.0
 loyalty = 0.9
 aggression = 0.5
 color = Color(1.0, 0.9, 0.5, 1)
+intellect = 0.55
 karma = 0.8
 weapon = "Молот"

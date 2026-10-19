@@ -52,6 +52,18 @@ func _on_map_clicked(pos: Vector2) -> void:
 	if _tool != &"":
 		_apply_tool(world, cell)
 		return
+	# Клик по значку героя — окно героя.
+	var radius := 9.0 / _camera.zoom.x
+	var best: Hero = null
+	for h in world.wandering_heroes():
+		if h.cell >= 0:
+			var d := _renderer.cell_center(h.cell).distance_to(pos)
+			if d < radius:
+				radius = d
+				best = h
+	if best != null:
+		EventBus.hero_window_requested.emit(best.id)
+		return
 	EventBus.cell_clicked.emit(cell)
 	EventBus.nation_selected.emit(world.owner[cell])
 

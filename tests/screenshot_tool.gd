@@ -115,6 +115,20 @@ func _run() -> void:
 		world.year, world.nations.filter(func(n: RefCounted) -> bool: return n.alive).size(),
 		world.heroes.size(), ws.get("avg_tick_ms")])
 
+	# Окно героя: самый прославленный из живых.
+	var star: RefCounted = null
+	for cand in world.heroes:
+		if cand.alive and not cand.is_ruler and (star == null or cand.level > star.level):
+			star = cand
+	if star != null:
+		bus.hero_window_requested.emit(star.id)
+		await _frames(6)
+		_shot(out_dir, "hero_window.png")
+		bus.hero_window_requested.emit(-1)
+		for c in hud.get_node("Root").get_children():
+			if c.has_method("close_window"):
+				c.close_window()
+
 	# Сохранение и загрузка через интерфейс.
 	cam.call("fit_to", renderer.call("get_map_rect"))
 	ws.call("save_game", "Скриншот")

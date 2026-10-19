@@ -120,6 +120,7 @@ static func yearly(world: World, hero: Hero) -> void:
 	if hero.ally_nation >= 0 and (world.year >= hero.ally_until or not world.nations[hero.ally_nation].alive
 			or world.diplomacy.wars_of(hero.ally_nation).is_empty()):
 		hero.add_deed(world, "закончил помогать государству %s" % world.nations[hero.ally_nation].short_name)
+		hero.thought = ""
 		hero.ally_nation = -1
 	if hero.party_leader >= 0:
 		var leader := world.heroes[hero.party_leader]
@@ -129,6 +130,7 @@ static func yearly(world: World, hero: Hero) -> void:
 		var target := world.heroes[hero.vendetta]
 		if not target.alive:
 			hero.add_deed(world, "узнал, что враг %s уже мёртв, — месть окончена" % target.name)
+			hero.thought = "%s мёртв и без меня. Месть окончена." % target.name
 			hero.vendetta = -1
 	if hero.nation_id < 0 and hero.ally_nation < 0:
 		_join_war(world, hero)
@@ -187,6 +189,7 @@ static func _join_war(world: World, hero: Hero) -> void:
 		return
 	hero.ally_nation = choice
 	hero.ally_until = world.year + 5
+	hero.thought = "Сражаюсь за %s — %s." % [n.short_name, reason]
 	hero.add_deed(world, "встал за государство %s (%s)" % [n.name, reason])
 	world.log_event(&"hero", "Герой %s сражается за %s (%s)." % [hero.display_name(), n.short_name, reason],
 			PackedInt32Array([choice]))

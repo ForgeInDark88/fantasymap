@@ -45,10 +45,12 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 		hero.age = int(race.lifespan * rng.randf_range(0.22, 0.4))
 		hero.max_age = int(race.lifespan * rng.randf_range(0.8, 1.1))
 	hero.level = rng.randi_range(1, 3)
+	hero.intellect = clampf(hero.hero_class.intellect + rng.randf_range(-0.25, 0.25), 0.0, 1.0)
 	hero.cell = region.cells[rng.randi_range(0, region.cells.size() - 1)]
 	hero.move_in = rng.randi_range(1, 4)
 	world.heroes.append(hero)
 	world.add_wandering(hero)
+	world.ensure_region_name(region)
 	hero.add_deed(world, "объявился в регионе %s" % region.name)
 	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
 		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
@@ -91,7 +93,7 @@ func tick_day(world: World) -> void:
 				continue
 			if other.id % Simulation.DAYS == world.day and other.id < hero.id:
 				continue  # пара уже рассмотрена
-			var where := world.regions[rid].name if rid >= 0 else "диких землях"
+			var where := world.region_label(hero.cell, "диких землях")
 			if world.rng.randf() < _duel_chance(world, hero, other):
 				duel(world, hero, other, where)
 				if not hero.alive:
@@ -128,13 +130,19 @@ func _yearly(world: World, hero: Hero) -> void:
 	if hero.level >= MIN_GREAT_LEVEL and rng.randf() < GREAT_DEED_CHANCE * (2.0 if hero.level >= 12 else 1.0):
 		_great_deed(world, hero)
 		return
-	# Слухи о проклятом троне манят честолюбцев (и злодеев — сильнее).
+	# Слухи о проклятом троне манят честолюбцев (и злодеев — сильнее). Но идёт
+	# лишь тот, кто считает, что одолеет стража: умный оценивает трезво и ждёт,
+	# пока окрепнет, глупец недооценивает чудовище и идёт на смерть.
 	if hero.goal_cell < 0 and hero.level >= 4 and hero.artifact.is_empty():
 		var thrones := world.active_landmarks(&"throne")
-		if not thrones.is_empty() and rng.randf() < 0.08 + maxf(0.0, -hero.karma) * 0.15:
+		if not thrones.is_empty() and rng.randf() < 0.15 + maxf(0.0, -hero.karma) * 0.2:
 			var throne := thrones[rng.randi_range(0, thrones.size() - 1)]
-			hero.goal_cell = throne.cell
-			hero.add_deed(world, "отправился к пустому трону «%s»" % throne.name)
+			if hero.dares(throne.guardian, rng):
+				hero.goal_cell = throne.cell
+				hero.thought = "Иду к трону «%s»: страж мне по силам." % throne.name
+				hero.add_deed(world, "отправился к пустому трону «%s»" % throne.name)
+			else:
+				hero.thought = "Трон «%s» манит, но страж пока сильнее меня. Надо окрепнуть." % throne.name
 	var owner := world.owner[hero.cell]
 	if hero.nation_id < 0 and hero.alive and owner >= 0:
 		var n := world.nations[owner]
@@ -174,7 +182,7 @@ func _deed(world: World, hero: Hero) -> void:
 func _good_deed(world: World, hero: Hero) -> void:
 	var rng := world.rng
 	var region := world.region_at(hero.cell)
-	var where := region.name if region != null else "диких землях"
+	var where := world.region_label(hero.cell, "диких землях")
 	var owner := world.owner[hero.cell]
 	var nation := world.nations[owner] if owner >= 0 else null
 	var ids := PackedInt32Array([owner]) if owner >= 0 else PackedInt32Array()
@@ -182,7 +190,8 @@ func _good_deed(world: World, hero: Hero) -> void:
 	var roll := rng.randf()
 	if roll < 0.35:
 		# Чудовище: опасно, но славно (в отряде и с опытом — безопаснее).
-		var risk := (0.035 if hero.level < 4 else 0.015) * (0.5 if hero.party_leader >= 0 else 1.0)
+		var risk := (0.035 if hero.level < 4 else 0.015) * (0.5 if hero.party_leader >= 0 else 1.0) \
+				* (1.3 - hero.wits() * 0.6)  # умный не лезет на рожон
 		if rng.randf() < risk:
 			world.log_event(&"hero", "Герой %s погиб в схватке с чудовищем в регионе %s." % [hero.display_name(), where], ids)
 			hero.die(world)
@@ -238,7 +247,7 @@ func _good_deed(world: World, hero: Hero) -> void:
 func _evil_deed(world: World, hero: Hero) -> void:
 	var rng := world.rng
 	var region := world.region_at(hero.cell)
-	var where := region.name if region != null else "диких землях"
+	var where := world.region_label(hero.cell, "диких землях")
 	var owner := world.owner[hero.cell]
 	hero.karma = maxf(-1.0, hero.karma - 0.03)
 	if owner < 0:
@@ -468,6 +477,14 @@ func _throne_attempt(world: World, hero: Hero) -> void:
 	if throne == null:
 		return
 	var rng := world.rng
+	# Вблизи страж виден лучше: рассудительный ещё может повернуть назад.
+	if not hero.dares(throne.guardian, rng, 2.0):
+		hero.thought = "Увидел стража трона «%s» вблизи — не время умирать." % throne.name
+		hero.add_deed(world, "дошёл до трона «%s», увидел стража и отступил" % throne.name)
+		if rng.randf() < 0.3:
+			world.log_event(&"hero", "Герой %s дошёл до пустого трона «%s», но, увидев стража, благоразумно отступил." % [
+				hero.display_name(), throne.name], PackedInt32Array())
+		return
 	var ours := hero.power() * rng.randf_range(0.6, 1.5)
 	var theirs := throne.guardian * rng.randf_range(0.6, 1.3)
 	if ours < theirs:
@@ -562,7 +579,13 @@ func _duel_chance(world: World, a: Hero, b: Hero) -> float:
 	var hostility := maxf(0.0, -a.race.relation_to(b.race) - 0.3)
 	# Добро и зло не уживаются в одном краю.
 	var moral := maxf(0.0, absf(a.karma - b.karma) - 0.8) * 0.15
-	return 0.01 + hostility * 0.08 * (a.hero_class.aggression + b.hero_class.aggression) + moral + mod
+	var chance := 0.01 + hostility * 0.08 * (a.hero_class.aggression + b.hero_class.aggression) + moral + mod
+	# Умный слабак уклоняется от явно сильнейшего противника.
+	for pair in [[a, b], [b, a]]:
+		var me: Hero = pair[0]
+		if me.wits() > 0.5 and not me.dares(pair[1].power() * 0.7, world.rng):
+			chance *= 0.4
+	return chance
 
 
 ## Поединок: побеждает сильнейший (с удачей); проигравший гибнет или бежит.
@@ -584,6 +607,7 @@ static func duel(world: World, a: Hero, b: Hero, where: String) -> void:
 			ids.append(n)
 	if winner.vendetta == loser.id:
 		winner.vendetta = -1
+		winner.thought = "Я отомстил %s. Теперь можно жить дальше." % loser.name
 		winner.add_deed(world, "отомстил герою %s" % loser.name)
 	# Добрые герои чаще щадят побеждённых.
 	if rng.randf() < 0.4 - winner.karma * 0.15:
@@ -620,8 +644,7 @@ static func on_battle(world: World, war: War, winner: int) -> void:
 		var a: Hero = sides[1][rng.randi_range(0, sides[1].size() - 1)]
 		var b: Hero = sides[-1][rng.randi_range(0, sides[-1].size() - 1)]
 		if a.alive and b.alive:
-			var region := world.region_at(a.cell)
-			duel(world, a, b, region.name if region != null else "поле боя")
+			duel(world, a, b, world.region_label(a.cell, "поле боя"))
 
 
 func _update_power(world: World) -> void:

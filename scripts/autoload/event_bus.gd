@@ -46,3 +46,6 @@ signal terrain_changed
 signal nation_selected(nation_id: int)
 @warning_ignore("unused_signal")
 signal hero_selected(hero_id: int)
+## Открыть окно героя с подробностями.
+@warning_ignore("unused_signal")
+signal hero_window_requested(hero_id: int)

@@ -13,5 +13,6 @@ default_weight = 0.2
 loyalty = 0.4
 aggression = 0.4
 color = Color(0.45, 0.6, 1.0, 1)
+intellect = 0.85
 karma = 0.0
 weapon = "Посох"

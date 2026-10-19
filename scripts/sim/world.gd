@@ -459,6 +459,15 @@ func ensure_region_name(region: Region) -> void:
 		region.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(races[rng.randi_range(0, races.size() - 1)], rng))
 
 
+## Название региона клетки для текстов (безымянному даётся имя), иначе fallback.
+func region_label(cell: int, fallback: String) -> String:
+	var region := region_at(cell) if cell >= 0 else null
+	if region == null:
+		return fallback
+	ensure_region_name(region)
+	return region.name
+
+
 func region_at(cell: int) -> Region:
 	var rid := region_of[cell]
 	return regions[rid] if rid >= 0 else null
