@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BiomeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/biome_def.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"mountains"
+index = 12
+display_name = "Горы"
+color = Color(0.49, 0.45, 0.42, 1)
+is_water = false
+fertility = 0.1
+move_cost = 4.0
+habitability = 0.2

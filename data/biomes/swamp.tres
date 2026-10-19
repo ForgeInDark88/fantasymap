@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BiomeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/biome_def.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"swamp"
+index = 7
+display_name = "Болото"
+color = Color(0.36, 0.43, 0.30, 1)
+is_water = false
+fertility = 0.3
+move_cost = 3.0
+habitability = 0.25

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BiomeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/biome_def.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"plains"
+index = 3
+display_name = "Равнины"
+color = Color(0.56, 0.70, 0.36, 1)
+is_water = false
+fertility = 0.8
+move_cost = 1.0
+habitability = 0.9

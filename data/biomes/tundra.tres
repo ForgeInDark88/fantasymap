@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BiomeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/biome_def.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"tundra"
+index = 9
+display_name = "Тундра"
+color = Color(0.60, 0.64, 0.57, 1)
+is_water = false
+fertility = 0.15
+move_cost = 1.8
+habitability = 0.2
