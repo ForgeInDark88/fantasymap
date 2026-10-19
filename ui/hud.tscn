@@ -1,0 +1,252 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopBar" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+
+[node name="HBox" type="HBoxContainer" parent="Root/TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Root/TopBar/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Fantasy Map Simulator · Расы"
+
+[node name="Spacer" type="Control" parent="Root/TopBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ModeLabel" type="Label" parent="Root/TopBar/HBox"]
+layout_mode = 2
+text = "Режим карты:"
+
+[node name="ModeButtons" type="HBoxContainer" parent="Root/TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Sep" type="VSeparator" parent="Root/TopBar/HBox"]
+layout_mode = 2
+
+[node name="ToggleGenButton" type="Button" parent="Root/TopBar/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Показать/скрыть панель генерации мира"
+toggle_mode = true
+button_pressed = true
+text = "Мир"
+
+[node name="GenPanel" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+offset_left = 8.0
+offset_top = 48.0
+offset_right = 308.0
+offset_bottom = 48.0
+custom_minimum_size = Vector2(300, 0)
+
+[node name="VBox" type="VBoxContainer" parent="Root/GenPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="Label" parent="Root/GenPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Генерация мира"
+
+[node name="Grid" type="GridContainer" parent="Root/GenPanel/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 6
+columns = 2
+
+[node name="SeedLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Seed"
+
+[node name="SeedRow" type="HBoxContainer" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SeedEdit" type="LineEdit" parent="Root/GenPanel/VBox/Grid/SeedRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Число или любое слово"
+placeholder_text = "число или слово"
+
+[node name="RandomSeedButton" type="Button" parent="Root/GenPanel/VBox/Grid/SeedRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Случайный seed"
+text = "Случ."
+
+[node name="SizeLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Размер"
+
+[node name="SizeOption" type="OptionButton" parent="Root/GenPanel/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LandLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Суша"
+
+[node name="LandRow" type="HBoxContainer" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LandSlider" type="HSlider" parent="Root/GenPanel/VBox/Grid/LandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 15.0
+max_value = 85.0
+value = 40.0
+
+[node name="LandValue" type="Label" parent="Root/GenPanel/VBox/Grid/LandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "40%"
+horizontal_alignment = 2
+
+[node name="ContinentsLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Континенты"
+
+[node name="ContinentsSpin" type="SpinBox" parent="Root/GenPanel/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 12.0
+value = 4.0
+
+[node name="RiversLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Реки"
+
+[node name="RiverRow" type="HBoxContainer" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RiverSlider" type="HSlider" parent="Root/GenPanel/VBox/Grid/RiverRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 25.0
+max_value = 300.0
+step = 5.0
+value = 100.0
+
+[node name="RiverValue" type="Label" parent="Root/GenPanel/VBox/Grid/RiverRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="ClimateLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Климат"
+
+[node name="ClimateRow" type="HBoxContainer" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ClimateSlider" type="HSlider" parent="Root/GenPanel/VBox/Grid/ClimateRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+tooltip_text = "Холоднее ← → теплее"
+min_value = -30.0
+max_value = 30.0
+step = 5.0
+
+[node name="ClimateValue" type="Label" parent="Root/GenPanel/VBox/Grid/ClimateRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+
+[node name="RegenButton" type="Button" parent="Root/GenPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Сгенерировать мир с текущими настройками (Enter в поле seed)"
+text = "Сгенерировать заново"
+
+[node name="NewWorldButton" type="Button" parent="Root/GenPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Новый мир (случайный seed)"
+
+[node name="StatusLabel" type="Label" parent="Root/GenPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.74, 0.8, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="Legend" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -8.0
+offset_top = -8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="LegendBox" type="VBoxContainer" parent="Root/Legend"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="InfoBar" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = -8.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="CellInfo" type="Label" parent="Root/InfoBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Наведите курсор на карту"

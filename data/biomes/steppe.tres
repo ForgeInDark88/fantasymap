@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BiomeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/biome_def.gd" id="1_biome"]
+
+[resource]
+script = ExtResource("1_biome")
+id = &"steppe"
+index = 4
+display_name = "Степь"
+color = Color(0.76, 0.73, 0.43, 1)
+is_water = false
+fertility = 0.5
+move_cost = 1.0
+habitability = 0.7
