@@ -7,6 +7,6 @@ script = ExtResource("1_evt")
 id = &"hero_arrival"
 display_name = "Прибытие героя"
 chronicle_kind = &"hero"
-chance = 0.006
+chance = 0.012
 spawns_hero = true
 text = "{nation}: прибыл герой."

@@ -108,8 +108,33 @@ func _show_card(world: World) -> void:
 		"[b]%s[/b] — %s, %s · %s" % [h.display_name(), h.race.display_name.to_lower(), h.hero_class.display_name.to_lower(), h.hero_class.description],
 		"Уровень %d · возраст %d · побед в поединках: %d · чудовищ: %d" % [h.level, h.age, h.kills, h.monsters_slain],
 		"Сейчас: %s%s" % [_status(world, h), (" · регион " + region.name) if region != null and not region.name.is_empty() else ""],
-		"[b]Деяния:[/b]",
 	]
+	var rel: Array[String] = []
+	if h.spouse >= 0:
+		rel.append("супруг(а): " + world.heroes[h.spouse].display_name())
+	if h.mentor >= 0:
+		rel.append("наставник: " + world.heroes[h.mentor].display_name())
+	if h.party_leader >= 0:
+		rel.append("в отряде героя " + world.heroes[h.party_leader].display_name())
+	if h.ally_nation >= 0:
+		rel.append("[color=#ff9a7a]сражается за %s[/color]" % world.nations[h.ally_nation].short_name)
+	if h.vendetta >= 0:
+		rel.append("[color=#ff6b5b]поклялся отомстить: %s[/color]" % world.heroes[h.vendetta].display_name())
+	var friends: Array[String] = []
+	var foes: Array[String] = []
+	for other_id in h.bonds:
+		var o := world.heroes[other_id]
+		if h.bonds[other_id] > 0.5:
+			friends.append(o.display_name() + ("" if o.alive else " †"))
+		elif h.bonds[other_id] < -0.4:
+			foes.append(o.display_name() + ("" if o.alive else " †"))
+	if not friends.is_empty():
+		rel.append("[color=#9be39b]друзья:[/color] " + ", ".join(friends))
+	if not foes.is_empty():
+		rel.append("[color=#ff9a7a]враги:[/color] " + ", ".join(foes))
+	lines.append_array(rel)
+	lines.append("Натура: %s (карма %+.2f)%s" % [h.alignment_name(), h.karma, (" · оружие: " + h.artifact) if not h.artifact.is_empty() else ""])
+	lines.append("[b]Деяния:[/b]")
 	for d in h.deeds:
 		lines.append("• " + d)
 	_card.text = "\n".join(lines)
