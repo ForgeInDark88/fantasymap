@@ -21,6 +21,7 @@ var _last_cam_pos := Vector2.INF
 var _mode := MapMode.POLITICAL
 var _selected := -1
 var _world_dirty := false
+var _selected_hero := -1
 var _last_redraw_ms := 0
 
 
@@ -37,6 +38,9 @@ func _ready() -> void:
 		_selected = id
 		queue_redraw())
 	EventBus.year_passed.connect(func(_y: int) -> void: _world_dirty = true)
+	EventBus.hero_selected.connect(func(id: int) -> void:
+		_selected_hero = id
+		queue_redraw())
 
 
 func _process(_delta: float) -> void:
@@ -70,10 +74,11 @@ func _draw() -> void:
 	var political := _mode == MapMode.POLITICAL or _mode == MapMode.RACES
 	if political:
 		_draw_nation_labels(world, zoom)
-	if political or _mode == MapMode.BIOMES:
+	if political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES:
 		_draw_region_labels(world, zoom)
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
+		_draw_heroes(world, zoom)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -212,6 +217,33 @@ func _draw_sieges(world: World, zoom: float) -> void:
 			draw_line(guard - perp, guard + perp, Color(0.95, 0.75, 0.3), 2.0 * scale)
 		draw_arc(Vector2.ZERO, r + 4.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(war.siege_progress, 0.0, 1.0), 24,
 				Color(0.95, 0.3, 0.25), 2.5 * scale)
+
+
+## Герои — ромбы цвета класса; у присягнувших — кольцо цвета их государства.
+func _draw_heroes(world: World, zoom: float) -> void:
+	var inv := Vector2.ONE / zoom
+	var view := _visible_rect()
+	var scale := clampf(zoom, 0.7, 1.2)
+	for hero in world.heroes:
+		if not hero.alive or hero.is_ruler or hero.cell < 0:
+			continue
+		var pos := renderer.cell_center(hero.cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var r := (5.0 + minf(hero.level, 15) * 0.25) * scale
+		var diamond := PackedVector2Array([Vector2(0, -r), Vector2(r, 0), Vector2(0, r), Vector2(-r, 0)])
+		if hero.nation_id >= 0:
+			draw_circle(Vector2.ZERO, r + 3.0, world.nations[hero.nation_id].color)
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -r - 1.5), Vector2(r + 1.5, 0), Vector2(0, r + 1.5), Vector2(-r - 1.5, 0)]), Color(0.05, 0.05, 0.08))
+		draw_colored_polygon(diamond, hero.hero_class.color)
+		if hero.id == _selected_hero:
+			draw_arc(Vector2.ZERO, r + 6.0, 0.0, TAU, 24, Color.WHITE, 2.0)
+		if zoom >= 1.8 or hero.id == _selected_hero:
+			var text := "%s, %s %d" % [hero.display_name(), hero.hero_class.display_name.to_lower(), hero.level]
+			var size := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
+			draw_string_outline(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))
+			draw_string(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.92, 0.6))
 
 
 ## Видимая часть мира (в мировых координатах).

@@ -27,7 +27,12 @@ var _owner_texture: ImageTexture
 var _owner_version := -1
 var _nation_palette: ImageTexture
 var _race_palette: ImageTexture
+## Когда последний раз перерисовывали «живой» режим (население), мс.
+var _dynamic_painted_ms := 0
+## Перерисовывать «живые» режимы не чаще (мс): это проход по всем клеткам в GDScript.
+const DYNAMIC_REPAINT_MS := 1500
 var _region_texture: ImageTexture
+var _terrain_version := 0
 
 
 func _ready() -> void:
@@ -47,8 +52,18 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	# Границы обновляются не чаще раза за кадр, сколько бы тиков ни прошло.
+	if world != null and world.terrain_version != _terrain_version:
+		# Рельеф изменён панелью Бога: перерисовать базу и обновить регионы.
+		_terrain_version = world.terrain_version
+		_painted_base_mode = -1
+		_upload_regions()
+		redraw()
 	if world != null and world.ownership_version != _owner_version:
 		refresh_political()
+	if world != null and MapMode.is_dynamic(mode) and Time.get_ticks_msec() - _dynamic_painted_ms > DYNAMIC_REPAINT_MS \
+			and WorldState.speed_index > 0:
+		_painted_base_mode = -1
+		redraw()
 
 
 func set_mode(new_mode: int) -> void:
@@ -63,7 +78,8 @@ func redraw() -> void:
 		return
 	var base := MapMode.base_mode(mode)
 	if base != _painted_base_mode:
-		var img := MapPainter.paint(map, base)
+		var img := MapPainter.paint_world(world, base) if world != null else MapPainter.paint(map, base)
+		_dynamic_painted_ms = Time.get_ticks_msec()
 		img.generate_mipmaps()
 		if _base_texture != null and Vector2i(_base_texture.get_size()) == img.get_size():
 			_base_texture.update(img)
@@ -129,8 +145,9 @@ func cell_center(cell: int) -> Vector2:
 func _apply_mode_uniforms() -> void:
 	var political := mode == MapMode.POLITICAL or mode == MapMode.RACES
 	_material.set_shader_parameter("show_fill", political)
-	# В режиме биомов оставляем тонкие границы — видно, кто где живёт.
-	_material.set_shader_parameter("show_borders", political or mode == MapMode.BIOMES)
+	# В режимах биомов, населения и ресурсов оставляем тонкие границы — видно, кто где живёт.
+	_material.set_shader_parameter("show_borders", political or mode == MapMode.BIOMES
+			or mode == MapMode.POPULATION or mode == MapMode.RESOURCES)
 	_material.set_shader_parameter("fill_alpha", 0.55 if mode == MapMode.RACES else 0.45)
 	_material.set_shader_parameter("unowned_desaturate", 0.35 if political else 0.0)
 	_material.set_shader_parameter("palette_tex", _race_palette if mode == MapMode.RACES else _nation_palette)
@@ -153,12 +170,20 @@ func _on_world_generated(new_world: World, _elapsed_ms: int) -> void:
 	map = new_world.map
 	selected_nation = -1
 	_painted_base_mode = -1
-	# Регионы не меняются за жизнь мира — загружаем один раз.
-	var img := Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, world.region_texels)
-	_region_texture = ImageTexture.create_from_image(img)
-	_material.set_shader_parameter("region_tex", _region_texture)
+	_terrain_version = world.terrain_version
+	_upload_regions()
 	redraw()
 	refresh_political()
+
+
+## Регионы меняются только вместе с рельефом (панель Бога) — загружаем при создании мира и при правке.
+func _upload_regions() -> void:
+	var img := Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, world.region_texels)
+	if _region_texture != null and Vector2i(_region_texture.get_size()) == img.get_size():
+		_region_texture.update(img)
+	else:
+		_region_texture = ImageTexture.create_from_image(img)
+		_material.set_shader_parameter("region_tex", _region_texture)
 
 
 func _on_nation_selected(nation_id: int) -> void:

@@ -1,16 +1,26 @@
 extends Node2D
 ## Корневая сцена: связывает камеру, рендер карты и ввод мыши с EventBus.
-## Игровой логики здесь нет — она в WorldState/World (и в движке симуляции на этапе 3).
+## Игровой логики здесь нет — она в WorldState/World/Simulation; инструменты
+## панели Бога — в GodTools.
 
 @onready var _renderer: MapRenderer = $MapRenderer
 @onready var _camera: MapCamera = $MapCamera
 
 var _hovered_cell := -1
 var _last_map_size := Vector2i.ZERO
+var _selected_nation := -1
+## Активный инструмент панели Бога (&"" — обычный выбор государства).
+var _tool: StringName = &""
+var _tool_params: Dictionary = {}
 
 
 func _ready() -> void:
 	EventBus.world_generated.connect(_on_world_generated)
+	EventBus.nation_selected.connect(func(id: int) -> void: _selected_nation = id)
+	EventBus.god_tool_changed.connect(func(tool: StringName, params: Dictionary) -> void:
+		_tool = tool
+		_tool_params = params)
+	EventBus.focus_cell.connect(_focus)
 	_camera.map_clicked.connect(_on_map_clicked)
 
 	var settings := MapSettings.new()
@@ -25,16 +35,61 @@ func _process(_delta: float) -> void:
 		EventBus.cell_hovered.emit(cell)
 
 
-## Клик по карте: выбираем государство под курсором (или снимаем выбор).
+func _unhandled_input(event: InputEvent) -> void:
+	# ПКМ без перетаскивания отменяет инструмент Бога.
+	var mb := event as InputEventMouseButton
+	if mb != null and mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _tool != &"":
+		EventBus.god_tool_changed.emit(&"", {})
+
+
+## Клик по карте: инструмент Бога или выбор государства под курсором.
 func _on_map_clicked(pos: Vector2) -> void:
 	var cell := _renderer.cell_at(pos)
-	EventBus.cell_clicked.emit(cell)
 	var world := WorldState.world
-	EventBus.nation_selected.emit(world.owner[cell] if world != null and cell >= 0 else -1)
+	if world == null or cell < 0:
+		EventBus.nation_selected.emit(-1)
+		return
+	if _tool != &"":
+		_apply_tool(world, cell)
+		return
+	EventBus.cell_clicked.emit(cell)
+	EventBus.nation_selected.emit(world.owner[cell])
+
+
+func _apply_tool(world: World, cell: int) -> void:
+	match _tool:
+		&"create_nation":
+			var nation := GodTools.create_nation(world, _tool_params.race, cell)
+			if nation != null:
+				EventBus.nation_selected.emit(nation.id)
+		&"event":
+			GodTools.trigger_event(world, WorldState.simulation, _tool_params.event, cell)
+		&"war":
+			GodTools.declare_war(world, _selected_nation, world.owner[cell])
+		&"raise":
+			GodTools.reshape(world, cell, _tool_params.get("radius", 3), 0.12)
+		&"lower":
+			GodTools.reshape(world, cell, _tool_params.get("radius", 3), -0.12)
+		&"hero":
+			GodTools.spawn_hero(world, cell)
+		&"rebellion":
+			var rebel := GodTools.incite_rebellion(world, cell)
+			if rebel != null:
+				EventBus.nation_selected.emit(rebel.id)
+	# Мир изменился вне тика — обновить интерфейс.
+	EventBus.year_passed.emit(world.year)
+
+
+func _focus(cell: int) -> void:
+	if cell < 0:
+		return
+	_camera.position = _renderer.cell_center(cell)
+	_camera.zoom = Vector2.ONE * maxf(_camera.zoom.x, 2.0)
 
 
 func _on_world_generated(world: World, _elapsed_ms: int) -> void:
 	_hovered_cell = -2  # обновить подсказку для нового мира
+	_selected_nation = -1
 	var rect := _renderer.get_map_rect()
 	_camera.bounds = rect
 	# Камеру сбрасываем только если поменялся размер карты — при перегенерации

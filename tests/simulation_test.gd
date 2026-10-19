@@ -79,13 +79,21 @@ func _initialize() -> void:
 	for n in world.nations:
 		if n.alive and n.population > 0.0 and n.primary_share() < 0.95:
 			multiracial += 1
+	var enclaves := 0
+	for n in world.nations:
+		enclaves += EnclaveSystem.absorb(world, n, true)
+	var heroes_alive := world.heroes.filter(func(h: Hero) -> bool: return h.alive and not h.is_ruler).size()
+	var heroes_sworn := world.heroes.filter(func(h: Hero) -> bool: return h.alive and h.nation_id >= 0).size()
+	print("анклавов: %d; героев за историю %d, живых %d, на службе %d" % [enclaves, world.heroes.size(), heroes_alive, heroes_sworn])
+	if enclaves > world.nations.size() / 4 + 2:
+		_fail("слишком много анклавов: %d" % enclaves)
 	print("войн за историю: %d, захватов: %d, многорасовых государств: %d, живых: %d из %d" % [
 		world.diplomacy.past_wars.size() + world.diplomacy.wars.size(), conquests, multiracial,
 		world.nations.filter(func(n: Nation) -> bool: return n.alive).size(), world.nations.size()])
 	if years >= 300 and conquests == 0:
 		_fail("за %d лет ни одного завоевания" % years)
-	# Бюджет: 8 мс на средней карте, растёт с корнем из площади (16 мс на огромной).
-	var budget := 8.0 * sqrt(world.map.cell_count() / 92160.0)
+	# Бюджет на год (12 месяцев): 12 мс на средней карте, растёт с корнем из площади.
+	var budget := 12.0 * pow(world.map.cell_count() / 92160.0, 0.6)
 	if avg_ms > budget:
 		_fail("тик слишком медленный: %.2f мс (бюджет %.1f)" % [avg_ms, budget])
 

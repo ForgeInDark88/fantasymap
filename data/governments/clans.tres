@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GovernmentDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/government_def.gd" id="1_gov"]
+
+[resource]
+script = ExtResource("1_gov")
+id = &"clans"
+display_name = "Совет кланов"
+description = "Старейшины выбирают главу; решения неспешны и взвешенны."
+succession = "election"
+election_period = 12
+crisis_chance = 0.04
+stability_bonus = 0.05
+aggression_mult = 0.85
+trade_mult = 1.05
+science_mult = 1.0
+army_mult = 1.0
+dynastic = false

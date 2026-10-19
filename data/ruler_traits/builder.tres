@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RulerTraitDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ruler_trait_def.gd" id="1_rt"]
+
+[resource]
+script = ExtResource("1_rt")
+id = &"builder"
+display_name = "Зодчий"
+description = "Строит дворцы, стены и храмы."
+weight = 0.8
+build_mult = 1.8

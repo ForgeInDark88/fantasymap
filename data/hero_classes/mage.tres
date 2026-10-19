@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"mage"
+display_name = "Маг"
+description = "Повелевает стихиями и тайными силами."
+power = 420.0
+race_weights = Dictionary[StringName, float]({&"humans": 1.0, &"elves": 1.0, &"goblins": 0.4, &"undead": 0.6, &"halflings": 0.3, &"dwarves": 0.2, &"orcs": 0.1})
+default_weight = 0.2
+loyalty = 0.4
+aggression = 0.4
+color = Color(0.45, 0.6, 1.0, 1)

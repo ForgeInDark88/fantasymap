@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"druid"
+display_name = "Друид"
+description = "Хранитель лесов и зверей."
+power = 320.0
+race_weights = Dictionary[StringName, float]({&"elves": 1.2, &"halflings": 0.7, &"humans": 0.4, &"orcs": 0.3})
+default_weight = 0.1
+loyalty = 0.4
+aggression = 0.3
+color = Color(0.55, 0.75, 0.3, 1)

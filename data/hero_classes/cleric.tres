@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"cleric"
+display_name = "Жрец"
+description = "Целитель и проповедник."
+power = 280.0
+race_weights = Dictionary[StringName, float]({&"humans": 0.8, &"dwarves": 0.8, &"halflings": 0.7, &"elves": 0.5, &"undead": 0.3})
+default_weight = 0.3
+loyalty = 0.8
+aggression = 0.2
+color = Color(1.0, 1.0, 0.85, 1)

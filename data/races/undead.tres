@@ -31,6 +31,6 @@ name_prefixes = PackedStringArray("Мор", "Нек", "Ваз", "Кел", "Др�
 name_middles = PackedStringArray("а", "о", "у", "ан", "ор", "эк", "ра")
 place_suffixes = PackedStringArray("гроб", "мор", "тал", "крипт", "вул", "нор", "кул", "мат", "зар")
 person_suffixes = PackedStringArray("ус", "акс", "ор", "ез", "иан", "от", "аш", "ул")
-state_forms = PackedStringArray("Некрократия {name}|Лич", "Мёртвое царство {name}|Король-Лич", "Проклятые земли {name}|Тёмный владыка", "Ковен {name}|Некромант")
+state_forms = PackedStringArray("Некрократия {name}|Лич|necrocracy", "Мёртвое царство {name}|Король-Лич|necrocracy", "Проклятые земли {name}|Тёмный владыка|necrocracy", "Ковен {name}|Некромант|theocracy")
 connector_vowels = "ауо"
 middle_chance = 0.35

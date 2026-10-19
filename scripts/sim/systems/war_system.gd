@@ -1,19 +1,27 @@
 class_name WarSystem
 extends RefCounted
-## Ход войн: раз в год — генеральное сражение и продвижение осады.
+## Ход войн: раз в год (в месяц начала войны) — генеральное сражение и
+## продвижение осады.
 ##
-## Шанс победы стороны — доля её военной мощи (Nation.power(), поделённой
-## между всеми войнами участника). Победитель осаждает пограничный регион
-## проигравшего; скорость осады падает от стен и крепостей (дворфы), эльфы
-## сильнее обороняются в лесах. Взятый регион со всеми клетками, жителями и
-## городами переходит к победителю — так и появляются многорасовые государства.
+## Шанс победы стороны — доля её военной мощи (Nation.power() с героями,
+## поделённой между всеми войнами участника). Победитель осаждает регион на
+## линии фронта — там, где земли проигравшего прямо граничат с его землями;
+## если общей сухопутной границы нет, но есть порт — высаживается десант на
+## побережье. Скорость осады падает от стен и крепостей (дворфы), эльфы
+## сильнее в лесах. Взятие региона идёт «волной» от фронта: победитель
+## получает только связные с фронтом клетки, поэтому анклавов не возникает.
 ## Война кончается решительной победой (счёт ±100), гибелью лидера стороны
 ## или переговорами, когда стороны выдохлись.
 
+## Сколько лет помнится потерянный в войне регион (претензия на возврат).
+const CLAIM_YEARS := 80
 
-func tick(world: World) -> void:
+
+func tick_month(world: World) -> void:
 	var d := world.diplomacy
 	for war in d.active_wars():
+		if war.month != world.month:
+			continue
 		_prune(world, war)
 		if war.attackers.is_empty() or war.defenders.is_empty():
 			_finish(world, war, 1 if war.defenders.is_empty() else -1)
@@ -63,6 +71,7 @@ func _battle(world: World, war: War) -> void:
 			n.army += fallen * 0.25
 	war.casualties += fallen
 	war.score += winner * (4.0 + 8.0 * rng.randf()) * (0.6 + margin)
+	HeroSystem.on_battle(world, war, winner)
 
 	# Усталость от войны.
 	for m in war.attackers + war.defenders:
@@ -75,53 +84,113 @@ func _battle(world: World, war: War) -> void:
 
 func _advance_siege(world: World, war: War, winner: int, margin: float) -> void:
 	if war.siege_side != winner or not _is_valid_target(world, war, war.siege_region, winner):
-		war.siege_region = _pick_target(world, war, winner)
+		_pick_target(world, war, winner)
 		war.siege_side = winner
 		war.siege_progress = 0.0
 		if war.siege_region < 0:
 			return
 		var city := _region_city(world, war.siege_region, war.members(-winner))
-		if city != null and city.tier() >= 2:
-			world.log_event(&"siege", "%s осаждает город %s." % [
-				world.nations[war.leader(winner)].short_name, city.name], PackedInt32Array(war.attackers + war.defenders))
+		var who := world.nations[war.leader(winner)].short_name
+		if war.siege_landing:
+			world.log_event(&"siege", "%s высаживает десант в регионе %s." % [who, world.regions[war.siege_region].name],
+					PackedInt32Array(war.attackers + war.defenders))
+		elif city != null and city.tier() >= 2:
+			world.log_event(&"siege", "%s осаждает город %s." % [who, city.name], PackedInt32Array(war.attackers + war.defenders))
 	var region := world.regions[war.siege_region]
 	var defense := _region_defense(world, region, war.members(-winner))
-	war.siege_progress += (0.35 + 0.5 * margin) / (1.0 + defense)
+	# Десант медленнее: снабжение через море.
+	var speed := (0.35 + 0.5 * margin) * (0.6 if war.siege_landing else 1.0)
+	war.siege_progress += speed / (1.0 + defense)
 	if war.siege_progress >= 1.0:
 		_capture(world, war, region, winner)
 		war.siege_region = -1
 		war.siege_progress = 0.0
 
 
-## Пограничный регион, где у проигравших есть клетки, соседний с землями победителей.
-func _pick_target(world: World, war: War, winner: int) -> int:
+## Клетка проигравших, граничащая с клеткой победителей (без выделения памяти).
+func _touches(world: World, cell: int, winners: PackedInt32Array) -> bool:
+	var w := world.map.width
+	var n := world.owner.size()
+	var x := cell % w
+	var o := -1
+	if x > 0:
+		o = world.owner[cell - 1]
+		if o >= 0 and winners.has(o):
+			return true
+	if x < w - 1:
+		o = world.owner[cell + 1]
+		if o >= 0 and winners.has(o):
+			return true
+	if cell >= w:
+		o = world.owner[cell - w]
+		if o >= 0 and winners.has(o):
+			return true
+	if cell + w < n:
+		o = world.owner[cell + w]
+		if o >= 0 and winners.has(o):
+			return true
+	return false
+
+
+## Есть ли у победителей клетки в регионе или в соседних с ним регионах (дешёвый отсев).
+func _near_winners(world: World, region: Region, winners: PackedInt32Array) -> bool:
+	for w in winners:
+		if region.owner_counts.has(w):
+			return true
+	for nb in region.neighbors:
+		var other := world.regions[nb]
+		for w in winners:
+			if other.owner_counts.has(w):
+				return true
+	return false
+
+
+## Цель — регион на линии фронта (клетки проигравших прямо граничат с победителями).
+## Если сухопутного фронта нет, а у победителей есть порт — прибрежный регион для десанта.
+func _pick_target(world: World, war: War, winner: int) -> void:
 	var losers := war.members(-winner)
 	var winners := war.members(winner)
 	var best := -1
 	var best_score := -INF
+	var coastal_best := -1
+	var coastal_score := -INF
 	for m in losers:
 		for rid in world.nations[m].region_counts:
 			var region := world.regions[rid]
-			var adjacent := false
-			for w in winners:
-				if region.owner_counts.has(w):
-					adjacent = true
-					break
-				for nb in region.neighbors:
-					if world.regions[nb].owner_counts.has(w):
-						adjacent = true
+			var front := false
+			if _near_winners(world, region, winners):
+				for c in region.cells:
+					if world.owner[c] == m and _touches(world, c, winners):
+						front = true
 						break
-				if adjacent:
-					break
-			if not adjacent:
+			var coast := not front and region.coastal
+			if not front and not coast:
 				continue
 			var score := float(world.nations[m].region_counts[rid]) + world.rng.randf() * 20.0
 			if _region_city(world, rid, losers) != null:
 				score += 40.0  # города — главная цель
-			if score > best_score:
+			for w in winners:
+				if region.claims.has(w):
+					score += 60.0  # возвращаем своё
+			if front and score > best_score:
 				best_score = score
 				best = rid
-	return best
+			elif coast and score > coastal_score:
+				coastal_score = score
+				coastal_best = rid
+	war.siege_landing = false
+	war.siege_region = best
+	if best < 0 and coastal_best >= 0 and _has_port(world, winners):
+		war.siege_region = coastal_best
+		war.siege_landing = true
+
+
+func _has_port(world: World, members: PackedInt32Array) -> bool:
+	for m in members:
+		for id in world.nations[m].city_ids:
+			if world.cities[id].buildings.has(&"harbor"):
+				return true
+	return false
 
 
 func _is_valid_target(world: World, war: War, rid: int, winner: int) -> bool:
@@ -162,6 +231,8 @@ func _region_defense(world: World, region: Region, owners: PackedInt32Array) -> 
 	return defense
 
 
+## Взятие региона «волной» от линии фронта (или от берега при десанте):
+## переходят только связные с фронтом клетки проигравших внутри региона.
 func _capture(world: World, war: War, region: Region, winner: int) -> void:
 	var losers := war.members(-winner)
 	var winners := war.members(winner)
@@ -169,40 +240,71 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 	var capital_lost: Nation = null
 	if city != null and city.is_capital:
 		capital_lost = world.nations[city.nation_id]
-	# Клетки достаются тому из победителей, кто граничит с регионом (обычно лидеру).
-	var taker := winners[0]
-	for w in winners:
-		if region.owner_counts.has(w):
-			taker = w
-			break
-	var losers_hit := {}
+	var queue := PackedInt32Array()
+	var seen := {}
+	var taker := war.leader(winner)
 	for c in region.cells:
 		var o := world.owner[c]
-		if o >= 0 and losers.has(o):
-			losers_hit[o] = true
-			world.set_owner(c, taker)
+		if o < 0 or not losers.has(o):
+			continue
+		var start := _touches(world, c, winners) if not war.siege_landing else world.is_coastal(c)
+		if start:
+			queue.append(c)
+			seen[c] = true
+			if not war.siege_landing:
+				for nb in world.map.neighbors4(c):
+					if winners.has(world.owner[nb]):
+						taker = world.owner[nb]
+						break
+	var qi := 0
+	while qi < queue.size():
+		var c := queue[qi]
+		qi += 1
+		for nb in world.map.neighbors4(c):
+			if seen.has(nb) or world.region_of[nb] != region.id:
+				continue
+			var o := world.owner[nb]
+			if o >= 0 and losers.has(o):
+				seen[nb] = true
+				queue.append(nb)
+	var losers_hit := {}
+	for c in queue:
+		losers_hit[world.owner[c]] = true
+		world.set_owner(c, taker)
+	if queue.is_empty():
+		return
+	# Проигравшие помнят утраченное; победитель, вернувший своё, претензию снимает.
+	for loser in losers_hit:
+		region.claims[loser] = world.year + CLAIM_YEARS
+	region.claims.erase(taker)
 	region.unrest = 0.0
 	# Мятежный регион, возвращённый прежним владельцем, надолго затихает.
 	if (war.cause == &"independence" or war.cause == &"civil") and winner < 0:
 		region.pacified_until = world.year + world.rng.randi_range(40, 70)
 	war.score += winner * 12.0
 	var conqueror := world.nations[taker]
-	if city != null and city.alive:
+	var ids := PackedInt32Array([taker]) + PackedInt32Array(losers_hit.keys())
+	if city != null and city.alive and world.owner[city.cell] == taker:
 		# Орки и гоблины иногда сжигают захваченные городки дотла.
 		if conqueror.race.has_trait(&"raiders") and city.tier() <= 1 and world.rng.randf() < 0.35:
-			world.log_event(&"conquest", "%s сжигает город %s." % [conqueror.short_name, city.name],
-					PackedInt32Array([taker]))
+			world.log_event(&"conquest", "%s сжигает город %s." % [conqueror.short_name, city.name], ids)
 			world.destroy_city(city)
 		else:
-			world.log_event(&"conquest", "%s захватывает регион %s и город %s." % [conqueror.short_name, region.name, city.name],
-					PackedInt32Array([taker]) + PackedInt32Array(losers_hit.keys()))
+			world.log_event(&"conquest", "%s захватывает регион %s и город %s." % [conqueror.short_name, region.name, city.name], ids)
 	else:
-		world.log_event(&"conquest", "%s захватывает регион %s." % [conqueror.short_name, region.name],
-				PackedInt32Array([taker]) + PackedInt32Array(losers_hit.keys()))
-	if capital_lost != null:
+		world.log_event(&"conquest", "%s захватывает регион %s." % [conqueror.short_name, region.name], ids)
+	if capital_lost != null and capital_lost.alive:
 		war.score += winner * 25.0
 		capital_lost.stability = maxf(0.0, capital_lost.stability - 0.15)
 		world.log_event(&"conquest", "Пала столица государства %s!" % capital_lost.name, PackedInt32Array([capital_lost.id]))
+		if capital_lost.government != null and capital_lost.government.succession == "eternal":
+			var old := capital_lost.ruler_display()
+			world.new_ruler(capital_lost, true)
+			world.log_event(&"ruler", "%s уничтожен вместе со столицей; власть над %s захватил %s." % [
+				old, capital_lost.name, capital_lost.ruler_display()], PackedInt32Array([capital_lost.id]))
+	# Отрезанные клочки проигравших внутри земель победителя присоединяются сразу.
+	for loser in losers_hit:
+		EnclaveSystem.absorb(world, world.nations[loser])
 	world.cleanup_dead()
 
 

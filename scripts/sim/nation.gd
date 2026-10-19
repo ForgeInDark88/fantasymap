@@ -17,8 +17,17 @@ var color := Color.WHITE
 var ruler_name := ""
 var ruler_title := ""
 var ruler_age := 30
-## Сколько лет ещё продлится правление.
+## Сколько лет ещё продлится правление (до смерти или до выборов).
 var reign_left := 20
+var ruler_trait: RulerTraitDef
+## Номер правителя с таким именем в династии (Эдрик II); 1 — без номера.
+var ruler_number := 1
+var government: GovernmentDef
+## Правящий род и имена его правителей (для порядковых номеров).
+var dynasty := ""
+var dynasty_names: Dictionary[String, int] = {}
+## Присягнувшие государству герои (id в World.heroes).
+var hero_ids := PackedInt32Array()
 
 var capital_city := -1
 var city_ids := PackedInt32Array()
@@ -101,8 +110,26 @@ func _init() -> void:
 	building_production.resize(Goods.COUNT)
 
 
+const ROMAN: Array[String] = ["", "", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
+
+
 func ruler_display() -> String:
-	return "%s %s" % [ruler_title, ruler_name]
+	var number := " " + ROMAN[ruler_number] if ruler_number > 1 and ruler_number < ROMAN.size() else ""
+	return "%s %s%s" % [ruler_title, ruler_name, number]
+
+
+## Политический множитель: форма правления × характер правителя (aggression_mult, trade_mult…).
+func policy(key: String) -> float:
+	var m := 1.0
+	if government != null:
+		m *= government.get(key)
+	if ruler_trait != null:
+		m *= ruler_trait.get(key)
+	return m
+
+
+func policy_stability() -> float:
+	return (government.stability_bonus if government != null else 0.0) + (ruler_trait.stability if ruler_trait != null else 0.0)
 
 
 func total_capacity() -> float:
@@ -139,4 +166,7 @@ func power() -> float:
 	p *= 1.0 + 0.25 * clampf(stock[Goods.METAL] / (army / 200.0 + 1.0), 0.0, 1.0)
 	if race.has_trait(&"warlike"):
 		p *= 1.2
-	return p * modifier("army_mult")
+	return p * modifier("army_mult") * policy("army_mult") + hero_power
+
+## Вклад присягнувших героев в военную мощь (пересчитывает HeroSystem).
+var hero_power := 0.0

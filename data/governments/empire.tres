@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GovernmentDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/government_def.gd" id="1_gov"]
+
+[resource]
+script = ExtResource("1_gov")
+id = &"empire"
+display_name = "Империя"
+description = "Наследственная власть императора, стремящегося к завоеваниям."
+succession = "heir"
+election_period = 6
+crisis_chance = 0.08
+stability_bonus = -0.02
+aggression_mult = 1.3
+trade_mult = 1.0
+science_mult = 1.0
+army_mult = 1.1
+dynastic = true

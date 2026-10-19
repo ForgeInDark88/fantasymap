@@ -15,7 +15,8 @@ func tick(world: World, nation: Nation) -> void:
 	if (world.year + nation.id) % 10 == 0:
 		recompute_building_effects(world, nation)
 	_maybe_found_city(world, nation)
-	if world.rng.randf() < BUILD_CHANCE:
+	var build_mult := nation.ruler_trait.build_mult if nation.ruler_trait != null else 1.0
+	if world.rng.randf() < BUILD_CHANCE * build_mult:
 		_try_build(world, nation)
 
 

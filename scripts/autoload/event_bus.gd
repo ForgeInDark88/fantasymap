@@ -31,6 +31,18 @@ signal cell_hovered(cell: int)
 @warning_ignore("unused_signal")
 signal cell_clicked(cell: int)
 
+## Камера должна показать клетку (клик в летописи, списке героев…).
+@warning_ignore("unused_signal")
+signal focus_cell(cell: int)
+## Инструмент панели Бога: id (&"" — нет инструмента) и параметры.
+@warning_ignore("unused_signal")
+signal god_tool_changed(tool: StringName, params: Dictionary)
+## Рельеф изменился — перерисовать карту.
+@warning_ignore("unused_signal")
+signal terrain_changed
+
 # --- Выбор объектов (-1 = снять выбор) ---
 @warning_ignore("unused_signal")
 signal nation_selected(nation_id: int)
+@warning_ignore("unused_signal")
+signal hero_selected(hero_id: int)

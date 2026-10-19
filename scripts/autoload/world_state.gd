@@ -8,8 +8,9 @@ extends Node
 ## Множители скорости: пауза, x1, x2, x5, x10.
 const SPEEDS: Array[int] = [0, 1, 2, 5, 10]
 const SPEED_NAMES: Array[String] = ["Пауза", "x1", "x2", "x5", "x10"]
-## Сколько лет проходит за секунду на скорости x1.
+## Сколько лет проходит за секунду на скорости x1 (симуляция идёт помесячно).
 const YEARS_PER_SECOND := 2.0
+const MONTHS_PER_SECOND := YEARS_PER_SECOND * 12.0
 ## Сколько времени кадра можно потратить на симуляцию (мкс).
 const FRAME_BUDGET_USEC := 20000
 
@@ -25,9 +26,9 @@ var map: WorldMap:
 
 var _task_id := -1
 var _gen_started_ms := 0
-var _year_accum := 0.0
+var _month_accum := 0.0
 var _last_speed := 1
-## Среднее время одного года (мс) — для отладки и панели статистики.
+## Среднее время одного месяца (мс) — для отладки и панели статистики.
 var avg_tick_ms := 0.0
 
 
@@ -36,24 +37,25 @@ func _ready() -> void:
 	BiomeDB.ensure_loaded()
 	RaceDB.ensure_loaded()
 	EconomyDB.ensure_loaded()
+	PoliticsDB.ensure_loaded()
 	EventBus.generate_requested.connect(generate)
 
 
 func _process(delta: float) -> void:
 	if world == null or is_generating or speed_index == 0:
 		return
-	_year_accum += delta * SPEEDS[speed_index] * YEARS_PER_SECOND
+	_month_accum += delta * SPEEDS[speed_index] * MONTHS_PER_SECOND
 	var start := Time.get_ticks_usec()
 	var ticks := 0
-	while _year_accum >= 1.0:
+	while _month_accum >= 1.0:
 		var t0 := Time.get_ticks_usec()
-		simulation.step(world)
-		avg_tick_ms = lerpf(avg_tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.1)
-		_year_accum -= 1.0
+		simulation.step_month(world)
+		avg_tick_ms = lerpf(avg_tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.05)
+		_month_accum -= 1.0
 		ticks += 1
 		if Time.get_ticks_usec() - start > FRAME_BUDGET_USEC:
 			# Не успеваем — замедляемся, но не копим долг (иначе «снежный ком»).
-			_year_accum = minf(_year_accum, 1.0)
+			_month_accum = minf(_month_accum, 1.0)
 			break
 	if ticks > 0:
 		EventBus.year_passed.emit(world.year)
@@ -70,11 +72,19 @@ func toggle_pause() -> void:
 	set_speed(_last_speed if speed_index == 0 else 0)
 
 
-## Ровно один год (для кнопки «шаг» и тестов).
-func step_once() -> void:
+## Ровно один год (кнопка «+1 год»).
+func step_year() -> void:
 	if world == null or is_generating:
 		return
 	simulation.step(world)
+	EventBus.year_passed.emit(world.year)
+
+
+## Ровно один месяц (кнопка «+1 мес.»).
+func step_month() -> void:
+	if world == null or is_generating:
+		return
+	simulation.step_month(world)
 	EventBus.year_passed.emit(world.year)
 
 
@@ -99,5 +109,5 @@ func _on_generation_finished(result: World) -> void:
 	_task_id = -1
 	world = result
 	is_generating = false
-	_year_accum = 0.0
+	_month_accum = 0.0
 	EventBus.world_generated.emit(world, Time.get_ticks_msec() - _gen_started_ms)

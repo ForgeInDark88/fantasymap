@@ -23,13 +23,14 @@ static func person_name(race: RaceDef, rng: RandomNumberGenerator) -> String:
 	return _join(root(race, rng), _pick(race.person_suffixes, rng), race, rng)
 
 
-## Форма правления: [полное название, титул правителя].
+## Форма правления: [полное название, титул правителя, id формы правления].
 static func state_title(race: RaceDef, short_name: String, rng: RandomNumberGenerator) -> PackedStringArray:
 	if race.state_forms.is_empty():
-		return PackedStringArray([short_name, "Правитель"])
+		return PackedStringArray([short_name, "Правитель", "monarchy"])
 	var parts := _pick(race.state_forms, rng).split("|")
 	var title := parts[1] if parts.size() > 1 else "Правитель"
-	return PackedStringArray([parts[0].format({"name": short_name}), title])
+	var government := parts[2] if parts.size() > 2 else "monarchy"
+	return PackedStringArray([parts[0].format({"name": short_name}), title, government])
 
 
 ## Повторяет генерацию, пока имя не окажется новым (не более 20 попыток).

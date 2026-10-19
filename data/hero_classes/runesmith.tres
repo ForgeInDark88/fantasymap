@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"runesmith"
+display_name = "Рунный кузнец"
+description = "Куёт зачарованное оружие и доспехи."
+power = 340.0
+race_weights = Dictionary[StringName, float]({&"dwarves": 1.5, &"humans": 0.2})
+default_weight = 0.0
+loyalty = 0.8
+aggression = 0.3
+color = Color(0.9, 0.6, 0.3, 1)

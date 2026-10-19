@@ -34,6 +34,8 @@ extends Resource
 @export var destroys_buildings: int = 0
 ## Сколько пограничных клеток региона опустошается (становятся ничьими).
 @export var lost_cells: int = 0
+## В регионе появляется герой (раса — по народу региона, класс — по расе).
+@export var spawns_hero: bool = false
 
 @export_group("Длительные эффекты")
 ## Сколько лет действуют множители ниже (0 — нет длительного эффекта).

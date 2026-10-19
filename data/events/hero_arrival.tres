@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"hero_arrival"
+display_name = "Прибытие героя"
+chronicle_kind = &"hero"
+chance = 0.006
+spawns_hero = true
+text = "{nation}: прибыл герой."

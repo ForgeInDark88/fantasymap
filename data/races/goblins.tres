@@ -31,6 +31,6 @@ name_prefixes = PackedStringArray("Сни", "Гиз", "Кра", "Ниб", "Зи�
 name_middles = PackedStringArray("и", "а", "ик", "ок", "ле", "зи")
 place_suffixes = PackedStringArray("зик", "ник", "вин", "нок", "грот", "крак", "топ", "гыр", "лаз")
 person_suffixes = PackedStringArray("ик", "зик", "ли", "нак", "виз", "ник", "зль")
-state_forms = PackedStringArray("Шайка {name}|Главарь", "Банда {name}|Босс", "Подземье {name}|Король гоблинов", "Торговая лига {name}|Магнат")
+state_forms = PackedStringArray("Шайка {name}|Главарь|tribal", "Банда {name}|Босс|tribal", "Подземье {name}|Король гоблинов|monarchy", "Торговая лига {name}|Магнат|oligarchy")
 connector_vowels = "иа"
 middle_chance = 0.4

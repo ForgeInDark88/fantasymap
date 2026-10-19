@@ -31,6 +31,6 @@ name_prefixes = PackedStringArray("Бал", "Дур", "Гим", "Тор", "Кх�
 name_middles = PackedStringArray("а", "и", "о", "ун", "ар", "ор", "ак", "ду")
 place_suffixes = PackedStringArray("гард", "хейм", "дум", "баз", "грот", "кар", "дин", "зарак", "бар", "дол")
 person_suffixes = PackedStringArray("ин", "ур", "ок", "им", "рик", "дал", "грим", "ли", "ор")
-state_forms = PackedStringArray("Твердыня {name}|Тан", "Подгорное царство {name}|Король-под-Горой", "Кланы {name}|Старейшина", "Чертоги {name}|Владыка")
+state_forms = PackedStringArray("Твердыня {name}|Тан|clans", "Подгорное царство {name}|Король-под-Горой|monarchy", "Кланы {name}|Старейшина|clans", "Чертоги {name}|Владыка|monarchy")
 connector_vowels = "аоу"
 middle_chance = 0.3

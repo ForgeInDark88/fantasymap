@@ -1,0 +1,115 @@
+class_name HeroesPanel
+extends PanelContainer
+## Список героев мира и карточка выбранного героя.
+
+var _list: VBoxContainer
+var _card: RichTextLabel
+var _show_dead: CheckBox
+var _selected := -1
+var _last_refresh_ms := 0
+
+
+func _init() -> void:
+	custom_minimum_size = Vector2(440, 0)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	add_child(box)
+	var title := Label.new()
+	title.text = "Герои"
+	title.add_theme_font_size_override("font_size", 16)
+	box.add_child(title)
+	_show_dead = CheckBox.new()
+	_show_dead.text = "Показывать павших и ушедших на трон"
+	_show_dead.toggled.connect(func(_on: bool) -> void: _refresh())
+	box.add_child(_show_dead)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(420, 260)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_list = VBoxContainer.new()
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_list)
+	box.add_child(scroll)
+	_card = RichTextLabel.new()
+	_card.bbcode_enabled = true
+	_card.fit_content = true
+	_card.scroll_active = false
+	_card.custom_minimum_size = Vector2(420, 0)
+	_card.add_theme_font_size_override("normal_font_size", 12)
+	box.add_child(_card)
+	visibility_changed.connect(func() -> void:
+		if visible:
+			_refresh())
+	EventBus.hero_selected.connect(func(id: int) -> void:
+		_selected = id
+		_refresh())
+
+
+func _process(_delta: float) -> void:
+	if visible and Time.get_ticks_msec() - _last_refresh_ms > 1500:
+		_refresh()
+
+
+func _refresh() -> void:
+	_last_refresh_ms = Time.get_ticks_msec()
+	var world := WorldState.world
+	for child in _list.get_children():
+		_list.remove_child(child)
+		child.queue_free()
+	if world == null:
+		return
+	var heroes: Array[Hero] = []
+	for h in world.heroes:
+		if (h.alive and not h.is_ruler) or _show_dead.button_pressed:
+			heroes.append(h)
+	heroes.sort_custom(func(a: Hero, b: Hero) -> bool:
+		if a.alive != b.alive:
+			return a.alive
+		return a.level > b.level)
+	if heroes.is_empty():
+		var l := Label.new()
+		l.text = "Героев пока нет — они приходят в мир сами (или по воле Бога)."
+		l.add_theme_font_size_override("font_size", 12)
+		_list.add_child(l)
+	for h in heroes:
+		var b := Button.new()
+		b.flat = true
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		b.icon = h.race.icon
+		b.add_theme_constant_override("icon_max_width", 16)
+		b.add_theme_font_size_override("font_size", 12)
+		b.add_theme_color_override("font_color", h.hero_class.color if h.alive else Color(0.55, 0.55, 0.6))
+		b.text = "%s — %s, ур. %d · %s" % [h.display_name(), h.hero_class.display_name.to_lower(), h.level, _status(world, h)]
+		b.pressed.connect(func() -> void:
+			EventBus.hero_selected.emit(h.id)
+			if h.alive:
+				EventBus.focus_cell.emit(h.cell))
+		_list.add_child(b)
+	_show_card(world)
+
+
+func _status(world: World, h: Hero) -> String:
+	if h.is_ruler:
+		return "правитель"
+	if not h.alive:
+		return "пал"
+	if h.nation_id >= 0:
+		return "служит: " + world.nations[h.nation_id].short_name
+	return "странствует"
+
+
+func _show_card(world: World) -> void:
+	if _selected < 0 or _selected >= world.heroes.size():
+		_card.text = "[color=#8a90a0]Выберите героя, чтобы увидеть его историю.[/color]"
+		return
+	var h := world.heroes[_selected]
+	var region := world.region_at(h.cell) if h.cell >= 0 else null
+	var lines: Array[String] = [
+		"[b]%s[/b] — %s, %s · %s" % [h.display_name(), h.race.display_name.to_lower(), h.hero_class.display_name.to_lower(), h.hero_class.description],
+		"Уровень %d · возраст %d · побед в поединках: %d · чудовищ: %d" % [h.level, h.age, h.kills, h.monsters_slain],
+		"Сейчас: %s%s" % [_status(world, h), (" · регион " + region.name) if region != null and not region.name.is_empty() else ""],
+		"[b]Деяния:[/b]",
+	]
+	for d in h.deeds:
+		lines.append("• " + d)
+	_card.text = "\n".join(lines)

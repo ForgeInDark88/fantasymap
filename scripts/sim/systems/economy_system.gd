@@ -29,7 +29,7 @@ func tick(world: World, nation: Nation) -> void:
 		nation.income[g] = amount
 
 	# Налоги и торговля минус содержание армии.
-	var taxes := pop_k * TAX_PER_1000 * race.trade * (0.5 + nation.stability * 0.5) * tech_mult
+	var taxes := pop_k * TAX_PER_1000 * race.trade * nation.policy("trade_mult") * (0.5 + nation.stability * 0.5) * tech_mult
 	if race.has_trait(&"traders"):
 		taxes *= 1.15
 	if race.has_trait(&"raiders"):
@@ -78,11 +78,11 @@ func tick(world: World, nation: Nation) -> void:
 		nation.famine_years = 0
 
 	# Наука: растёт с логарифмом населения и замедляется с уровнем (≈10 за 400 лет).
-	nation.tech += 0.02 * race.science * (1.0 + nation.science_bonus) * nation.modifier("science_mult") \
+	nation.tech += 0.02 * race.science * (1.0 + nation.science_bonus) * nation.modifier("science_mult") * nation.policy("science_mult") \
 			* log(1.0 + pop_k / 100.0) / (1.0 + nation.tech * 0.3)
 
 	# Армия стремится к доле населения; в долгах — дезертирство.
-	var military := race.military * (1.0 + nation.army_bonus) * (1.25 if race.has_trait(&"warlike") else 1.0)
+	var military := race.military * (1.0 + nation.army_bonus) * (1.25 if race.has_trait(&"warlike") else 1.0) * nation.policy("army_mult")
 	var target_army := nation.population * ARMY_SHARE * military
 	if nation.stock[Goods.GOLD] < 0.0:
 		target_army *= 0.5
@@ -98,7 +98,7 @@ func tick(world: World, nation: Nation) -> void:
 ## (с учётом расовых отношений), слишком большая территория, голод и долги — вниз.
 func _target_stability(nation: Nation) -> float:
 	var race := nation.race
-	var target := 0.78 + nation.stability_bonus
+	var target := 0.78 + nation.stability_bonus + nation.policy_stability()
 	if race.has_trait(&"long_lived"):
 		target += 0.05
 	var total := nation.population

@@ -7,13 +7,17 @@ extends RefCounted
 const CAUSE_NAMES := {
 	&"territory": "за земли", &"resources": "за богатства", &"racial": "священная",
 	&"revenge": "мести", &"independence": "за независимость", &"civil": "гражданская",
-	&"expansion": "завоевательная",
+	&"expansion": "завоевательная", &"reconquest": "за возвращение земель", &"coalition": "коалиции",
 }
 
 ## Идущие войны; завершённые переносятся в past_wars (для летописи и истории).
 var wars: Array[War] = []
 var past_wars: Array[War] = []
 var _next_war_id := 0
+## Самое большое государство, против которого собирают коалиции (-1 — нет).
+var hegemon := -1
+## Против кого и в каком году последний раз собиралась коалиция: id → год.
+var coalitions: Dictionary[int, int] = {}
 ## Пара государств → {truce_until: int, grudge: float}.
 var _pairs: Dictionary = {}
 
@@ -25,13 +29,18 @@ static func key(a: int, b: int) -> int:
 func pair(a: int, b: int) -> Dictionary:
 	var k := key(a, b)
 	if not _pairs.has(k):
-		_pairs[k] = {"truce_until": -1, "grudge": 0.0}
+		_pairs[k] = {"truce_until": -1, "grudge": 0.0, "marriage_until": -1}
 	return _pairs[k]
 
 
 func has_truce(a: int, b: int, year: int) -> bool:
 	var k := key(a, b)
 	return _pairs.has(k) and _pairs[k].truce_until > year
+
+
+func married(a: int, b: int, year: int) -> bool:
+	var k := key(a, b)
+	return _pairs.has(k) and _pairs[k].get("marriage_until", -1) > year
 
 
 func grudge(a: int, b: int) -> float:
@@ -79,8 +88,27 @@ func opinion(world: World, a: int, b: int) -> float:
 		o += 0.15
 	if na.borders.has(b):
 		o -= 0.08 * minf(1.0, na.borders[b] / 30.0)
+	if married(a, b, world.year):
+		o += 0.2
+	# Харизма правителя b располагает к нему соседей.
+	if nb.ruler_trait != null:
+		o += nb.ruler_trait.charisma
+	# Гегемона боятся все.
+	if b == hegemon:
+		o -= 0.15
+	# Претензии на земли друг друга.
+	if has_claims_against(world, a, b):
+		o -= 0.2
 	o -= grudge(a, b)
 	return clampf(o, -1.0, 1.0)
+
+
+## Есть ли у a претензии на регионы, которые сейчас контролирует b.
+func has_claims_against(world: World, a: int, b: int) -> bool:
+	for rid in world.nations[b].region_counts:
+		if world.regions[rid].claims.has(a):
+			return true
+	return false
 
 
 func add_grudge(a: int, b: int, amount: float) -> void:
@@ -128,6 +156,7 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 	_next_war_id += 1
 	war.cause = cause
 	war.start_year = world.year
+	war.month = world.month
 	war.attackers.append(attacker)
 	war.defenders.append(defender)
 	var na := world.nations[attacker]
@@ -166,6 +195,8 @@ static func _cause_title(cause: StringName) -> String:
 			return "Освободительная война:"
 		&"civil":
 			return "Гражданская война:"
+		&"divine":
+			return "Война по воле богов:"
 	var c: String = CAUSE_NAMES.get(cause, "")
 	return "Война %s:" % c if not c.is_empty() else "Война:"
 

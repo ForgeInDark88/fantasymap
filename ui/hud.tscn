@@ -29,7 +29,7 @@ theme_override_constants/separation = 8
 [node name="Title" type="Label" parent="Root/TopBar/HBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Fantasy Map Simulator · Расы"
+text = "Fantasy Map Simulator: Расы"
 
 [node name="TimeSep" type="VSeparator" parent="Root/TopBar/HBox"]
 layout_mode = 2
@@ -41,7 +41,7 @@ theme_override_constants/separation = 2
 
 [node name="YearLabel" type="Label" parent="Root/TopBar/HBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Год 0"
@@ -51,11 +51,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="ModeLabel" type="Label" parent="Root/TopBar/HBox"]
-layout_mode = 2
-text = "Режим карты:"
-
-[node name="ModeButtons" type="HBoxContainer" parent="Root/TopBar/HBox"]
+[node name="PanelButtons" type="HBoxContainer" parent="Root/TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 2
@@ -66,18 +62,26 @@ layout_mode = 2
 [node name="ToggleChronicleButton" type="Button" parent="Root/TopBar/HBox"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Показать/скрыть летопись"
+tooltip_text = "Показать/скрыть ленту последних событий"
 toggle_mode = true
 button_pressed = true
-text = "Летопись"
+text = "Лента"
 
-[node name="ToggleGenButton" type="Button" parent="Root/TopBar/HBox"]
+[node name="ModeBar" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -8.0
+offset_top = 46.0
+offset_right = -8.0
+offset_bottom = 46.0
+grow_horizontal = 0
+
+[node name="ModeButtons" type="HBoxContainer" parent="Root/ModeBar"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Показать/скрыть панель генерации мира"
-toggle_mode = true
-button_pressed = true
-text = "Мир"
+theme_override_constants/separation = 2
 
 [node name="ChronicleFeed" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true
@@ -349,7 +353,7 @@ anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -328.0
-offset_top = 48.0
+offset_top = 96.0
 offset_right = -8.0
-offset_bottom = 48.0
+offset_bottom = 96.0
 grow_horizontal = 0

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"necromancer"
+display_name = "Некромант"
+description = "Поднимает мёртвых и торгует с тьмой."
+power = 400.0
+race_weights = Dictionary[StringName, float]({&"undead": 1.5, &"humans": 0.4, &"goblins": 0.4, &"orcs": 0.2})
+default_weight = 0.0
+loyalty = 0.5
+aggression = 0.6
+color = Color(0.6, 0.3, 0.8, 1)
