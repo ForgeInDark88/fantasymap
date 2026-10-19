@@ -12,3 +12,7 @@ is_water = false
 fertility = 0.45
 move_cost = 1.8
 habitability = 0.6
+wood_yield = 0.15
+stone_yield = 0.5
+metal_yield = 0.15
+gold_yield = 0.02

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"sacred_grove"
+display_name = "Священная роща"
+description = "Эльфийская святыня: покой и щедрость леса."
+notable = true
+cost = Dictionary[StringName, float]({&"gold": 40.0})
+requires_biomes = Array[StringName]([&"forest", &"jungle"])
+required_traits = Array[StringName]([&"forest_bond"])
+food_bonus = 0.05
+stability = 0.05

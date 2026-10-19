@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"smial_gardens"
+display_name = "Огороды и норы"
+description = "Уютные норы и сады полуросликов."
+cost = Dictionary[StringName, float]({&"wood": 20.0, &"gold": 20.0})
+required_traits = Array[StringName]([&"farmers"])
+food_bonus = 0.12
+stability = 0.02

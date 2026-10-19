@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"farm"
+display_name = "Фермы"
+description = "Поля и амбары вокруг города: больше еды."
+cost = Dictionary[StringName, float]({&"wood": 15.0, &"gold": 15.0})
+food_bonus = 0.08

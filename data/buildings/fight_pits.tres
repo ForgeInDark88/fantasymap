@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"fight_pits"
+display_name = "Бойцовые ямы"
+description = "Кровавые забавы закаляют воинов."
+cost = Dictionary[StringName, float]({&"wood": 25.0, &"gold": 20.0})
+min_population = 1500.0
+allowed_races = Array[StringName]([&"orcs", &"goblins"])
+stability = 0.01
+army_bonus = 0.15

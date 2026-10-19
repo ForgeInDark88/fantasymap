@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"fortress"
+display_name = "Крепость"
+description = "Неприступная твердыня, высеченная в скале."
+notable = true
+cost = Dictionary[StringName, float]({&"stone": 120.0, &"metal": 30.0, &"gold": 60.0})
+min_population = 3000.0
+required_traits = Array[StringName]([&"fortress_builders"])
+excludes = Array[StringName]([&"walls"])
+defense = 3.0

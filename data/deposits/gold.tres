@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DepositDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/deposit_def.gd" id="1_dep"]
+
+[resource]
+script = ExtResource("1_dep")
+id = &"gold"
+display_name = "Золотая жила"
+color = Color(0.98, 0.8, 0.2, 1)
+goods = &"gold"
+amount = 1.5
+chance = 0.012
+biome_weights = Dictionary[StringName, float]({&"mountains": 0.8, &"hills": 0.7, &"desert": 0.4, &"jungle": 0.2})

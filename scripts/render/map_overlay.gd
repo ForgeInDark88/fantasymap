@@ -10,6 +10,8 @@ extends Node2D
 const CITY_LABEL_ZOOM := 1.4
 ## Базовый размер шрифта, относительно которого масштабируются подписи стран.
 const NATION_FONT := 48
+## Как часто (мс) перерисовывать подписи во время симуляции.
+const REDRAW_INTERVAL_MS := 150
 
 @export var renderer: MapRenderer
 
@@ -17,6 +19,8 @@ var _font: Font
 var _last_zoom := -1.0
 var _mode := MapMode.POLITICAL
 var _selected := -1
+var _world_dirty := false
+var _last_redraw_ms := 0
 
 
 func _ready() -> void:
@@ -31,12 +35,20 @@ func _ready() -> void:
 	EventBus.nation_selected.connect(func(id: int) -> void:
 		_selected = id
 		queue_redraw())
+	EventBus.year_passed.connect(func(_y: int) -> void: _world_dirty = true)
 
 
 func _process(_delta: float) -> void:
 	var zoom := _camera_zoom()
 	if not is_equal_approx(zoom, _last_zoom):
 		_last_zoom = zoom
+		queue_redraw()
+	# Мир изменился — пересчитываем точки подписей и перерисовываем, но не каждый кадр.
+	var now := Time.get_ticks_msec()
+	if _world_dirty and now - _last_redraw_ms >= REDRAW_INTERVAL_MS and WorldState.world != null:
+		_world_dirty = false
+		_last_redraw_ms = now
+		WorldState.world.update_label_anchors()
 		queue_redraw()
 
 
@@ -63,7 +75,7 @@ func _draw_nation_labels(world: World, zoom: float) -> void:
 		if not nation.alive or nation.label_cell < 0 or nation.cell_count <= 0:
 			continue
 		# Размер подписи растёт с площадью страны.
-		var world_size := clampf(sqrt(nation.cell_count) * MapRenderer.CELL_SIZE * 0.32, 8.0, 140.0)
+		var world_size := clampf(sqrt(nation.cell_count) * MapRenderer.CELL_SIZE * 0.25, 8.0, 110.0)
 		var screen_size := world_size * zoom
 		if screen_size < 9.0 or screen_size > 56.0:
 			continue
@@ -111,10 +123,12 @@ func _draw_cities(world: World, zoom: float) -> void:
 			if highlighted:
 				draw_arc(Vector2.ZERO, r + 4.0, 0.0, TAU, 32, Color.WHITE, 2.0)
 		else:
-			var r := 4.5 * marker_scale
-			draw_circle(Vector2.ZERO, r + 1.5, Color(0.06, 0.06, 0.08))
+			# На общем плане малые города — едва заметные точки, крупные — кружки.
+			var big := city.population >= 8000.0
+			var r := (4.5 if big or zoom >= 1.2 else 2.5) * marker_scale
+			draw_circle(Vector2.ZERO, r + 1.2, Color(0.06, 0.06, 0.08))
 			draw_circle(Vector2.ZERO, r, nation.color.lightened(0.35))
-		if show_labels:
+		if show_labels and (city.is_capital or zoom >= CITY_LABEL_ZOOM * 1.6 or city.population >= 8000.0):
 			var font_size := 14 if city.is_capital else 12
 			var text_size := _font.get_string_size(city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 			var origin := Vector2(-text_size.x * 0.5, (14.0 if city.is_capital else 9.0) * marker_scale + font_size)

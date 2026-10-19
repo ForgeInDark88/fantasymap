@@ -13,6 +13,14 @@ signal generation_started
 @warning_ignore("unused_signal")
 signal world_generated(world: World, elapsed_ms: int)
 
+# --- Симуляция ---
+## Прошёл один или несколько лет (испускается не чаще раза за кадр).
+@warning_ignore("unused_signal")
+signal year_passed(year: int)
+## Индекс скорости в WorldState.SPEEDS (0 — пауза).
+@warning_ignore("unused_signal")
+signal speed_changed(speed_index: int)
+
 # --- Отображение ---
 @warning_ignore("unused_signal")
 signal map_mode_changed(mode: int)

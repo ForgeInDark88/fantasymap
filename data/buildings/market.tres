@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"market"
+display_name = "Рынок"
+description = "Торговля приносит золото."
+cost = Dictionary[StringName, float]({&"wood": 30.0, &"gold": 50.0})
+min_population = 3000.0
+production = Dictionary[StringName, float]({&"gold": 10.0})
