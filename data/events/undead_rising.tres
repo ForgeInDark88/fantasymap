@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"undead_rising"
+display_name = "Восстание мертвецов"
+chronicle_kind = &"rebellion"
+chance = 0.0015
+min_population = 80000.0
+special = &"undead_rising"
+text = "{name}: в регионе {region} мёртвые встали из могил!"

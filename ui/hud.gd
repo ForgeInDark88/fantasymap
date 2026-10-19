@@ -16,7 +16,7 @@ const CHRONICLE_COLORS := {
 	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b",
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
-	&"monsters": "#e08cc0", &"hero": "#ffe680",
+	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -56,6 +56,8 @@ var _speed_buttons: Array[Button] = []
 ## Левые панели: открыта максимум одна. Имя → [кнопка, панель].
 var _left_panels: Dictionary = {}
 var _clicked_cell := -1
+var _fate_panel: FatePanel
+var _fate_button: Button
 var _chronicle_shown := -1
 var _panel_refresh_ms := 0
 var _legend_refresh_ms := 0
@@ -132,7 +134,7 @@ func _build_time_controls() -> void:
 	for i in WorldState.SPEEDS.size():
 		var b := Button.new()
 		b.text = WorldState.SPEED_NAMES[i]
-		b.tooltip_text = "Пауза / продолжить — Пробел" if i == 0 else "%s лет в секунду" % str(WorldState.SPEEDS[i] * WorldState.YEARS_PER_SECOND)
+		b.tooltip_text = "Пауза / продолжить — Пробел" if i == 0 else "%d дней в секунду" % roundi(WorldState.SPEEDS[i] * WorldState.DAYS_PER_SECOND)
 		b.toggle_mode = true
 		b.button_group = group
 		b.focus_mode = Control.FOCUS_NONE
@@ -140,18 +142,20 @@ func _build_time_controls() -> void:
 		b.pressed.connect(WorldState.set_speed.bind(i))
 		_time_controls.add_child(b)
 		_speed_buttons.append(b)
-	for step_def in [["+1 мес.", "Прожить один месяц", false], ["+1 год", "Прожить один год", true]]:
+	for step_def in [["+день", "Прожить один день", 0], ["+мес.", "Прожить один месяц", 1], ["+год", "Прожить один год", 2]]:
 		var step := Button.new()
 		step.text = step_def[0]
 		step.tooltip_text = step_def[1]
 		step.focus_mode = Control.FOCUS_NONE
-		var year: bool = step_def[2]
+		var span: int = step_def[2]
 		step.pressed.connect(func() -> void:
 			WorldState.set_speed(0)
-			if year:
-				WorldState.step_year()
+			if span == 0:
+				WorldState.step_day()
+			elif span == 1:
+				WorldState.step_month()
 			else:
-				WorldState.step_month())
+				WorldState.step_year())
 		_time_controls.add_child(step)
 
 
@@ -181,6 +185,15 @@ func _build_left_panels() -> void:
 		_panel_buttons.add_child(b)
 		_left_panels[d[0]] = [b, panel]
 	_left_panels["Мир"][0].button_pressed = true
+	# Судьба — отдельная полноэкранная панель.
+	_fate_panel = FatePanel.new()
+	root.add_child(_fate_panel)
+	_fate_button = Button.new()
+	_fate_button.text = "Судьба"
+	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
+	_fate_button.focus_mode = Control.FOCUS_NONE
+	_fate_button.pressed.connect(_fate_panel.open_panel)
+	_panel_buttons.add_child(_fate_button)
 
 
 func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
@@ -202,6 +215,9 @@ func _on_speed_changed(index: int) -> void:
 func _on_year_passed(year: int) -> void:
 	_year_label.text = WorldState.world.date_text() if WorldState.world != null else "Год %d" % year
 	_refresh_chronicle()
+	if WorldState.world != null:
+		var n := WorldState.world.fate_queue.size()
+		_fate_button.text = "Судьба (%d)" % n if n > 0 else "Судьба"
 	var now := Time.get_ticks_msec()
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
@@ -228,6 +244,8 @@ func _refresh_chronicle() -> void:
 
 func _build_race_checks() -> void:
 	for race in RaceDB.all():
+		if not race.spawn_at_start:
+			continue  # наги и демоны приходят только через великие деяния
 		var cb := CheckBox.new()
 		cb.text = race.display_name
 		cb.icon = race.icon

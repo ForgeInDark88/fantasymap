@@ -60,6 +60,19 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 		city_name += " (город разрушен)"
 	if e.lost_cells > 0:
 		_devastate(world, nation, region, e.lost_cells)
+	if e.gold_gain > 0.0:
+		nation.stock[Goods.GOLD] += nation.population / 1000.0 * e.gold_gain
+	if e.food_gain > 0.0:
+		nation.stock[Goods.FOOD] += nation.population / 1000.0 * nation.race.food_need * e.food_gain
+	match e.special:
+		&"migration":
+			if not _migration(world, nation, region):
+				return false
+		&"undead_rising":
+			if not _undead_rising(world, nation, region):
+				return false
+		&"meteor":
+			_meteor(world, region)
 	if e.spawns_hero:
 		# Запись в летопись делает сам HeroSystem.spawn.
 		return HeroSystem.spawn(world, nation, region) != null
@@ -80,6 +93,61 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 	})
 	world.log_event(e.chronicle_kind, text, PackedInt32Array([nation.id]))
 	return true
+
+
+## Переселенцы другого народа занимают часть клеток региона — государство становится многорасовым.
+func _migration(world: World, nation: Nation, region: Region) -> bool:
+	var rng := world.rng
+	var candidates: Array[RaceDef] = []
+	for r in RaceDB.all():
+		if r != nation.race and r.spawn_at_start and nation.race.relation_to(r) > -0.4:
+			candidates.append(r)
+	if candidates.is_empty():
+		return false
+	var race := candidates[rng.randi_range(0, candidates.size() - 1)]
+	var moved := 0
+	for c in region.cells:
+		if moved >= 12:
+			break
+		if world.owner[c] != nation.id or world.cell_race[c] == race.index:
+			continue
+		world.set_owner(c, -1)
+		world.cell_race[c] = race.index
+		world.set_owner(c, nation.id)
+		nation.pop[race.index] += world.cell_cap[c] * 0.6
+		moved += 1
+	if moved == 0:
+		return false
+	world.log_event(&"nation", "%s переселились в регион %s государства %s." % [race.display_name, region.name, nation.short_name],
+			PackedInt32Array([nation.id]))
+	return true
+
+
+## Мёртвые встают из могил: регион откалывается как государство нежити и воюет с прежним владельцем.
+func _undead_rising(world: World, nation: Nation, region: Region) -> bool:
+	var undead := RaceDB.get_race(&"undead")
+	if undead == null or nation.race == undead or region.controller() != nation.id:
+		return false
+	var rebel := world.split_off(nation, PackedInt32Array([region.id]), undead)
+	if not rebel.alive:
+		return false
+	rebel.army = maxf(rebel.army, 4000.0)
+	world.diplomacy.declare_war(world, rebel.id, nation.id, &"independence")
+	world.log_event(&"rebellion", "Мертвецы региона %s провозгласили %s." % [region.name, rebel.name], PackedInt32Array([nation.id, rebel.id]))
+	return true
+
+
+## Падение звезды: кратер-озеро в центре региона; иногда звезда оставляет источник силы.
+func _meteor(world: World, region: Region) -> void:
+	GodTools.reshape(world, region.center, 1, -1.5)
+	if world.rng.randf() < 0.3:
+		var cell := -1
+		for c in region.cells:
+			if world.map.is_land(c):
+				cell = c
+				break
+		if cell >= 0:
+			HeroSystem.power_source(world, null, cell)
 
 
 func _pick_region(world: World, nation: Nation, e: EventDef) -> Region:

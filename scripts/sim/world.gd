@@ -16,8 +16,9 @@ const CITY_SPACING := 6
 var map: WorldMap
 var settings: MapSettings
 var year := 0
-## Месяц текущего года: 0..11.
+## Месяц текущего года: 0..11; день месяца: 0..29.
 var month := 0
+var day := 0
 var rng := RandomNumberGenerator.new()
 
 var nations: Array[Nation] = []
@@ -54,11 +55,17 @@ var ownership_version := 0
 ## Метки для обходов карты без выделения памяти: клетка посещена, если mark[c] == stamp.
 var mark := PackedInt32Array()
 var _stamp := 0
+## Какое-то государство потеряло последнюю клетку — cleanup_dead есть что делать.
+var _maybe_dead := false
 ## Растёт при изменении рельефа (панель Бога) — рендер перерисовывает карту и регионы.
 var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Источники силы, порталы, пустые троны, чудеса света.
+var landmarks: Array[Landmark] = []
+## Павшие герои, ждущие суда Судьбы (id героев).
+var fate_queue := PackedInt32Array()
 ## Снимки статистики раз в HISTORY_STEP лет: {year, races: PackedFloat32Array, nations: {id: [население, клетки]}}.
 var history: Array[Dictionary] = []
 const HISTORY_STEP := 5
@@ -297,6 +304,36 @@ func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nati
 	return nation
 
 
+func add_landmark(kind: StringName, name: String, cell: int, hero_id: int) -> Landmark:
+	ensure_region_name(region_at(cell))
+	var lm := Landmark.new()
+	lm.id = landmarks.size()
+	lm.kind = kind
+	lm.name = name
+	lm.cell = cell
+	lm.hero_id = hero_id
+	lm.created_year = year
+	landmarks.append(lm)
+	return lm
+
+
+func active_landmarks(kind: StringName) -> Array[Landmark]:
+	var result: Array[Landmark] = []
+	for lm in landmarks:
+		if lm.active and lm.kind == kind:
+			result.append(lm)
+	return result
+
+
+## Сколько источников силы контролирует государство.
+func sources_of(nation_id: int) -> int:
+	var count := 0
+	for lm in landmarks:
+		if lm.active and lm.kind == &"source" and owner[lm.cell] == nation_id:
+			count += 1
+	return count
+
+
 ## Новая «метка» для обхода (см. mark).
 func next_stamp() -> int:
 	_stamp += 1
@@ -325,11 +362,14 @@ const MONTH_NAMES: Array[String] = ["Морозень", "Снеговей", "К�
 
 
 func date_text() -> String:
-	return "%s, %d г." % [MONTH_NAMES[month], year]
+	return "%d %s, %d г." % [day + 1, MONTH_NAMES[month].to_lower(), year]
 
 
 ## Помечает погибшими государства без земли и вычищает их из дипломатии.
 func cleanup_dead() -> void:
+	if not _maybe_dead:
+		return
+	_maybe_dead = false
 	for nation in nations:
 		if nation.alive and nation.cell_count == 0:
 			nation.alive = false
@@ -340,6 +380,13 @@ func cleanup_dead() -> void:
 			for hid in nation.hero_ids.duplicate():
 				heroes[hid].leave_service(self)
 			log_event(&"fall", "Государство %s пало." % nation.name, PackedInt32Array([nation.id]))
+
+
+## Дать имя ещё не заселённому региону (для знаковых мест в диких землях).
+func ensure_region_name(region: Region) -> void:
+	if region != null and region.name.is_empty():
+		var races := RaceDB.all()
+		region.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(races[rng.randi_range(0, races.size() - 1)], rng))
 
 
 func region_at(cell: int) -> Region:
@@ -403,6 +450,8 @@ func _remove_cell(nation: Nation, cell: int) -> void:
 	cell_slot[last] = slot
 	nation.cells.resize(last_index)
 	cell_slot[cell] = -1
+	if last_index == 0:
+		_maybe_dead = true
 	nation.sum_x -= cell % map.width
 	nation.sum_y -= cell / map.width
 	var base := cell * Goods.COUNT
@@ -627,7 +676,7 @@ func _compute_cell_yields() -> void:
 # ---------------------------------------------------------------------------
 
 func log_event(kind: StringName, text: String, nation_ids: PackedInt32Array = PackedInt32Array()) -> void:
-	chronicle.append({"year": year, "month": month, "kind": kind, "text": text, "nations": nation_ids})
+	chronicle.append({"year": year, "month": month, "day": day, "kind": kind, "text": text, "nations": nation_ids})
 	chronicle_total += 1
 	if chronicle.size() > CHRONICLE_LIMIT:
 		chronicle = chronicle.slice(chronicle.size() - CHRONICLE_LIMIT)

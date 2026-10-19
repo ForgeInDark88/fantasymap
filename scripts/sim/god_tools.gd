@@ -4,7 +4,7 @@ class_name GodTools
 
 ## Создать государство расы race в регионе клетки. Ничья земля региона
 ## заселяется; если регион чей-то — он отделяется в новое государство.
-static func create_nation(world: World, race: RaceDef, cell: int) -> Nation:
+static func create_nation(world: World, race: RaceDef, cell: int, announce: bool = true) -> Nation:
 	var region := world.region_at(cell)
 	if region == null:
 		return null
@@ -34,8 +34,9 @@ static func create_nation(world: World, race: RaceDef, cell: int) -> Nation:
 		if world.owner[site] == nation.id and world.city_cell[site] < 0:
 			var city := world.add_city(nation, site, race, true)
 			city.population = maxf(800.0, nation.population * 0.08)
-	world.log_event(&"nation", "По воле богов в регионе %s возникло государство %s (%s)." % [
-		region.name, nation.name, race.display_name], PackedInt32Array([nation.id]))
+	if announce:
+		world.log_event(&"nation", "По воле богов в регионе %s возникло государство %s (%s)." % [
+			region.name, nation.name, race.display_name], PackedInt32Array([nation.id]))
 	return nation
 
 

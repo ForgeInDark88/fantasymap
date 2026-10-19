@@ -29,11 +29,22 @@ var epithet := ""
 var deeds: Array[String] = []
 ## Через сколько месяцев герой сдвинется с места.
 var move_in := 1
+## Добро (+1) или зло (-1): определяет поступки; меняется от самих поступков.
+var karma := 0.0
+## Оружие-артефакт (легендарное или проклятое) и множитель силы от него.
+var artifact := ""
+var artifact_mult := 1.0
+## Судьба после смерти: &"" — ждёт суда (или жив), &"rest" — покой, &"cursed" — заточён, &"returned" — второй шанс.
+var fate: StringName = &""
+## Сколько раз Судьба уже возвращала героя.
+var returns := 0
+## Куда герой направляется (клетка цели — например, проклятый трон), -1 — бродит.
+var goal_cell := -1
 
 
 ## Сколько воинов стоит герой в бою.
 func power() -> float:
-	return hero_class.power * level
+	return hero_class.power * level * artifact_mult
 
 
 func display_name() -> String:
@@ -66,9 +77,30 @@ func leave_service(world: World) -> void:
 	nation_id = -1
 
 
+## Смерть: герой уходит со службы и встаёт в очередь на суд Судьбы.
 func die(world: World) -> void:
 	leave_service(world)
 	alive = false
+	fate = &""
+	goal_cell = -1
+	if not world.fate_queue.has(id):
+		world.fate_queue.append(id)
+	# Кого Судьба долго не судит — уходят на покой сами.
+	while world.fate_queue.size() > 60:
+		world.heroes[world.fate_queue[0]].fate = &"rest"
+		world.fate_queue.remove_at(0)
+
+
+func alignment_name() -> String:
+	if karma >= 0.5:
+		return "добрый"
+	if karma >= 0.15:
+		return "благородный"
+	if karma > -0.15:
+		return "себе на уме"
+	if karma > -0.5:
+		return "тёмный"
+	return "злодей"
 
 
 func become_ruler(world: World) -> void:

@@ -14,5 +14,9 @@ extends Resource
 @export_range(0.0, 1.0) var loyalty: float = 0.5
 ## Склонность к поединкам с другими героями.
 @export_range(0.0, 1.0) var aggression: float = 0.5
+## Склонность к добру (+1) или злу (-1); у каждого героя ещё свой разброс.
+@export_range(-1.0, 1.0) var karma: float = 0.0
+## Оружие класса — для имён артефактов («Меч …», «Посох …»).
+@export var weapon: String = "Клинок"
 ## Цвет значка на карте.
 @export var color: Color = Color.GOLD

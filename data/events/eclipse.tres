@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"eclipse"
+display_name = "Затмение"
+chronicle_kind = &"disaster"
+chance = 0.003
+stability_change = -0.06
+army_mult = 0.9
+duration = 3
+text = "Солнце померкло над государством {nation} — народ видит в этом дурное знамение."

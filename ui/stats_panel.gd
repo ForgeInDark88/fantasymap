@@ -69,7 +69,7 @@ func _refresh() -> void:
 	for h in world.heroes:
 		if h.alive and not h.is_ruler:
 			heroes += 1
-	_summary.text = "[b]%s[/b] · государств: %d (всего было %d) · население: %s · городов: %d\nИдёт войн: %d (всего было %d) · героев: %d · записей летописи: %d · месяц симулируется за %.2f мс" % [
+	_summary.text = "[b]%s[/b] · государств: %d (всего было %d) · население: %s · городов: %d\nИдёт войн: %d (всего было %d) · героев: %d · записей летописи: %d · день симулируется за %.3f мс" % [
 		world.date_text(), alive, world.nations.size(), NationPanel.fmt(pop), cities,
 		world.diplomacy.wars.size(), world.diplomacy.wars.size() + world.diplomacy.past_wars.size(),
 		heroes, world.chronicle_total, WorldState.avg_tick_ms]

@@ -78,6 +78,7 @@ func _draw() -> void:
 		_draw_region_labels(world, zoom)
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
+		_draw_landmarks(world, zoom)
 		_draw_heroes(world, zoom)
 	draw_set_transform(Vector2.ZERO)
 
@@ -244,6 +245,59 @@ func _draw_heroes(world: World, zoom: float) -> void:
 			var size := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
 			draw_string_outline(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))
 			draw_string(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.92, 0.6))
+
+
+## Источники силы, Врата бездны, пустые троны, чудеса света.
+func _draw_landmarks(world: World, zoom: float) -> void:
+	var inv := Vector2.ONE / zoom
+	var view := _visible_rect()
+	var scale := clampf(zoom, 0.7, 1.3)
+	var t := Time.get_ticks_msec() / 1000.0
+	var dark := Color(0.05, 0.05, 0.08)
+	for lm in world.landmarks:
+		var pos := renderer.cell_center(lm.cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var r := 9.0 * scale
+		match lm.kind:
+			&"source":
+				var col := Color(0.4, 1.0, 0.95) if lm.active else Color(0.4, 0.5, 0.5)
+				for k in 8:
+					var a := k * TAU / 8.0 + t * 0.3
+					draw_line(Vector2.from_angle(a) * r * 0.9, Vector2.from_angle(a) * r * 1.7, Color(col, 0.7), 2.0)
+				draw_circle(Vector2.ZERO, r + 1.5, dark)
+				draw_circle(Vector2.ZERO, r, col)
+				draw_circle(Vector2.ZERO, r * 0.45, Color.WHITE)
+			&"portal":
+				var col := Color(0.9, 0.15, 0.1) if lm.active else Color(0.4, 0.3, 0.3)
+				draw_circle(Vector2.ZERO, r + 2.0, dark)
+				draw_circle(Vector2.ZERO, r, Color(0.25, 0.0, 0.05))
+				for k in 3:
+					var a := t * 1.5 + k * TAU / 3.0
+					draw_arc(Vector2.ZERO, r * (0.4 + 0.2 * k), a, a + PI * 1.2, 16, col, 2.0)
+			&"throne":
+				var col := Color(0.75, 0.6, 0.25) if lm.active else Color(0.4, 0.38, 0.35)
+				var w := r * 0.9
+				draw_rect(Rect2(-w - 1.5, -r * 1.3 - 1.5, w * 2 + 3, r * 2.4 + 3), dark)
+				draw_rect(Rect2(-w, -r * 1.3, w * 2, r * 1.0), col)          # спинка
+				draw_rect(Rect2(-w, -r * 0.2, w * 2, r * 0.5), col.darkened(0.2))  # сиденье
+				draw_rect(Rect2(-w, r * 0.3, w * 0.4, r * 0.8), col)          # ножки
+				draw_rect(Rect2(w * 0.6, r * 0.3, w * 0.4, r * 0.8), col)
+				if lm.active:
+					draw_circle(Vector2(0, -r * 0.8), r * 0.25, Color(0.9, 0.2, 0.2))
+			&"wonder":
+				var pts := PackedVector2Array()
+				for k in 10:
+					var rr := r * (1.3 if k % 2 == 0 else 0.55)
+					pts.append(Vector2.from_angle(-PI / 2 + k * TAU / 10.0) * rr)
+				draw_colored_polygon(pts, Color(1.0, 0.85, 0.3))
+				draw_polyline(pts + PackedVector2Array([pts[0]]), dark, 1.5)
+		if zoom >= 1.2:
+			var text := lm.name
+			var size := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
+			draw_string_outline(_font, Vector2(-size.x * 0.5, r * 1.6 + 12), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))
+			draw_string(_font, Vector2(-size.x * 0.5, r * 1.6 + 12), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.92, 0.75))
 
 
 ## Видимая часть мира (в мировых координатах).

@@ -28,6 +28,9 @@ func tick_year(world: World) -> void:
 func tick_nation(world: World, nation: Nation) -> void:
 	var d := world.diplomacy
 	var rng := world.rng
+	if nation.race.has_trait(&"demonic"):
+		_demonic(world, nation)
+		return
 	if rng.randf() > 0.4:
 		return
 	_vassal_politics(world, nation)
@@ -60,6 +63,18 @@ func tick_nation(world: World, nation: Nation) -> void:
 			nation.dynasty, nation.short_name, other.dynasty, other.short_name], names)
 		return
 	_consider_war(world, nation, other, op)
+
+
+## Демоны не знают договоров: каждый год нападают на соседа, с которым ещё не воюют.
+func _demonic(world: World, nation: Nation) -> void:
+	var d := world.diplomacy
+	for other in nation.borders:
+		var o := world.nations[other]
+		if o.alive and d.war_between(nation.id, other) == null and world.rng.randf() < 0.6:
+			var war := d.declare_war(world, nation.id, other, &"demonic")
+			world.log_event(&"war", "Демоны %s нападают на государство %s. %s." % [nation.short_name, o.name, war.name],
+					PackedInt32Array([nation.id, other]))
+			return
 
 
 static func _dynastic(nation: Nation) -> bool:

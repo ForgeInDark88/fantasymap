@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"good_harvest"
+display_name = "Небывалый урожай"
+chronicle_kind = &"hero"
+chance = 0.004
+immune_traits = Array[StringName]([&"no_food"])
+food_gain = 1.0
+stability_change = 0.02
+text = "Небывалый урожай в государстве {nation}: амбары ломятся от зерна."

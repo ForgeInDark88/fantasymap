@@ -9,6 +9,8 @@ extends Resource
 @export_multiline var description: String = ""
 @export var color: Color = Color.WHITE
 @export var icon: Texture2D
+## Появляется ли раса в начале мира (наги и демоны приходят только через великие деяния и порталы).
+@export var spawn_at_start: bool = true
 
 @export_group("Биомы")
 ## Сродство с биомами: id биома → 0..1 (1 — родной, 0 — враждебный).

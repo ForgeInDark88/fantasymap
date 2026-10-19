@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="RaceDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/race_def.gd" id="1_race"]
+[ext_resource type="Texture2D" path="res://assets/icons/races/demons.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_race")
+id = &"demons"
+display_name = "Демоны"
+description = "Легионы бездны, вырвавшиеся через портал. Воюют со всеми живыми."
+color = Color(0.85, 0.1, 0.05, 1)
+icon = ExtResource("2_icon")
+spawn_at_start = false
+biome_affinity = Dictionary[StringName, float]({&"desert": 1.0, &"mountains": 0.8, &"hills": 0.8, &"steppe": 0.7, &"swamp": 0.6, &"tundra": 0.6, &"plains": 0.6, &"forest": 0.4, &"jungle": 0.4, &"snow": 0.5})
+default_affinity = 0.6
+foreign_biome_penalty = 1.2
+coast_affinity = 0.0
+growth = 0.5
+military = 2.3
+trade = 0.2
+science = 0.6
+expansion = 1.6
+lifespan = 0
+cells_per_city = 120
+urban_share = 0.1
+food_need = 0.0
+relations = Dictionary[StringName, float]({&"humans": -1.0, &"elves": -1.0, &"dwarves": -1.0, &"orcs": -1.0, &"goblins": -1.0, &"undead": -1.0, &"halflings": -1.0, &"nagas": -1.0})
+same_race_relation = 0.2
+aggression = 3.0
+traits = Array[StringName]([&"demonic", &"no_food", &"warlike", &"feared"])
+name_prefixes = PackedStringArray("Аз", "Баал", "Мор", "Ксар", "Велз", "Гор", "Абад", "Мал", "Скар", "Зар")
+name_middles = PackedStringArray("а", "о", "ах", "ур", "эз")
+place_suffixes = PackedStringArray("гот", "ракс", "мон", "зул", "фаг", "дар", "бадон")
+person_suffixes = PackedStringArray("ел", "акс", "ит", "ог", "уз", "эль")
+state_forms = PackedStringArray("Легион {name}|Архидемон|empire", "Инферно {name}|Повелитель бездны|empire", "Орда бездны {name}|Князь тьмы|tribal")
+connector_vowels = "аоу"
+middle_chance = 0.35

@@ -157,6 +157,7 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 	war.cause = cause
 	war.start_year = world.year
 	war.month = world.month
+	war.day = world.day
 	war.attackers.append(attacker)
 	war.defenders.append(defender)
 	var na := world.nations[attacker]
@@ -197,6 +198,8 @@ static func _cause_title(cause: StringName) -> String:
 			return "Гражданская война:"
 		&"divine":
 			return "Война по воле богов:"
+		&"demonic":
+			return "Нашествие бездны:"
 	var c: String = CAUSE_NAMES.get(cause, "")
 	return "Война %s:" % c if not c.is_empty() else "Война:"
 

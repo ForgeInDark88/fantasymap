@@ -5,12 +5,11 @@ extends Node
 ## потоке; годы симулирует Simulation в главном потоке с бюджетом времени на кадр,
 ## поэтому интерфейс остаётся плавным на любой скорости.
 
-## Множители скорости: пауза, x1, x2, x5, x10.
-const SPEEDS: Array[int] = [0, 1, 2, 5, 10]
-const SPEED_NAMES: Array[String] = ["Пауза", "x1", "x2", "x5", "x10"]
-## Сколько лет проходит за секунду на скорости x1 (симуляция идёт помесячно).
-const YEARS_PER_SECOND := 2.0
-const MONTHS_PER_SECOND := YEARS_PER_SECOND * 12.0
+## Множители скорости: пауза, x1, x2, x5, x10, x50.
+const SPEEDS: Array[int] = [0, 1, 2, 5, 10, 50]
+const SPEED_NAMES: Array[String] = ["Пауза", "x1", "x2", "x5", "x10", "x50"]
+## Сколько дней проходит за секунду на скорости x1 (год — 360 дней ≈ 36 секунд).
+const DAYS_PER_SECOND := 10.0
 ## Сколько времени кадра можно потратить на симуляцию (мкс).
 const FRAME_BUDGET_USEC := 20000
 
@@ -26,9 +25,9 @@ var map: WorldMap:
 
 var _task_id := -1
 var _gen_started_ms := 0
-var _month_accum := 0.0
+var _day_accum := 0.0
 var _last_speed := 1
-## Среднее время одного месяца (мс) — для отладки и панели статистики.
+## Среднее время одного дня (мс) — для отладки и панели статистики.
 var avg_tick_ms := 0.0
 
 
@@ -44,18 +43,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if world == null or is_generating or speed_index == 0:
 		return
-	_month_accum += delta * SPEEDS[speed_index] * MONTHS_PER_SECOND
+	_day_accum += delta * SPEEDS[speed_index] * DAYS_PER_SECOND
 	var start := Time.get_ticks_usec()
 	var ticks := 0
-	while _month_accum >= 1.0:
+	while _day_accum >= 1.0:
 		var t0 := Time.get_ticks_usec()
-		simulation.step_month(world)
-		avg_tick_ms = lerpf(avg_tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.05)
-		_month_accum -= 1.0
+		simulation.step_day(world)
+		avg_tick_ms = lerpf(avg_tick_ms, (Time.get_ticks_usec() - t0) / 1000.0, 0.02)
+		_day_accum -= 1.0
 		ticks += 1
 		if Time.get_ticks_usec() - start > FRAME_BUDGET_USEC:
 			# Не успеваем — замедляемся, но не копим долг (иначе «снежный ком»).
-			_month_accum = minf(_month_accum, 1.0)
+			_day_accum = minf(_day_accum, 1.0)
 			break
 	if ticks > 0:
 		EventBus.year_passed.emit(world.year)
@@ -77,6 +76,14 @@ func step_year() -> void:
 	if world == null or is_generating:
 		return
 	simulation.step(world)
+	EventBus.year_passed.emit(world.year)
+
+
+## Ровно один день (кнопка «+1 день»).
+func step_day() -> void:
+	if world == null or is_generating:
+		return
+	simulation.step_day(world)
 	EventBus.year_passed.emit(world.year)
 
 
@@ -109,5 +116,5 @@ func _on_generation_finished(result: World) -> void:
 	_task_id = -1
 	world = result
 	is_generating = false
-	_month_accum = 0.0
+	_day_accum = 0.0
 	EventBus.world_generated.emit(world, Time.get_ticks_msec() - _gen_started_ms)

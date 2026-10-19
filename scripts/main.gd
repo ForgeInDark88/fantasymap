@@ -72,6 +72,12 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.reshape(world, cell, _tool_params.get("radius", 3), -0.12)
 		&"hero":
 			GodTools.spawn_hero(world, cell)
+		&"source":
+			HeroSystem.power_source(world, null, cell)
+		&"portal":
+			var demons := HeroSystem.open_portal(world, cell, null)
+			if demons != null:
+				EventBus.nation_selected.emit(demons.id)
 		&"rebellion":
 			var rebel := GodTools.incite_rebellion(world, cell)
 			if rebel != null:

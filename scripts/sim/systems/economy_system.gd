@@ -20,6 +20,7 @@ func tick(world: World, nation: Nation) -> void:
 	var rng := world.rng
 	var pop_k := nation.population / 1000.0
 	var tech_mult := 1.0 + nation.tech * 0.05
+	nation.sources = world.sources_of(nation.id)
 
 	# Добыча: клетки территории + постройки.
 	for g in [Goods.WOOD, Goods.STONE, Goods.METAL, Goods.GOLD]:
@@ -78,7 +79,7 @@ func tick(world: World, nation: Nation) -> void:
 		nation.famine_years = 0
 
 	# Наука: растёт с логарифмом населения и замедляется с уровнем (≈10 за 400 лет).
-	nation.tech += 0.02 * race.science * (1.0 + nation.science_bonus) * nation.modifier("science_mult") * nation.policy("science_mult") \
+	nation.tech += 0.02 * race.science * (1.0 + nation.science_bonus + 0.3 * nation.sources) * nation.modifier("science_mult") * nation.policy("science_mult") \
 			* log(1.0 + pop_k / 100.0) / (1.0 + nation.tech * 0.3)
 
 	# Армия стремится к доле населения; в долгах — дезертирство.
@@ -98,7 +99,7 @@ func tick(world: World, nation: Nation) -> void:
 ## (с учётом расовых отношений), слишком большая территория, голод и долги — вниз.
 func _target_stability(nation: Nation) -> float:
 	var race := nation.race
-	var target := 0.78 + nation.stability_bonus + nation.policy_stability()
+	var target := 0.78 + nation.stability_bonus + nation.policy_stability() + 0.05 * nation.sources
 	if race.has_trait(&"long_lived"):
 		target += 0.05
 	var total := nation.population
