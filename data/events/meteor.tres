@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"meteor"
+display_name = "Падение звезды"
+chronicle_kind = &"disaster"
+chance = 0.001
+population_loss = 0.01
+special = &"meteor"
+text = "С неба упала звезда в регионе {region} ({nation}), оставив дымящийся кратер."

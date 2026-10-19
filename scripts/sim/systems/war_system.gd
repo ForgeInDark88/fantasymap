@@ -1,6 +1,6 @@
 class_name WarSystem
 extends RefCounted
-## Ход войн: раз в год (в месяц начала войны) — генеральное сражение и
+## Ход войн: раз в год (в день начала войны) — генеральное сражение и
 ## продвижение осады.
 ##
 ## Шанс победы стороны — доля её военной мощи (Nation.power() с героями,
@@ -17,11 +17,13 @@ extends RefCounted
 const CLAIM_YEARS := 80
 
 
-func tick_month(world: World) -> void:
+func tick_day(world: World) -> void:
 	var d := world.diplomacy
-	for war in d.active_wars():
-		if war.month != world.month:
-			continue
+	var due: Array[War] = []
+	for war in d.wars:
+		if war.month == world.month and war.day == world.day:
+			due.append(war)
+	for war in due:
 		_prune(world, war)
 		if war.attackers.is_empty() or war.defenders.is_empty():
 			_finish(world, war, 1 if war.defenders.is_empty() else -1)
@@ -172,6 +174,9 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 			for w in winners:
 				if region.claims.has(w):
 					score += 60.0  # возвращаем своё
+			for lm in world.landmarks:
+				if lm.active and (lm.kind == &"source" or lm.kind == &"portal") and world.region_of[lm.cell] == rid:
+					score += 80.0  # источник силы и врата бездны — главные трофеи
 			if front and score > best_score:
 				best_score = score
 				best = rid
@@ -319,7 +324,9 @@ func _check_end(world: World, war: War) -> void:
 		_finish(world, war, 1 if war.score > 0 else -1)
 		return
 	var years := world.year - war.start_year
-	if years >= 6 and world.rng.randf() < 0.05 + years * 0.01:
+	# С демонами не договариваются: только решительная победа или гибель.
+	var demonic := world.nations[war.leader(1)].race.has_trait(&"demonic") or world.nations[war.leader(-1)].race.has_trait(&"demonic")
+	if not demonic and years >= 6 and world.rng.randf() < 0.05 + years * 0.01:
 		# Переговоры: при заметном перевесе — победа по очкам, иначе — белый мир.
 		_finish(world, war, 0 if absf(war.score) < 30.0 else (1 if war.score > 0 else -1))
 
@@ -339,7 +346,7 @@ func _finish(world: World, war: War, winner_side: int) -> void:
 		var loser := world.nations[loser_id]
 		loser.stability = maxf(0.0, loser.stability - 0.1)
 		# Решительная победа над слабым — вассалитет; иначе — контрибуция.
-		if absf(war.score) >= 100.0 and loser.cell_count < winner.cell_count * 0.35 \
+		if absf(war.score) >= 100.0 and loser.cell_count < winner.cell_count * 0.35 and not loser.race.has_trait(&"demonic") \
 				and war.cause != &"independence" and loser.overlord < 0 and world.rng.randf() < 0.5:
 			d.set_overlord(world, loser.id, winner.id)
 			text += " %s становится вассалом." % loser.short_name

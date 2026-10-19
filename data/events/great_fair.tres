@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"great_fair"
+display_name = "Великая ярмарка"
+chronicle_kind = &"hero"
+chance = 0.004
+min_population = 100000.0
+gold_gain = 3.0
+stability_change = 0.03
+text = "В городе {city} ({nation}) прошла Великая ярмарка — казна полна золота."

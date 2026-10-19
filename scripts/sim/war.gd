@@ -18,8 +18,9 @@ var siege_side := 0
 var siege_progress := 0.0
 ## Осада ведётся десантом с моря (у сторон нет общей сухопутной границы).
 var siege_landing := false
-## Месяц, в который идут сражения (раз в год).
+## Месяц и день, в которые идут сражения (раз в год).
 var month := 0
+var day := 0
 var battles := 0
 var casualties := 0.0
 var active := true

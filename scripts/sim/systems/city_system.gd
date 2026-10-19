@@ -116,7 +116,7 @@ func _try_build(world: World, nation: Nation) -> void:
 
 
 func can_build(world: World, nation: Nation, city: City, b: BuildingDef) -> bool:
-	if city.buildings.has(b.id) or city.population < b.min_population:
+	if not b.buildable or city.buildings.has(b.id) or city.population < b.min_population:
 		return false
 	for other in b.excludes:
 		if city.buildings.has(other):

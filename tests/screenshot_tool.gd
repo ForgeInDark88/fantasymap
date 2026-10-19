@@ -11,7 +11,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out_dir := args[0] if args.size() > 0 else "user://"
-	var years := int(args[3]) if args.size() > 3 else 250
+	var years := int(args[3]) if args.size() > 3 else 150
 	var bus := root.get_node("/root/EventBus")
 	var ws: Node = root.get_node("/root/WorldState")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
@@ -29,7 +29,7 @@ func _run() -> void:
 	var world: RefCounted = ws.world
 	# Прогон истории на максимальной скорости.
 	_panel(hud, "Мир", false)
-	ws.call("set_speed", 4)
+	ws.call("set_speed", 5)
 	while world.year < years:
 		await bus.year_passed
 	ws.call("set_speed", 0)
@@ -77,6 +77,34 @@ func _run() -> void:
 	_shot(out_dir, "god_island.png")
 	_panel(hud, "Бог", false)
 	bus.nation_selected.emit(-1)
+
+	# Великие деяния и Судьба: источник силы, портал, проклятый герой с троном.
+	var sample_nation: RefCounted = biggest
+	var sample_region: RefCounted = world.region_at(sample_nation.cells[0])
+	var h: RefCounted = HeroSystem.spawn(world, sample_nation, sample_region, true)
+	HeroSystem.power_source(world, h, sample_nation.cells[sample_nation.cells.size() / 3])
+	var fallen: RefCounted = HeroSystem.spawn(world, sample_nation, sample_region, true)
+	fallen.level = 9
+	fallen.add_deed(world, "сразил дракона в регионе " + sample_region.name)
+	fallen.die(world)
+	var cursed: RefCounted = HeroSystem.spawn(world, sample_nation, sample_region, true)
+	cursed.die(world)
+	Fate.curse(world, cursed)
+	for n in world.nations:
+		if n.alive and n != sample_nation and n.cell_count > 80:
+			HeroSystem.open_portal(world, n.cells[n.cells.size() / 2], null)
+			break
+	bus.year_passed.emit(world.year)
+	var fate_panel: Control = hud.get("_fate_panel")
+	fate_panel.call("open_panel")
+	await _frames(4)
+	_shot(out_dir, "fate.png")
+	fate_panel.call("close_panel")
+	ws.call("set_speed", 0)
+	bus.map_mode_changed.emit(0)
+	cam.call("fit_to", renderer.call("get_map_rect"))
+	await _frames(4)
+	_shot(out_dir, "landmarks.png")
 
 	# Крупный план у столицы: регионы, города, герои.
 	cam.position = renderer.call("cell_center", cap_cell)

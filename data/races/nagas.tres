@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="RaceDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/race_def.gd" id="1_race"]
+[ext_resource type="Texture2D" path="res://assets/icons/races/nagas.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_race")
+id = &"nagas"
+display_name = "Наги"
+description = "Змеелюди морских глубин. Поднимаются из пучины вместе с островами, живут у воды и в болотах."
+color = Color(0.1, 0.7, 0.75, 1)
+icon = ExtResource("2_icon")
+spawn_at_start = false
+biome_affinity = Dictionary[StringName, float]({&"swamp": 1.0, &"jungle": 0.9, &"plains": 0.6, &"forest": 0.5, &"hills": 0.3, &"desert": 0.2, &"steppe": 0.3, &"tundra": 0.1, &"mountains": 0.1, &"snow": 0.0})
+default_affinity = 0.3
+foreign_biome_penalty = 2.0
+coast_affinity = 1.0
+growth = 0.8
+military = 1.2
+trade = 1.1
+science = 1.2
+expansion = 0.9
+lifespan = 220
+cells_per_city = 60
+urban_share = 0.2
+food_need = 0.8
+relations = Dictionary[StringName, float]({&"humans": -0.2, &"elves": 0.1, &"dwarves": -0.3, &"orcs": -0.4, &"goblins": -0.3, &"undead": -0.6, &"halflings": 0.0, &"demons": -1.0})
+same_race_relation = 0.4
+aggression = 0.9
+traits = Array[StringName]([&"amphibious", &"long_lived"])
+name_prefixes = PackedStringArray("Сс", "Ниш", "Заш", "Ссар", "Хисс", "Наш", "Ишш", "Сешш", "Мез", "Тиш")
+name_middles = PackedStringArray("а", "и", "ез", "ас", "ир")
+place_suffixes = PackedStringArray("ссар", "лисс", "ашш", "мира", "зеш", "тисс", "ниа")
+person_suffixes = PackedStringArray("исса", "аш", "ессс", "ира", "аза", "иш")
+state_forms = PackedStringArray("Глубинное царство {name}|Царица|monarchy", "Кольца {name}|Верховная жрица|theocracy", "Пучина {name}|Повелитель вод|empire")
+connector_vowels = "аи"
+middle_chance = 0.4

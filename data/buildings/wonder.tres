@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"wonder"
+display_name = "Чудо света"
+description = "Величайшее творение эпохи, воздвигнутое героем."
+notable = true
+buildable = false
+food_bonus = 0.1
+production = Dictionary[StringName, float]({&"gold": 40.0})
+stability = 0.1
+science_bonus = 0.3
+defense = 2.0

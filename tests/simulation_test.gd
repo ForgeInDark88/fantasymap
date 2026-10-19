@@ -92,8 +92,8 @@ func _initialize() -> void:
 		world.nations.filter(func(n: Nation) -> bool: return n.alive).size(), world.nations.size()])
 	if years >= 300 and conquests == 0:
 		_fail("за %d лет ни одного завоевания" % years)
-	# Бюджет на год (12 месяцев): 12 мс на средней карте, растёт с корнем из площади.
-	var budget := 12.0 * pow(world.map.cell_count() / 92160.0, 0.6)
+	# Бюджет на год (360 дней): 16 мс на средней карте, растёт с корнем из площади.
+	var budget := 16.0 * pow(world.map.cell_count() / 92160.0, 0.6)
 	if avg_ms > budget:
 		_fail("тик слишком медленный: %.2f мс (бюджет %.1f)" % [avg_ms, budget])
 

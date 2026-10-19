@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"locusts"
+display_name = "Нашествие саранчи"
+chronicle_kind = &"famine"
+chance = 0.003
+immune_traits = Array[StringName]([&"no_food"])
+requires_biomes = Array[StringName]([&"plains", &"steppe", &"desert"])
+food_loss = 0.7
+stability_change = -0.03
+text = "Тучи саранчи пожрали урожай в регионе {region} ({nation})."

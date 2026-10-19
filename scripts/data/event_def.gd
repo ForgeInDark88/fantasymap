@@ -36,6 +36,12 @@ extends Resource
 @export var lost_cells: int = 0
 ## В регионе появляется герой (раса — по народу региона, класс — по расе).
 @export var spawns_hero: bool = false
+## Прибыль золота: столько золота на 1000 жителей.
+@export var gold_gain: float = 0.0
+## Прибавка к запасу еды (в долях годового потребления).
+@export var food_gain: float = 0.0
+## Особый эффект, реализованный в EventSystem: migration, undead_rising, meteor.
+@export var special: StringName = &""
 
 @export_group("Длительные эффекты")
 ## Сколько лет действуют множители ниже (0 — нет длительного эффекта).

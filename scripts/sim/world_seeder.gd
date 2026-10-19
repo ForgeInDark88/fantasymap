@@ -59,7 +59,7 @@ func _pick_races() -> Array[RaceDef]:
 	var result: Array[RaceDef] = []
 	var enabled := _world.settings.enabled_races
 	for race in RaceDB.all():
-		if enabled.is_empty() or enabled.has(race.id):
+		if (enabled.is_empty() and race.spawn_at_start) or enabled.has(race.id):
 			result.append(race)
 	return result
 

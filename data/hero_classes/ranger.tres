@@ -13,3 +13,5 @@ default_weight = 0.2
 loyalty = 0.3
 aggression = 0.4
 color = Color(0.4, 0.85, 0.4, 1)
+karma = 0.2
+weapon = "Лук"

@@ -166,7 +166,9 @@ func power() -> float:
 	p *= 1.0 + 0.25 * clampf(stock[Goods.METAL] / (army / 200.0 + 1.0), 0.0, 1.0)
 	if race.has_trait(&"warlike"):
 		p *= 1.2
-	return p * modifier("army_mult") * policy("army_mult") + hero_power
+	return p * modifier("army_mult") * policy("army_mult") * (1.0 + 0.25 * sources) + hero_power
 
 ## Вклад присягнувших героев в военную мощь (пересчитывает HeroSystem).
 var hero_power := 0.0
+## Сколько источников силы контролирует государство (пересчитывает EconomySystem).
+var sources := 0

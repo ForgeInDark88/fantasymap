@@ -8,6 +8,8 @@ extends Resource
 @export_multiline var description: String = ""
 ## Записывать постройку в летопись (рядовые фермы и лесопилки — нет).
 @export var notable: bool = false
+## Строится ли обычным порядком (чудеса света появляются только благодаря героям).
+@export var buildable: bool = true
 
 @export_group("Условия")
 ## Стоимость: id ресурса (gold, wood, stone, metal) → количество.
