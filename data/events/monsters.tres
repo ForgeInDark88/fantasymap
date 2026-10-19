@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"monsters"
+display_name = "Нашествие чудовищ"
+chronicle_kind = &"monsters"
+chance = 0.005
+army_loss = 0.08
+stability_change = -0.03
+lost_cells = 10
+text = "Чудовища из диких земель опустошили окраины региона {region} ({nation})."

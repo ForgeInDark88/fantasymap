@@ -8,6 +8,8 @@ shader_type canvas_item;
 
 uniform sampler2D owner_tex : filter_nearest, repeat_disable;
 uniform sampler2D palette_tex : filter_nearest, repeat_disable;
+// Регион каждой клетки: RG = id региона + 1. Неизменен после создания мира.
+uniform sampler2D region_tex : filter_nearest, repeat_disable;
 
 uniform bool show_fill = true;
 uniform bool show_borders = true;
@@ -18,10 +20,19 @@ uniform float unowned_desaturate = 0.0;
 uniform float border_px = 1.5;
 uniform float border_darken = 0.5;
 uniform int selected_id = -1;
+// Внутренние границы регионов (видны только при приближении).
+uniform bool show_regions = true;
+uniform float region_min_px = 2.5;
 
 int owner_at(ivec2 c, ivec2 size) {
 	c = clamp(c, ivec2(0), size - ivec2(1));
 	vec4 o = texelFetch(owner_tex, c, 0);
+	return int(round(o.r * 255.0)) + int(round(o.g * 255.0)) * 256 - 1;
+}
+
+int region_at(ivec2 c, ivec2 size) {
+	c = clamp(c, ivec2(0), size - ivec2(1));
+	vec4 o = texelFetch(region_tex, c, 0);
 	return int(round(o.r * 255.0)) + int(round(o.g * 255.0)) * 256 - 1;
 }
 
@@ -74,6 +85,19 @@ void fragment() {
 			}
 			if (edge) {
 				col = selected ? mix(nc, vec3(1.0), 0.65) : nc * (1.0 - border_darken);
+			} else if (show_regions && px_per_cell >= region_min_px) {
+				// Граница региона внутри государства: тонкая полупрозрачная линия,
+				// проявляется по мере приближения.
+				float rw = 0.8 / px_per_cell;
+				int rid = region_at(cell, size);
+				bool redge = (local.x < rw && region_at(cell + ivec2(-1, 0), size) != rid && owner_at(cell + ivec2(-1, 0), size) == id)
+					|| (local.x > 1.0 - rw && region_at(cell + ivec2(1, 0), size) != rid && owner_at(cell + ivec2(1, 0), size) == id)
+					|| (local.y < rw && region_at(cell + ivec2(0, -1), size) != rid && owner_at(cell + ivec2(0, -1), size) == id)
+					|| (local.y > 1.0 - rw && region_at(cell + ivec2(0, 1), size) != rid && owner_at(cell + ivec2(0, 1), size) == id);
+				if (redge) {
+					float fade = clamp((px_per_cell - region_min_px) / 3.0, 0.0, 1.0);
+					col = mix(col, nc * 0.45, 0.55 * fade);
+				}
 			}
 		}
 	}

@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_check_determinism()
 	_check_huge()
 	_check_race_filter()
+	_check_regions(OS.get_cmdline_user_args()[0] if OS.get_cmdline_user_args().size() > 0 else "")
 	if _failures > 0:
 		printerr("FAILED: %d проверок не прошли" % _failures)
 		quit(1)
@@ -139,6 +140,40 @@ func _check_race_filter() -> void:
 	s.nation_count = 0
 	if not World.create(s).nations.is_empty():
 		_fail("nation_count = 0, а государства созданы")
+
+
+func _check_regions(out_dir: String) -> void:
+	var s := MapSettings.new()
+	s.world_seed = 3
+	var t0 := Time.get_ticks_msec()
+	var world := World.new(MapGenerator.new().generate(s))
+	var elapsed := Time.get_ticks_msec() - t0
+	var sizes := PackedInt32Array()
+	var total := 0
+	for region in world.regions:
+		sizes.append(region.cells.size())
+		total += region.cells.size()
+		if world.region_of[region.center] != region.id:
+			_fail("центр региона %d вне региона" % region.id)
+	sizes.sort()
+	for i in world.map.cell_count():
+		if world.map.is_land(i) != (world.region_of[i] >= 0):
+			_fail("клетка %d: регион не совпадает с сушей" % i)
+			break
+	print("регионы: %d, клеток %d, медиана %d, мин %d, макс %d; мир без государств за %d мс" % [
+		world.regions.size(), total, sizes[sizes.size() / 2], sizes[0], sizes[sizes.size() - 1], elapsed])
+	if out_dir != "":
+		var img := MapPainter.paint(world.map, MapMode.BIOMES)
+		var rng := RandomNumberGenerator.new()
+		var colors := PackedColorArray()
+		for r in world.regions.size():
+			colors.append(Color.from_hsv(rng.randf(), 0.5, 0.9))
+		for i in world.map.cell_count():
+			var r := world.region_of[i]
+			if r >= 0:
+				var p := world.map.cell_pos(i)
+				img.set_pixelv(p, img.get_pixelv(p).lerp(colors[r], 0.55))
+		img.save_png(out_dir.path_join("regions.png"))
 
 
 func _fail(msg: String) -> void:

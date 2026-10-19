@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"volcano"
+display_name = "Извержение вулкана"
+chronicle_kind = &"disaster"
+chance = 0.0008
+requires_biomes = Array[StringName]([&"mountains"])
+population_loss = 0.04
+stability_change = -0.05
+destroys_city_chance = 0.5
+lost_cells = 6
+text = "Проснулся вулкан у региона {region}: пепел погребает земли государства {nation}."

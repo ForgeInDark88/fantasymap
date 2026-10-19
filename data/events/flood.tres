@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"flood"
+display_name = "Наводнение"
+chronicle_kind = &"disaster"
+chance = 0.003
+requires_river = true
+population_loss = 0.015
+food_loss = 0.5
+text = "Разлив рек затопил поля в регионе {region} ({nation})."

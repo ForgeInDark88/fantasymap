@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"plague"
+display_name = "Чума"
+chronicle_kind = &"plague"
+chance = 0.004
+min_population = 100000.0
+immune_traits = Array[StringName]([&"no_food"])
+population_loss = 0.12
+stability_change = -0.06
+duration = 6
+growth_mult = 0.6
+spread_chance = 0.3
+text = "Чума пришла в регион {region}: {nation} теряет каждого восьмого жителя."

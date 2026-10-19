@@ -40,6 +40,15 @@ func tick(world: World, nation: Nation) -> void:
 	for id in nation.city_ids:
 		buildings += world.cities[id].buildings.size() + 1
 	nation.income[Goods.GOLD] += taxes - nation.army * upkeep - buildings * BUILDING_UPKEEP
+	# Торговые договоры: доход растёт с размером обоих рынков.
+	for partner in nation.trade_partners:
+		var other := world.nations[partner]
+		nation.income[Goods.GOLD] += 0.05 * sqrt(pop_k * other.population / 1000.0) * race.trade
+	# Вассал платит сюзерену дань с прибыли.
+	if nation.overlord >= 0 and nation.income[Goods.GOLD] > 0.0:
+		var tribute := nation.income[Goods.GOLD] * 0.15
+		nation.income[Goods.GOLD] -= tribute
+		world.nations[nation.overlord].stock[Goods.GOLD] += tribute
 
 	# Еда: урожай (с погодой) против потребления.
 	var consumption := pop_k * race.food_need
@@ -69,16 +78,20 @@ func tick(world: World, nation: Nation) -> void:
 		nation.famine_years = 0
 
 	# Наука: растёт с логарифмом населения и замедляется с уровнем (≈10 за 400 лет).
-	nation.tech += 0.02 * race.science * (1.0 + nation.science_bonus) * log(1.0 + pop_k / 100.0) / (1.0 + nation.tech * 0.3)
+	nation.tech += 0.02 * race.science * (1.0 + nation.science_bonus) * nation.modifier("science_mult") \
+			* log(1.0 + pop_k / 100.0) / (1.0 + nation.tech * 0.3)
 
 	# Армия стремится к доле населения; в долгах — дезертирство.
 	var military := race.military * (1.0 + nation.army_bonus) * (1.25 if race.has_trait(&"warlike") else 1.0)
 	var target_army := nation.population * ARMY_SHARE * military
 	if nation.stock[Goods.GOLD] < 0.0:
 		target_army *= 0.5
-	nation.army = lerpf(nation.army, target_army, 0.15)
+	# В войну рекруты набираются медленнее, чем пополняются потери в мирное время.
+	var at_war := not world.diplomacy.wars_of(nation.id).is_empty()
+	nation.army = lerpf(nation.army, target_army, 0.08 if at_war else 0.15)
 
-	nation.stability = clampf(lerpf(nation.stability, _target_stability(nation), 0.08), 0.0, 1.0)
+	var target_stability := _target_stability(nation) - (0.04 if at_war else 0.0)
+	nation.stability = clampf(lerpf(nation.stability, target_stability, 0.08), 0.0, 1.0)
 
 
 ## Куда стремится стабильность: постройки и долголетие — вверх; чужие народы

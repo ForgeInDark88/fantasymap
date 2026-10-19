@@ -65,6 +65,11 @@ func _run() -> void:
 	bus.nation_selected.emit(biggest.id)
 	await _frames(3)
 	_shot(out_dir, "screen_year200_panel.png")
+	bus.nation_selected.emit(-1)
+	cam.position = renderer.call("cell_center", world.cities[biggest.capital_city].cell)
+	cam.zoom = Vector2.ONE * 2.6
+	await _frames(3)
+	_shot(out_dir, "screen_year200_zoom.png")
 	print("year %d, avg tick %.2f ms" % [world.year, ws.get("avg_tick_ms")])
 
 	# Повторная генерация через UI с другим размером — проверка полного цикла.

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"great_famine"
+display_name = "Великий голод"
+chronicle_kind = &"famine"
+chance = 0.004
+immune_traits = Array[StringName]([&"no_food"])
+population_loss = 0.05
+stability_change = -0.08
+food_loss = 1.0
+causes_famine = true
+text = "Неурожай и Великий голод в государстве {nation}."

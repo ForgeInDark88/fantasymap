@@ -27,6 +27,7 @@ var _owner_texture: ImageTexture
 var _owner_version := -1
 var _nation_palette: ImageTexture
 var _race_palette: ImageTexture
+var _region_texture: ImageTexture
 
 
 func _ready() -> void:
@@ -91,7 +92,11 @@ func refresh_palettes() -> void:
 	var nation_colors := PackedColorArray()
 	var race_colors := PackedColorArray()
 	for nation in world.nations:
-		nation_colors.append(nation.color)
+		# Вассалы — в оттенке сюзерена: видно, кто чья держава.
+		var col := nation.color
+		if nation.overlord >= 0:
+			col = col.lerp(world.nations[nation.overlord].color, 0.45)
+		nation_colors.append(col)
 		race_colors.append(nation.race.color)
 	_nation_palette = _make_palette(nation_colors, _nation_palette)
 	_race_palette = _make_palette(race_colors, _race_palette)
@@ -148,6 +153,10 @@ func _on_world_generated(new_world: World, _elapsed_ms: int) -> void:
 	map = new_world.map
 	selected_nation = -1
 	_painted_base_mode = -1
+	# Регионы не меняются за жизнь мира — загружаем один раз.
+	var img := Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, world.region_texels)
+	_region_texture = ImageTexture.create_from_image(img)
+	_material.set_shader_parameter("region_tex", _region_texture)
 	redraw()
 	refresh_political()
 
