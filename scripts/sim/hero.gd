@@ -40,6 +40,11 @@ var fate: StringName = &""
 var returns := 0
 ## Куда герой направляется (клетка цели — например, проклятый трон), -1 — бродит.
 var goal_cell := -1
+## Ум (0..1): от класса и личный разброс. Умный трезво оценивает противника и
+## идёт на бой, только если уверен в победе; глупец недооценивает врага.
+var intellect := 0.5
+## О чём герой думает сейчас (последнее решение) — для окна героя.
+var thought := ""
 
 # --- Связи с другими героями ---
 ## Отношение к другим героям: id → -1 (враг) … +1 (друг).
@@ -54,6 +59,39 @@ var ally_until := 0
 ## Кому герой поклялся отомстить (-1 — никому).
 var vendetta := -1
 var killed_by := -1
+
+
+## Трезвость суждений: ум плюс опыт (с уровнями герои умнеют).
+func wits() -> float:
+	return clampf(intellect + level * 0.008, 0.0, 1.0)
+
+
+## Как герой видит силу противника. Чем он глупее, тем больше ошибается —
+## и почти всегда в сторону недооценки («да я его одной левой»).
+## clarity > 1 — противник перед глазами (оценка точнее).
+func perceive(enemy_power: float, rng: RandomNumberGenerator, clarity: float = 1.0) -> float:
+	var error := (1.0 - wits()) * 1.1 / clarity
+	return enemy_power * maxf(0.1, 1.0 + rng.randf_range(-error, error * 0.25))
+
+
+## Решится ли герой на бой с противником такой силы.
+## Умный требует запас сил, безрассудный идёт и при равных (или худших) шансах.
+func dares(enemy_power: float, rng: RandomNumberGenerator, clarity: float = 1.0) -> bool:
+	var margin := 0.85 + wits() * 0.65
+	return power() >= perceive(enemy_power, rng, clarity) * margin
+
+
+func intellect_name() -> String:
+	var w := wits()
+	if w >= 0.8:
+		return "мудрый"
+	if w >= 0.6:
+		return "рассудительный"
+	if w >= 0.4:
+		return "неглупый"
+	if w >= 0.2:
+		return "простодушный"
+	return "безрассудный"
 
 
 func bond(other_id: int) -> float:
@@ -92,7 +130,7 @@ func add_xp(world: World, amount: float) -> void:
 
 func add_deed(world: World, text: String) -> void:
 	deeds.append("%d г.: %s" % [world.year, text])
-	if deeds.size() > 12:
+	if deeds.size() > 40:
 		deeds.remove_at(0)
 
 
@@ -119,6 +157,7 @@ func die(world: World, killer: Hero = null) -> void:
 			if other.alive and (bonds[other_id] > 0.5 or other.spouse == id) and other.vendetta < 0:
 				other.vendetta = killer.id
 				other.add_deed(world, "поклялся отомстить %s за гибель %s" % [killer.name, name])
+				other.thought = "%s убил %s. Я найду его." % [killer.name, name]
 	fate = &""
 	goal_cell = -1
 	if not world.fate_queue.has(id):

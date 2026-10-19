@@ -57,15 +57,29 @@ func _initialize() -> void:
 	Fate.ignore(world, h5)
 	_expect(h5.fate == &"rest" and not h5.alive, "покой не назначен")
 
-	# Сильный герой идёт к трону и забирает оружие (или гибнет и снова ждёт суда).
+	# Ум: умный слабак не полезет на стража, безрассудный — полезет.
+	var probe := HeroSystem.spawn(world, nation, region, true)
+	probe.level = 5
+	probe.intellect = 1.0
+	var smart_goes := 0
+	for i in 200:
+		smart_goes += int(probe.dares(probe.power() * 1.3, world.rng))
+	probe.intellect = 0.0
+	probe.level = 1
+	var fool_goes := 0
+	for i in 200:
+		fool_goes += int(probe.dares(probe.power() * 1.3, world.rng))
+	_expect(smart_goes == 0 and fool_goes > 30, "ум не влияет на решения (умный %d, глупец %d из 200)" % [smart_goes, fool_goes])
+
+	# Сильный герой идёт к трону: забирает оружие, гибнет — или, оценив стража, отступает.
 	var h6 := HeroSystem.spawn(world, nation, region, true)
 	h6.level = 20
 	h6.goal_cell = throne.cell
 	for m in 36:
 		sim.step_month(world)
-		if not throne.active or not h6.alive:
+		if not throne.active or not h6.alive or h6.goal_cell < 0:
 			break
-	_expect(not throne.active or not h6.alive, "герой так и не дошёл до трона")
+	_expect(not throne.active or not h6.alive or h6.goal_cell < 0, "герой так и не дошёл до трона")
 	if not throne.active:
 		_expect(not h6.artifact.is_empty(), "трон пуст, но оружие у героя не появилось")
 	print("трон: %s, герой %s, оружие «%s»" % ["взят" if not throne.active else "стоит", "жив" if h6.alive else "пал", h6.artifact])

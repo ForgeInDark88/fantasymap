@@ -13,5 +13,6 @@ default_weight = 0.1
 loyalty = 0.5
 aggression = 0.5
 color = Color(0.3, 0.8, 0.8, 1)
+intellect = 0.6
 karma = 0.0
 weapon = "Тотем"

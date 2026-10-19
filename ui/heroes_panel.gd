@@ -5,8 +5,10 @@ extends PanelContainer
 var _list: VBoxContainer
 var _card: RichTextLabel
 var _show_dead: CheckBox
+var _details: Button
 var _selected := -1
 var _last_refresh_ms := 0
+var _last_click_ms := 0
 
 
 func _init() -> void:
@@ -36,6 +38,12 @@ func _init() -> void:
 	_card.custom_minimum_size = Vector2(420, 0)
 	_card.add_theme_font_size_override("normal_font_size", 12)
 	box.add_child(_card)
+	_details = Button.new()
+	_details.text = "Подробнее о герое…"
+	_details.focus_mode = Control.FOCUS_NONE
+	_details.visible = false
+	_details.pressed.connect(func() -> void: EventBus.hero_window_requested.emit(_selected))
+	box.add_child(_details)
 	visibility_changed.connect(func() -> void:
 		if visible:
 			_refresh())
@@ -81,6 +89,9 @@ func _refresh() -> void:
 		b.add_theme_color_override("font_color", h.hero_class.color if h.alive else Color(0.55, 0.55, 0.6))
 		b.text = "%s — %s, ур. %d · %s" % [h.display_name(), h.hero_class.display_name.to_lower(), h.level, _status(world, h)]
 		b.pressed.connect(func() -> void:
+			if _selected == h.id and Time.get_ticks_msec() - _last_click_ms < 400:
+				EventBus.hero_window_requested.emit(h.id)
+			_last_click_ms = Time.get_ticks_msec()
 			EventBus.hero_selected.emit(h.id)
 			if h.alive:
 				EventBus.focus_cell.emit(h.cell))
@@ -99,8 +110,9 @@ func _status(world: World, h: Hero) -> String:
 
 
 func _show_card(world: World) -> void:
-	if _selected < 0 or _selected >= world.heroes.size():
-		_card.text = "[color=#8a90a0]Выберите героя, чтобы увидеть его историю.[/color]"
+	_details.visible = _selected >= 0 and _selected < world.heroes.size()
+	if not _details.visible:
+		_card.text = "[color=#8a90a0]Выберите героя, чтобы увидеть его историю (двойной клик — окно героя).[/color]"
 		return
 	var h := world.heroes[_selected]
 	var region := world.region_at(h.cell) if h.cell >= 0 else null

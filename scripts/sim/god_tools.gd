@@ -166,7 +166,8 @@ static func _attach_to_region(world: World, i: int) -> void:
 		region.coastal = true
 		world.regions.append(region)
 		rid = region.id
-	world.regions[rid].cells.append(i)
+	var cells := world.regions[rid].cells
+	cells.insert(cells.bsearch(i), i)  # клетки региона держим упорядоченными
 	world.region_of[i] = rid
 	var v := rid + 1
 	world.region_texels[i * 4] = v & 0xff

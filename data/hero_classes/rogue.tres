@@ -13,5 +13,6 @@ default_weight = 0.2
 loyalty = 0.2
 aggression = 0.5
 color = Color(0.6, 0.6, 0.6, 1)
+intellect = 0.6
 karma = -0.3
 weapon = "Кинжал"

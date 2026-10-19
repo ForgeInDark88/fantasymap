@@ -220,6 +220,8 @@ func _finalize(result: Array[Region], label: PackedInt32Array) -> void:
 	for region in result:
 		if region.cells.is_empty():
 			continue
+		# Порядок клеток — по индексу, как при пересборке из сохранения (детерминизм).
+		region.cells.sort()
 		var sx := 0.0
 		var sy := 0.0
 		var nbs := {}

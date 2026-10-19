@@ -9,6 +9,7 @@ class_name SaveSystem
 
 const VERSION := 1
 const SAVE_DIR := "user://saves/"
+const EXACT_PREFIX := "~"
 
 
 static func save_path(name: String) -> String:
@@ -32,7 +33,7 @@ static func save_world(world: World, path: String) -> Error:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify(to_dict(world), "", false, true))
+	file.store_string(JSON.stringify(exact(to_dict(world)), "", false, true))
 	return OK
 
 
@@ -45,7 +46,7 @@ static func load_world(path: String) -> World:
 	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) != VERSION:
 		push_error("SaveSystem: неверный формат сохранения " + path)
 		return null
-	return from_dict(data)
+	return from_dict(unexact(data))
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +60,7 @@ static func to_dict(world: World) -> Dictionary:
 	for r in world.regions:
 		regions.append({"name": r.name, "center": r.center, "loyalty": r.loyalty, "unrest": r.unrest,
 			"conquered": r.conquered_year, "pacified": r.pacified_until, "claims": _int_dict(r.claims),
-			"owner_order": r.owner_counts.keys()})
+			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal})
 	var nations := []
 	for n in world.nations:
 		nations.append(_nation_dict(n))
@@ -156,7 +157,7 @@ static func _hero_dict(h: Hero) -> Dictionary:
 		"deeds": h.deeds, "move_in": h.move_in, "karma": h.karma, "artifact": h.artifact, "artifact_mult": h.artifact_mult,
 		"fate": str(h.fate), "returns": h.returns, "goal": h.goal_cell, "bonds": _int_dict(h.bonds),
 		"spouse": h.spouse, "mentor": h.mentor, "party": h.party_leader, "ally": h.ally_nation, "ally_until": h.ally_until,
-		"vendetta": h.vendetta, "killed_by": h.killed_by,
+		"vendetta": h.vendetta, "killed_by": h.killed_by, "intellect": h.intellect, "thought": h.thought,
 	}
 
 
@@ -165,6 +166,46 @@ static func _war_dict(w: War) -> Dictionary:
 		"att": Array(w.attackers), "def": Array(w.defenders), "score": w.score, "siege": w.siege_region,
 		"siege_side": w.siege_side, "progress": w.siege_progress, "landing": w.siege_landing,
 		"month": w.month, "day": w.day, "battles": w.battles, "casualties": w.casualties, "active": w.active}
+
+
+## Парсер JSON в Godot теряет последний бит у ~30% чисел double, а за десятки
+## лет такая ошибка меняет исход войны. Поэтому числа, которые не переживают
+## запись в текст без потерь, пишутся как «~» + 16 hex-цифр их битов.
+static func exact(v: Variant) -> Variant:
+	match typeof(v):
+		TYPE_FLOAT:
+			var f: float = v
+			if JSON.stringify(f, "", false, true).to_float() == f:
+				return f
+			return EXACT_PREFIX + PackedFloat64Array([f]).to_byte_array().hex_encode()
+		TYPE_DICTIONARY:
+			var out := {}
+			for k in v:
+				out[k] = exact(v[k])
+			return out
+		TYPE_ARRAY:
+			var out := []
+			out.resize(v.size())
+			for i in v.size():
+				out[i] = exact(v[i])
+			return out
+	return v
+
+
+## Обратное к exact(): «~hex» снова становятся точными числами (на месте).
+static func unexact(v: Variant) -> Variant:
+	match typeof(v):
+		TYPE_STRING:
+			var s: String = v
+			if s.length() == 17 and s.begins_with(EXACT_PREFIX):
+				return s.substr(1).hex_decode().to_float64_array()[0]
+		TYPE_DICTIONARY:
+			for k in v:
+				v[k] = unexact(v[k])
+		TYPE_ARRAY:
+			for i in v.size():
+				v[i] = unexact(v[i])
+	return v
 
 
 static func _b64(bytes: PackedByteArray) -> String:
@@ -221,6 +262,8 @@ static func from_dict(data: Dictionary) -> World:
 		r.name = rd.name
 		if int(rd.center) >= 0 and world.region_of[int(rd.center)] == i:
 			r.center = int(rd.center)
+		r.neighbors = PackedInt32Array(rd.get("neighbors", r.neighbors))
+		r.coastal = rd.get("coastal", r.coastal)
 		r.loyalty = rd.loyalty
 		r.unrest = rd.unrest
 		r.conquered_year = int(rd.conquered)
@@ -423,6 +466,8 @@ static func _restore_hero(hd: Dictionary) -> Hero:
 	h.ally_until = int(hd.ally_until)
 	h.vendetta = int(hd.vendetta)
 	h.killed_by = int(hd.killed_by)
+	h.intellect = hd.get("intellect", h.hero_class.intellect)
+	h.thought = hd.get("thought", "")
 	return h
 
 

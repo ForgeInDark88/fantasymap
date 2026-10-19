@@ -195,6 +195,7 @@ func _build_left_panels() -> void:
 	# Судьба — отдельная полноэкранная панель.
 	_fate_panel = FatePanel.new()
 	root.add_child(_fate_panel)
+	root.add_child(HeroWindow.new())
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
