@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="TraitDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/trait_def.gd" id="1_trait"]
+
+[resource]
+script = ExtResource("1_trait")
+id = &"peaceful"
+display_name = "Миролюбие"
+description = "Почти никогда не начинают войну первыми."

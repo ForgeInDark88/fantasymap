@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="RaceDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/race_def.gd" id="1_race"]
+[ext_resource type="Texture2D" path="res://assets/icons/races/halflings.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_race")
+id = &"halflings"
+display_name = "Полурослики"
+description = "Мирные земледельцы холмистых равнин. Любят уют, сытную еду и стараются не попадаться на глаза."
+color = Color(0.95, 0.55, 0.65, 1)
+icon = ExtResource("2_icon")
+biome_affinity = Dictionary[StringName, float]({&"plains": 1.0, &"hills": 0.85, &"forest": 0.6, &"steppe": 0.45, &"swamp": 0.2, &"jungle": 0.2, &"desert": 0.1, &"tundra": 0.1, &"mountains": 0.05, &"snow": 0.0})
+default_affinity = 0.2
+foreign_biome_penalty = 2.8
+coast_affinity = 0.35
+growth = 1.15
+military = 0.55
+trade = 1.2
+science = 0.9
+expansion = 0.75
+lifespan = 100
+food_need = 0.9
+relations = Dictionary[StringName, float]({&"humans": 0.5, &"elves": 0.5, &"dwarves": 0.35, &"orcs": -0.6, &"goblins": -0.4, &"undead": -0.9})
+same_race_relation = 0.6
+aggression = 0.15
+traits = Array[StringName]([&"farmers", &"peaceful", &"hidden"])
+name_prefixes = PackedStringArray("Бил", "Фро", "Сэм", "Пип", "Мер", "Тук", "Бра", "Хоб", "Лот", "Мил", "Пер", "Роз", "Дро", "Бэг")
+name_middles = PackedStringArray("о", "и", "а", "бо", "ли")
+place_suffixes = PackedStringArray("тон", "бери", "дол", "холм", "ширь", "бург", "дейл", "лоу")
+person_suffixes = PackedStringArray("бо", "до", "ли", "рин", "вин", "ди", "мир", "фред")
+state_forms = PackedStringArray("Удел {name}|Тан", "Холмы {name}|Мэр", "Вольный край {name}|Старшина", "Графство {name}|Граф")
+connector_vowels = "оеи"
+middle_chance = 0.3

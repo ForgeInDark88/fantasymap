@@ -1,6 +1,6 @@
 class_name MapSettings
 extends Resource
-## Параметры генерации мира. Одинаковые настройки + seed = одинаковая карта.
+## Параметры генерации мира. Одинаковые настройки + seed = одинаковый мир.
 
 const SIZE_PRESETS: Array[Vector2i] = [
 	Vector2i(256, 160),
@@ -21,6 +21,12 @@ const DEFAULT_SIZE_PRESET := 1
 @export_range(0.25, 3.0) var river_density: float = 1.0
 ## Сдвиг климата: < 0 холоднее, > 0 теплее.
 @export_range(-0.3, 0.3) var temperature_bias: float = 0.0
+
+@export_group("Государства")
+## Сколько государств появляется в начале мира.
+@export_range(0, 64) var nation_count: int = 14
+## Какие расы участвуют (id из data/races). Пусто — все.
+@export var enabled_races: Array[StringName] = []
 
 
 func apply_size_preset(preset: int) -> void:

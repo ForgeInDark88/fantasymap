@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="RaceDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/race_def.gd" id="1_race"]
+[ext_resource type="Texture2D" path="res://assets/icons/races/elves.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_race")
+id = &"elves"
+display_name = "Эльфы"
+description = "Древний лесной народ. Живут веками, редко нападают первыми, но страшны в обороне своих лесов."
+color = Color(0.2, 0.78, 0.5, 1)
+icon = ExtResource("2_icon")
+biome_affinity = Dictionary[StringName, float]({&"forest": 1.0, &"jungle": 0.7, &"plains": 0.45, &"hills": 0.35, &"swamp": 0.25, &"steppe": 0.2, &"tundra": 0.15, &"desert": 0.0, &"mountains": 0.1, &"snow": 0.05})
+default_affinity = 0.2
+foreign_biome_penalty = 3.5
+coast_affinity = 0.4
+growth = 0.55
+military = 1.1
+trade = 1.0
+science = 1.4
+expansion = 0.7
+lifespan = 700
+food_need = 0.8
+relations = Dictionary[StringName, float]({&"humans": 0.25, &"dwarves": -0.3, &"halflings": 0.5, &"orcs": -0.8, &"goblins": -0.6, &"undead": -1.0})
+same_race_relation = 0.5
+aggression = 0.25
+traits = Array[StringName]([&"peaceful", &"long_lived", &"forest_bond"])
+name_prefixes = PackedStringArray("Эл", "Ал", "Ли", "Се", "Та", "Фа", "Ил", "Ну", "Ае", "Ми", "Ла", "Ин", "Гал", "Эа", "Си", "Ар")
+name_middles = PackedStringArray("ла", "ри", "эн", "те", "ли", "ан", "ве", "са", "нэ", "ре")
+place_suffixes = PackedStringArray("ион", "иэль", "ондэ", "линн", "мар", "нор", "тиль", "эа", "ларис", "ванэ")
+person_suffixes = PackedStringArray("иэль", "ас", "ор", "ион", "ет", "эль", "ан", "ир", "ндил", "риэн")
+state_forms = PackedStringArray("Королевство {name}|Владыка", "Лесное царство {name}|Король", "Дом {name}|Лорд", "Звёздный предел {name}|Хранитель")
+connector_vowels = "аеи"
+middle_chance = 0.55

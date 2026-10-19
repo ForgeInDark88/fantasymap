@@ -4,12 +4,17 @@
 [ext_resource type="Script" path="res://scripts/render/map_renderer.gd" id="2_renderer"]
 [ext_resource type="Script" path="res://scripts/camera/map_camera.gd" id="3_camera"]
 [ext_resource type="PackedScene" path="res://ui/hud.tscn" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/render/map_overlay.gd" id="5_overlay"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
 [node name="MapRenderer" type="Node2D" parent="."]
 script = ExtResource("2_renderer")
+
+[node name="MapOverlay" type="Node2D" parent="." node_paths=PackedStringArray("renderer")]
+script = ExtResource("5_overlay")
+renderer = NodePath("../MapRenderer")
 
 [node name="MapCamera" type="Camera2D" parent="."]
 script = ExtResource("3_camera")
