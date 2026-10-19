@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GovernmentDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/government_def.gd" id="1_gov"]
+
+[resource]
+script = ExtResource("1_gov")
+id = &"theocracy"
+display_name = "Теократия"
+description = "Правитель — избранник богов; вера скрепляет государство."
+succession = "heir"
+election_period = 6
+crisis_chance = 0.04
+stability_bonus = 0.07
+aggression_mult = 1.1
+trade_mult = 0.95
+science_mult = 0.9
+army_mult = 1.0
+dynastic = false

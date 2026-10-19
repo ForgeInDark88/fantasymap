@@ -31,6 +31,6 @@ name_prefixes = PackedStringArray("Гр", "Ург", "Мог", "Каз", "Гол"
 name_middles = PackedStringArray("а", "у", "о", "аш", "ук", "ог")
 place_suffixes = PackedStringArray("аш", "гул", "тар", "мор", "рок", "зуг", "бад", "нак", "дум", "гор")
 person_suffixes = PackedStringArray("ак", "ог", "аш", "ул", "руг", "гаш", "бор", "мак", "аг")
-state_forms = PackedStringArray("Орда {name}|Вождь", "Каганат {name}|Каган", "Племена {name}|Военачальник", "Кровавые земли {name}|Верховный вождь")
+state_forms = PackedStringArray("Орда {name}|Вождь|tribal", "Каганат {name}|Каган|empire", "Племена {name}|Военачальник|tribal", "Кровавые земли {name}|Верховный вождь|tribal")
 connector_vowels = "ауо"
 middle_chance = 0.35

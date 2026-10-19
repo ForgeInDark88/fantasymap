@@ -20,7 +20,7 @@ const CHRONICLE_COLORS := {
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
-@onready var _toggle_gen: Button = %ToggleGenButton
+@onready var _panel_buttons: HBoxContainer = %PanelButtons
 @onready var _gen_panel: PanelContainer = %GenPanel
 @onready var _seed_edit: LineEdit = %SeedEdit
 @onready var _random_seed: Button = %RandomSeedButton
@@ -53,6 +53,9 @@ var _mode := MapMode.POLITICAL
 var _race_checks: Dictionary[StringName, CheckBox] = {}
 var _mode_button_list: Array[Button] = []
 var _speed_buttons: Array[Button] = []
+## Левые панели: открыта максимум одна. Имя → [кнопка, панель].
+var _left_panels: Dictionary = {}
+var _clicked_cell := -1
 var _chronicle_shown := -1
 var _panel_refresh_ms := 0
 var _legend_refresh_ms := 0
@@ -67,9 +70,9 @@ func _ready() -> void:
 	_build_mode_buttons()
 	_build_race_checks()
 	_build_time_controls()
-
-	_toggle_gen.toggled.connect(func(on: bool) -> void: _gen_panel.visible = on)
-	_toggle_chronicle.toggled.connect(func(on: bool) -> void: _chronicle_feed.visible = on)
+	_build_left_panels()
+	_toggle_chronicle.toggled.connect(func(on: bool) -> void:
+		_chronicle_feed.visible = on and not (_left_panels["Летопись"][1] as Control).visible)
 	_land_slider.value_changed.connect(func(v: float) -> void: _land_value.text = "%d%%" % v)
 	_river_slider.value_changed.connect(func(v: float) -> void: _river_value.text = "%d%%" % v)
 	_climate_slider.value_changed.connect(func(v: float) -> void: _climate_value.text = "%+d" % v if v != 0 else "0")
@@ -85,6 +88,7 @@ func _ready() -> void:
 	EventBus.world_generated.connect(_on_world_generated)
 	EventBus.cell_hovered.connect(_on_cell_hovered)
 	EventBus.nation_selected.connect(_on_nation_selected)
+	EventBus.cell_clicked.connect(func(cell: int) -> void: _clicked_cell = cell)
 	EventBus.year_passed.connect(_on_year_passed)
 	EventBus.speed_changed.connect(_on_speed_changed)
 	EventBus.map_mode_changed.connect(func(mode: int) -> void:
@@ -103,7 +107,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		EventBus.nation_selected.emit(-1)
 	elif key.keycode == KEY_SPACE:
 		WorldState.toggle_pause()
-	# 1..6 — режимы карты.
+	# 1..8 — режимы карты.
 	elif key.keycode >= KEY_1 and key.keycode < KEY_1 + MapMode.NAMES.size():
 		EventBus.map_mode_changed.emit(key.keycode - KEY_1)
 
@@ -136,14 +140,59 @@ func _build_time_controls() -> void:
 		b.pressed.connect(WorldState.set_speed.bind(i))
 		_time_controls.add_child(b)
 		_speed_buttons.append(b)
-	var step := Button.new()
-	step.text = "+1 год"
-	step.tooltip_text = "Прожить один год"
-	step.focus_mode = Control.FOCUS_NONE
-	step.pressed.connect(func() -> void:
-		WorldState.set_speed(0)
-		WorldState.step_once())
-	_time_controls.add_child(step)
+	for step_def in [["+1 мес.", "Прожить один месяц", false], ["+1 год", "Прожить один год", true]]:
+		var step := Button.new()
+		step.text = step_def[0]
+		step.tooltip_text = step_def[1]
+		step.focus_mode = Control.FOCUS_NONE
+		var year: bool = step_def[2]
+		step.pressed.connect(func() -> void:
+			WorldState.set_speed(0)
+			if year:
+				WorldState.step_year()
+			else:
+				WorldState.step_month())
+		_time_controls.add_child(step)
+
+
+## Кнопки и сами левые панели: генерация мира, Бог, летопись, статистика, герои.
+func _build_left_panels() -> void:
+	var defs := [
+		["Мир", "Генерация мира", _gen_panel],
+		["Бог", "Панель Бога: вмешательство в историю", GodPanel.new()],
+		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
+		["Статистика", "Графики по эпохам", StatsPanel.new()],
+		["Герои", "Герои мира", HeroesPanel.new()],
+	]
+	var root: Control = _gen_panel.get_parent()
+	for d in defs:
+		var panel: Control = d[2]
+		if panel.get_parent() == null:
+			panel.position = _gen_panel.position
+			panel.visible = false
+			root.add_child(panel)
+			# Левые панели — под лентой событий по z-порядку не важны: лента прячется, пока открыта летопись.
+		var b := Button.new()
+		b.text = d[0]
+		b.tooltip_text = d[1]
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.toggled.connect(_on_left_panel_toggled.bind(d[0]))
+		_panel_buttons.add_child(b)
+		_left_panels[d[0]] = [b, panel]
+	_left_panels["Мир"][0].button_pressed = true
+
+
+func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
+	for key in _left_panels:
+		var entry: Array = _left_panels[key]
+		if key == panel_name:
+			entry[1].visible = on
+		elif on:
+			entry[0].set_pressed_no_signal(false)
+			entry[1].visible = false
+	# Полная летопись заменяет ленту.
+	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible
 
 
 func _on_speed_changed(index: int) -> void:
@@ -151,7 +200,7 @@ func _on_speed_changed(index: int) -> void:
 
 
 func _on_year_passed(year: int) -> void:
-	_year_label.text = "Год %d" % year
+	_year_label.text = WorldState.world.date_text() if WorldState.world != null else "Год %d" % year
 	_refresh_chronicle()
 	var now := Time.get_ticks_msec()
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
@@ -221,6 +270,20 @@ func _rebuild_legend() -> void:
 						counts[nation.race_id] = counts.get(nation.race_id, 0) + 1
 			for race in RaceDB.all():
 				_legend_row(race.color, race.icon, "%s — %d" % [race.display_name, counts.get(race.id, 0)], race.description)
+		MapMode.POPULATION:
+			_legend_title.text = "Плотность населения"
+			var steps := [["пусто", Color(0.16, 0.12, 0.25)], ["редко", Color(0.45, 0.15, 0.4)],
+				["средне", Color(0.85, 0.3, 0.2)], ["густо", Color(0.98, 0.75, 0.25)], ["города и долины рек", Color(1.0, 1.0, 0.85)]]
+			for st in steps:
+				_legend_row(st[1], null, st[0], "")
+			_legend_row(Color(0.2, 0.21, 0.22), null, "ничья земля", "")
+		MapMode.RESOURCES:
+			_legend_title.text = "Ресурсы"
+			for dep in EconomyDB.deposits():
+				_legend_row(dep.color, null, "%s (+%s %s)" % [dep.display_name, str(dep.amount), Goods.NAMES[Goods.index_of(dep.goods)].to_lower()], "")
+			_legend_row(Color(0.25, 0.55, 0.2), null, "лес — дерево", "")
+			_legend_row(Color(0.65, 0.65, 0.7), null, "камень", "")
+			_legend_row(Color(0.45, 0.55, 0.8), null, "руда в горах", "")
 		MapMode.BIOMES:
 			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():
@@ -346,7 +409,7 @@ func _on_world_generated(world: World, elapsed_ms: int) -> void:
 	_status.text = "Мир %d×%d: %d государств, %d городов. Создан за %.2f с" % [
 		world.map.width, world.map.height, world.nations.size(), world.cities.size(), elapsed_ms / 1000.0]
 	_nation_panel.hide()
-	_year_label.text = "Год %d" % world.year
+	_year_label.text = world.date_text()
 	_chronicle_shown = -1
 	_refresh_chronicle()
 	_rebuild_legend()
@@ -357,7 +420,8 @@ func _on_nation_selected(nation_id: int) -> void:
 	if world == null or nation_id < 0:
 		_nation_panel.hide()
 	else:
-		_nation_panel.show_nation(world, world.nations[nation_id])
+		_nation_panel.show_nation(world, world.nations[nation_id], _clicked_cell)
+		_clicked_cell = -1
 	# Карточка и легенда делят правый край экрана.
 	_legend.visible = not _nation_panel.visible and _legend_box.get_child_count() > 0
 

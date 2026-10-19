@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GovernmentDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/government_def.gd" id="1_gov"]
+
+[resource]
+script = ExtResource("1_gov")
+id = &"republic"
+display_name = "Республика"
+description = "Правителя избирают на срок; торговля важнее войн."
+succession = "election"
+election_period = 5
+crisis_chance = 0.03
+stability_bonus = 0.04
+aggression_mult = 0.7
+trade_mult = 1.15
+science_mult = 1.1
+army_mult = 0.9
+dynastic = false

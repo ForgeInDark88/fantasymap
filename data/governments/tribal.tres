@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="GovernmentDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/government_def.gd" id="1_gov"]
+
+[resource]
+script = ExtResource("1_gov")
+id = &"tribal"
+display_name = "Племенной союз"
+description = "После смерти вождя власть берёт сильнейший — смуты часты."
+succession = "strongest"
+election_period = 6
+crisis_chance = 0.15
+stability_bonus = -0.03
+aggression_mult = 1.3
+trade_mult = 0.9
+science_mult = 0.8
+army_mult = 1.15
+dynastic = false

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RulerTraitDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ruler_trait_def.gd" id="1_rt"]
+
+[resource]
+script = ExtResource("1_rt")
+id = &"tyrant"
+display_name = "Тиран"
+description = "Правит железной рукой: армия сильна, народ ропщет."
+weight = 0.6
+army_mult = 1.2
+stability = -0.07
+aggression_mult = 1.3

@@ -35,6 +35,78 @@ static func paint(map: WorldMap, mode: int) -> Image:
 	return Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, colors.to_byte_array())
 
 
+## Режимы, которым нужен не только рельеф, но и состояние мира.
+static func paint_world(world: World, mode: int) -> Image:
+	var map := world.map
+	var colors := PackedInt32Array()
+	colors.resize(map.cell_count())
+	if mode == MapMode.POPULATION:
+		_paint_population(world, colors)
+	elif mode == MapMode.RESOURCES:
+		_paint_resources(world, colors)
+	else:
+		return paint(map, mode)
+	return Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, colors.to_byte_array())
+
+
+static var _density_lut := PackedInt32Array()
+
+
+## Плотность населения: ёмкость клетки × заселённость её народа в государстве.
+static func _paint_population(world: World, out: PackedInt32Array) -> void:
+	if _density_lut.is_empty():
+		var g := _make_gradient(PackedFloat32Array([0.0, 0.25, 0.55, 0.8, 1.0]),
+				[Color(0.16, 0.12, 0.25), Color(0.45, 0.15, 0.4), Color(0.85, 0.3, 0.2), Color(0.98, 0.75, 0.25), Color(1.0, 1.0, 0.85)])
+		_density_lut.resize(64)
+		for i in 64:
+			_density_lut[i] = g.sample(i / 63.0).to_abgr32()
+	var map := world.map
+	var fill := PackedFloat32Array()
+	fill.resize(world.nations.size() * RaceDB.count())
+	var races := RaceDB.count()
+	for n in world.nations:
+		for r in races:
+			if n.capacity[r] > 0.0:
+				fill[n.id * races + r] = n.pop[r] / n.capacity[r]
+	var water := Color(0.06, 0.09, 0.16).to_abgr32()
+	var empty := Color(0.2, 0.21, 0.22).to_abgr32()
+	var owner := world.owner
+	var cell_race := world.cell_race
+	var cap := world.cell_cap
+	for i in map.cell_count():
+		var o := owner[i]
+		if o < 0:
+			out[i] = empty if map.is_land(i) else water
+			continue
+		var r := cell_race[i]
+		var density := cap[i] * fill[o * races + r] if r != World.NO_RACE else 0.0
+		out[i] = _density_lut[clampi(int(sqrt(density / 1500.0) * 63.0), 0, 63)]
+
+
+## Ресурсы: приглушённый рельеф, лес, камень и руда оттенками, месторождения — яркими клетками.
+static func _paint_resources(world: World, out: PackedInt32Array) -> void:
+	var map := world.map
+	var palette: Array[Color] = []
+	for def in BiomeDB.all():
+		var grey := def.color.get_luminance()
+		palette.append(def.color.lerp(Color(grey, grey, grey), 0.75).darkened(0.35))
+	var wood := Color(0.25, 0.55, 0.2)
+	var stone := Color(0.65, 0.65, 0.7)
+	var metal := Color(0.45, 0.55, 0.8)
+	var deposits := EconomyDB.deposits()
+	for i in map.cell_count():
+		var col := palette[map.biome[i]]
+		if map.is_land(i):
+			var base := i * Goods.COUNT
+			col = col.lerp(wood, clampf(world.cell_yield[base + Goods.WOOD], 0.0, 1.0) * 0.45)
+			col = col.lerp(stone, clampf(world.cell_yield[base + Goods.STONE], 0.0, 1.0) * 0.35)
+			col = col.lerp(metal, clampf(world.cell_yield[base + Goods.METAL] * 2.0, 0.0, 1.0) * 0.35)
+			var d := world.deposit[i]
+			if d > 0:
+				col = deposits[d - 1].color
+		out[i] = col.to_abgr32()
+
+
 static func _paint_biomes(map: WorldMap, out: PackedInt32Array) -> void:
 	var w := map.width
 	var h := map.height

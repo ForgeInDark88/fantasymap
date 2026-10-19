@@ -16,6 +16,8 @@ const CITY_SPACING := 6
 var map: WorldMap
 var settings: MapSettings
 var year := 0
+## Месяц текущего года: 0..11.
+var month := 0
 var rng := RandomNumberGenerator.new()
 
 var nations: Array[Nation] = []
@@ -40,6 +42,8 @@ var cell_race := PackedByteArray()
 var deposit := PackedByteArray()
 ## Добыча клетки в год: cell * Goods.COUNT + goods.
 var cell_yield := PackedFloat32Array()
+## Ёмкость клетки для её народа (кэш для карты населения; 0 — не заселена).
+var cell_cap := PackedFloat32Array()
 ## id города в клетке (-1 — нет).
 var city_cell := PackedInt32Array()
 ## Сколько городов ближе CITY_SPACING к клетке (0 — здесь можно основать город).
@@ -47,8 +51,17 @@ var city_cell := PackedInt32Array()
 var city_block := PackedByteArray()
 ## Растёт при каждом изменении границ — рендер по нему понимает, что пора обновиться.
 var ownership_version := 0
+## Метки для обходов карты без выделения памяти: клетка посещена, если mark[c] == stamp.
+var mark := PackedInt32Array()
+var _stamp := 0
+## Растёт при изменении рельефа (панель Бога) — рендер перерисовывает карту и регионы.
+var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
+var heroes: Array[Hero] = []
+## Снимки статистики раз в HISTORY_STEP лет: {year, races: PackedFloat32Array, nations: {id: [население, клетки]}}.
+var history: Array[Dictionary] = []
+const HISTORY_STEP := 5
 
 ## Летопись: {year, kind, text, nations: PackedInt32Array}.
 var chronicle: Array[Dictionary] = []
@@ -79,6 +92,8 @@ func _init(world_map: WorldMap) -> void:
 	city_cell.resize(n)
 	city_cell.fill(-1)
 	city_block.resize(n)
+	mark.resize(n)
+	cell_cap.resize(n)
 	cell_race.resize(n)
 	cell_race.fill(NO_RACE)
 	owner_texels.resize(n * 4)
@@ -132,7 +147,9 @@ func set_owner(cell: int, nation_id: int) -> void:
 			r = nn.race.index
 			cell_race[cell] = r
 		_add_cell(nn, cell)
-		nn.capacity[r] += cell_capacity(RaceDB.by_index(r), cell)
+		var cap := cell_capacity(RaceDB.by_index(r), cell)
+		cell_cap[cell] = cap
+		nn.capacity[r] += cap
 		nn.pop[r] += moved
 	if city_cell[cell] >= 0:
 		_transfer_city(cities[city_cell[cell]], nation_id)
@@ -251,6 +268,8 @@ func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nati
 		var region := regions[rid]
 		region.unrest = 0.0
 		region.conquered_year = year
+		# Утраченные земли прежний владелец считает своими ещё долго.
+		region.claims[old.id] = year + WarSystem.CLAIM_YEARS
 		for c in region.cells:
 			if owner[c] == old.id:
 				set_owner(c, nation.id)
@@ -278,6 +297,37 @@ func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nati
 	return nation
 
 
+## Новая «метка» для обхода (см. mark).
+func next_stamp() -> int:
+	_stamp += 1
+	return _stamp
+
+
+## Снимок статистики для графиков.
+func record_history() -> void:
+	if year % HISTORY_STEP != 0:
+		return
+	var races := PackedFloat32Array()
+	races.resize(RaceDB.count())
+	var snapshot := {}
+	for n in nations:
+		if not n.alive:
+			continue
+		for r in n.pop.size():
+			races[r] += n.pop[r]
+		snapshot[n.id] = PackedFloat32Array([n.population, n.cell_count])
+	history.append({"year": year, "races": races, "nations": snapshot})
+
+
+## Дата для интерфейса и летописи.
+const MONTH_NAMES: Array[String] = ["Морозень", "Снеговей", "Капельник", "Цветень", "Травень", "Светлень",
+	"Зноень", "Жатвень", "Листопад", "Дождень", "Стылень", "Студень"]
+
+
+func date_text() -> String:
+	return "%s, %d г." % [MONTH_NAMES[month], year]
+
+
 ## Помечает погибшими государства без земли и вычищает их из дипломатии.
 func cleanup_dead() -> void:
 	for nation in nations:
@@ -287,6 +337,8 @@ func cleanup_dead() -> void:
 			for id in nation.city_ids.duplicate():
 				destroy_city(cities[id])
 			diplomacy.forget_nation(self, nation.id)
+			for hid in nation.hero_ids.duplicate():
+				heroes[hid].leave_service(self)
 			log_event(&"fall", "Государство %s пало." % nation.name, PackedInt32Array([nation.id]))
 
 
@@ -386,19 +438,38 @@ func found_nation(race: RaceDef) -> Nation:
 	var title := NameGenerator.state_title(race, nation.short_name, rng)
 	nation.name = title[0]
 	nation.ruler_title = title[1]
-	new_ruler(nation)
+	nation.government = PoliticsDB.government(StringName(title[2]))
+	new_ruler(nation, true)
 	nation.color = nation_color(nation.id)
 	return nation
 
 
-## Новый правитель: имя по языку расы, возраст и срок правления по продолжительности жизни.
-func new_ruler(nation: Nation) -> void:
+## Новый правитель: имя по языку расы, черта характера, возраст и срок правления.
+## new_dynasty — к власти приходит новый род (иначе — наследник прежнего).
+func new_ruler(nation: Nation, new_dynasty: bool) -> void:
 	var race := nation.race
-	nation.ruler_name = NameGenerator.unique(used_names, NameGenerator.person_name.bind(race, rng))
-	if race.lifespan <= 0:
+	if new_dynasty or nation.dynasty.is_empty():
+		nation.dynasty = NameGenerator.unique(used_names, NameGenerator.root.bind(race, rng))
+		nation.dynasty_names.clear()
+	# Наследники нередко получают имя предка — так появляются «Эдрик II».
+	var name := ""
+	if not nation.dynasty_names.is_empty() and rng.randf() < 0.35:
+		var names := nation.dynasty_names.keys()
+		name = names[rng.randi_range(0, names.size() - 1)]
+	else:
+		name = NameGenerator.unique(used_names, NameGenerator.person_name.bind(race, rng))
+	nation.dynasty_names[name] = nation.dynasty_names.get(name, 0) + 1
+	nation.ruler_name = name
+	nation.ruler_number = nation.dynasty_names[name]
+	nation.ruler_trait = PoliticsDB.random_ruler_trait(rng)
+	var gov := nation.government
+	if gov != null and gov.succession == "eternal" or race.lifespan <= 0:
 		# Бессмертные (нежить) правят, пока их не уничтожат.
 		nation.ruler_age = rng.randi_range(50, 500)
-		nation.reign_left = rng.randi_range(150, 600)
+		nation.reign_left = rng.randi_range(200, 700)
+	elif gov != null and gov.succession == "election":
+		nation.ruler_age = rng.randi_range(maxi(20, race.lifespan / 3), maxi(25, race.lifespan / 2))
+		nation.reign_left = gov.election_period
 	else:
 		nation.ruler_age = int(race.lifespan * rng.randf_range(0.25, 0.45))
 		nation.reign_left = maxi(3, int(race.lifespan * rng.randf_range(0.12, 0.5)))
@@ -530,6 +601,15 @@ func _place_deposits() -> void:
 				break
 
 
+func refresh_cell_yield(i: int) -> void:
+	var def := BiomeDB.get_def(map.biome[i])
+	for g in Goods.COUNT:
+		cell_yield[i * Goods.COUNT + g] = def.yield_of(g)
+	var dep := deposit_at(i)
+	if dep != null:
+		cell_yield[i * Goods.COUNT + Goods.index_of(dep.goods)] += dep.amount
+
+
 func _compute_cell_yields() -> void:
 	var n := map.cell_count()
 	cell_yield.resize(n * Goods.COUNT)
@@ -547,7 +627,7 @@ func _compute_cell_yields() -> void:
 # ---------------------------------------------------------------------------
 
 func log_event(kind: StringName, text: String, nation_ids: PackedInt32Array = PackedInt32Array()) -> void:
-	chronicle.append({"year": year, "kind": kind, "text": text, "nations": nation_ids})
+	chronicle.append({"year": year, "month": month, "kind": kind, "text": text, "nations": nation_ids})
 	chronicle_total += 1
 	if chronicle.size() > CHRONICLE_LIMIT:
 		chronicle = chronicle.slice(chronicle.size() - CHRONICLE_LIMIT)

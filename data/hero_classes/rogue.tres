@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"rogue"
+display_name = "Плут"
+description = "Вор, шпион и мастер кинжала."
+power = 260.0
+race_weights = Dictionary[StringName, float]({&"halflings": 1.2, &"goblins": 1.0, &"humans": 0.7, &"elves": 0.3})
+default_weight = 0.2
+loyalty = 0.2
+aggression = 0.5
+color = Color(0.6, 0.6, 0.6, 1)

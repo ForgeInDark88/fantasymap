@@ -60,6 +60,9 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 		city_name += " (город разрушен)"
 	if e.lost_cells > 0:
 		_devastate(world, nation, region, e.lost_cells)
+	if e.spawns_hero:
+		# Запись в летопись делает сам HeroSystem.spawn.
+		return HeroSystem.spawn(world, nation, region) != null
 	if e.duration > 0:
 		nation.modifiers.append({
 			"id": e.id, "until": world.year + e.duration,
