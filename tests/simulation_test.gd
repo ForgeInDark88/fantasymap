@@ -23,16 +23,18 @@ func _initialize() -> void:
 		if world.map.is_land(i):
 			land += 1
 
-	var t0 := Time.get_ticks_usec()
+	var sim_usec := 0
 	var worst := 0
 	for y in years:
 		var ts := Time.get_ticks_usec()
 		sim.step(world)
-		worst = maxi(worst, Time.get_ticks_usec() - ts)
+		var dt := Time.get_ticks_usec() - ts
+		sim_usec += dt
+		worst = maxi(worst, dt)
 		if y % 50 == 49:
 			_report(world, land)
 			_check_invariants(world)
-	var avg_ms := (Time.get_ticks_usec() - t0) / 1000.0 / years
+	var avg_ms := sim_usec / 1000.0 / years
 	print("тик: в среднем %.2f мс, худший %.2f мс (%d государств, карта %dx%d)" % [avg_ms, worst / 1000.0, world.nations.size(), s.width, s.height])
 
 	if _total_pop(world) <= start_pop:
@@ -52,6 +54,13 @@ func _initialize() -> void:
 	top.sort_custom(func(a: City, b: City) -> bool: return a.population > b.population)
 	print("крупнейшие города: ", ", ".join(top.slice(0, 6).map(func(c: City) -> String:
 		return "%s %.0f тыс. (%d построек)" % [c.name, c.population / 1000.0, c.buildings.size()])))
+	var tiers := PackedInt32Array([0, 0, 0, 0, 0])
+	for c in world.cities:
+		if c.alive:
+			tiers[c.tier()] += 1
+	print("уровни городов: ", ", ".join(range(5).map(func(t: int) -> String: return "%s %d" % [City.TIER_NAMES[t], tiers[t]])))
+	if tiers[0] + tiers[1] == 0 or tiers[3] + tiers[4] == 0:
+		_fail("города одинаковые: %s" % tiers)
 	var kinds := {}
 	for e in world.chronicle:
 		kinds[e.kind] = kinds.get(e.kind, 0) + 1
@@ -62,8 +71,23 @@ func _initialize() -> void:
 		print("    %-28s %-10s клеток %4d, нас. %6.0f тыс. (своих %3d%%), городов %2d, армия %5d, стаб. %.2f, наука %.1f, запасы %s" % [
 			n.name, n.race_id, n.cell_count, n.population / 1000.0, roundi(n.primary_share() * 100.0), n.city_ids.size(),
 			n.army, n.stability, n.tech, Array(n.stock).map(func(v: float) -> int: return roundi(v))])
-	if avg_ms > 8.0:
-		_fail("тик слишком медленный: %.2f мс" % avg_ms)
+	var conquests := 0
+	for e in world.chronicle:
+		if e.kind == &"conquest":
+			conquests += 1
+	var multiracial := 0
+	for n in world.nations:
+		if n.alive and n.population > 0.0 and n.primary_share() < 0.95:
+			multiracial += 1
+	print("войн за историю: %d, захватов: %d, многорасовых государств: %d, живых: %d из %d" % [
+		world.diplomacy.past_wars.size() + world.diplomacy.wars.size(), conquests, multiracial,
+		world.nations.filter(func(n: Nation) -> bool: return n.alive).size(), world.nations.size()])
+	if years >= 300 and conquests == 0:
+		_fail("за %d лет ни одного завоевания" % years)
+	# Бюджет: 8 мс на средней карте, растёт с корнем из площади (16 мс на огромной).
+	var budget := 8.0 * sqrt(world.map.cell_count() / 92160.0)
+	if avg_ms > budget:
+		_fail("тик слишком медленный: %.2f мс (бюджет %.1f)" % [avg_ms, budget])
 
 	if _failures > 0:
 		printerr("FAILED: %d проверок не прошли" % _failures)
@@ -100,6 +124,31 @@ func _check_invariants(world: World) -> void:
 		if world.owner_texels[i * 4] + world.owner_texels[i * 4 + 1] * 256 - 1 != o:
 			_fail("год %d: owner_texels рассогласован" % world.year)
 			return
+	# Учёт регионов и границ должен совпадать с пересчётом «с нуля».
+	var region_counts := {}
+	var borders := {}
+	var w := world.map.width
+	for i in world.owner.size():
+		var o := world.owner[i]
+		if o < 0:
+			continue
+		var key := Vector2i(world.region_of[i], o)
+		region_counts[key] = region_counts.get(key, 0) + 1
+		for nb in [i + 1 if (i % w) < w - 1 else -1, i + w if i + w < world.owner.size() else -1]:
+			if nb >= 0 and world.owner[nb] >= 0 and world.owner[nb] != o:
+				var a := mini(o, world.owner[nb])
+				var b := maxi(o, world.owner[nb])
+				borders[Vector2i(a, b)] = borders.get(Vector2i(a, b), 0) + 1
+	for region in world.regions:
+		for o in region.owner_counts:
+			if region_counts.get(Vector2i(region.id, o), 0) != region.owner_counts[o]:
+				_fail("год %d: учёт региона %d рассогласован" % [world.year, region.id])
+				return
+	for nation in world.nations:
+		for o in nation.borders:
+			if borders.get(Vector2i(mini(nation.id, o), maxi(nation.id, o)), 0) != nation.borders[o]:
+				_fail("год %d: граница %s—%d рассогласована" % [world.year, nation.name, o])
+				return
 	for nation in world.nations:
 		if counted[nation.id] != nation.cell_count:
 			_fail("год %d: у %s cell_count %d, а клеток %d" % [world.year, nation.name, nation.cell_count, counted[nation.id]])

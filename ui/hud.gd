@@ -13,6 +13,10 @@ const LEGEND_REFRESH_MS := 1000
 const CHRONICLE_COLORS := {
 	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0",
 	&"ruler": "#d6b3ff", &"famine": "#ff9a7a",
+	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b",
+	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
+	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
+	&"monsters": "#e08cc0", &"hero": "#ffe680",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -368,10 +372,21 @@ func _on_cell_hovered(cell: int) -> void:
 	var parts: Array[String] = []
 	var city := world.city_at(cell)
 	if city != null:
-		parts.append("%s%s (%s жит.)" % ["★ " if city.is_capital else "● ", city.name, NationPanel.fmt(city.population)])
+		parts.append("%s%s — %s, %s (%s жит.)" % ["★ " if city.is_capital else "", city.name,
+				city.tier_name().to_lower(), city.specialization(), NationPanel.fmt(city.population)])
 	var nation := world.nation_at(cell)
 	if nation != null:
 		parts.append("%s (%s)" % [nation.name, nation.race.display_name])
+	var region := world.region_at(cell)
+	if region != null and not region.name.is_empty():
+		var region_text := "регион %s" % region.name
+		if nation != null:
+			region_text += " (%s жит., лояльность %d%%)" % [
+				NationPanel.fmt(world.region_population(region, nation.id)), roundi(region.loyalty * 100.0)]
+		var people := world.cell_race[cell]
+		if people != World.NO_RACE and nation != null and people != nation.race.index:
+			region_text += ", живут %s" % RaceDB.by_index(people).display_name.to_lower()
+		parts.append(region_text)
 	parts.append(BiomeDB.get_def(map.biome[cell]).display_name)
 	var dep := world.deposit_at(cell)
 	if dep != null:

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"earthquake"
+display_name = "Землетрясение"
+chronicle_kind = &"disaster"
+chance = 0.003
+requires_biomes = Array[StringName]([&"mountains", &"hills"])
+population_loss = 0.02
+stability_change = -0.03
+destroys_buildings = 2
+text = "Землетрясение разрушило постройки города {city} ({nation})."

@@ -33,7 +33,8 @@ func refresh(world: World) -> void:
 	var race := nation.race
 	_icon.texture = race.icon
 	_name.text = nation.name
-	_sub.text = "%s · основано в %d г. · %d лет" % [race.display_name, nation.founded_year, world.year - nation.founded_year]
+	_sub.text = "%s · основано в %d г. · %s" % [race.display_name, nation.founded_year,
+			("%d лет" % (world.year - nation.founded_year)) if nation.alive else "[пало]"]
 	_color_bar.color = nation.color
 
 	var capital := world.cities[nation.capital_city] if nation.capital_city >= 0 else null
@@ -75,6 +76,8 @@ func refresh(world: World) -> void:
 			parts.append("%s ×%d" % [def.display_name if def != null else str(b), built[b]])
 		lines.append("[b]Постройки:[/b] " + ", ".join(parts))
 
+	_append_diplomacy(world, nation, lines)
+
 	lines.append("")
 	lines.append("[b]Особенности расы:[/b]")
 	for t in race.traits:
@@ -91,6 +94,46 @@ func refresh(world: World) -> void:
 	_body.text = "\n".join(lines)
 	# Карточка подстраивается под содержимое и сжимается, когда строк становится меньше.
 	set_deferred("size", Vector2(size.x, 0.0))
+
+
+func _append_diplomacy(world: World, nation: Nation, lines: Array[String]) -> void:
+	var d := world.diplomacy
+	lines.append("")
+	if nation.overlord >= 0:
+		lines.append("[color=#c0a0ff]Вассал государства %s[/color]" % world.nations[nation.overlord].name)
+	var vassals := d.vassals_of(world, nation.id)
+	if not vassals.is_empty():
+		lines.append("[b]Вассалы:[/b] " + ", ".join(Array(vassals).map(func(id: int) -> String: return world.nations[id].short_name)))
+	var wars := d.wars_of(nation.id)
+	if wars.is_empty():
+		lines.append("[color=#9be39b]Мир[/color]")
+	for war in wars:
+		var side := war.side_of(nation.id)
+		var enemies := Array(war.members(-side)).map(func(id: int) -> String: return world.nations[id].short_name)
+		var score := war.score * side
+		var color := "#9be39b" if score > 10 else ("#ff7a6a" if score < -10 else "#e0d090")
+		lines.append("[color=#ff6b5b]%s[/color] — против %s, %d г., счёт [color=%s]%+d[/color]" % [
+			war.name, ", ".join(enemies), world.year - war.start_year, color, roundi(score)])
+	if not nation.allies.is_empty():
+		lines.append("[b]Союзники:[/b] " + ", ".join(nation.allies.keys().map(func(id: int) -> String: return world.nations[id].short_name)))
+	if not nation.trade_partners.is_empty():
+		lines.append("[b]Торговля:[/b] " + ", ".join(nation.trade_partners.keys().map(func(id: int) -> String: return world.nations[id].short_name)))
+	if not nation.borders.is_empty():
+		var parts: Array[String] = []
+		for other in nation.borders:
+			var op := d.opinion(world, nation.id, other)
+			var color := "#7fd18b" if op > 0.15 else ("#e07a6a" if op < -0.15 else "#c9ccd4")
+			parts.append("[color=%s]%s %+.1f[/color]" % [color, world.nations[other].short_name, op])
+		lines.append("[b]Соседи (мнение):[/b] " + ", ".join(parts))
+	var regions := 0
+	var unruly := 0
+	for rid in nation.region_counts:
+		var region := world.regions[rid]
+		if region.controller() == nation.id:
+			regions += 1
+			if region.unrest >= 0.5:
+				unruly += 1
+	lines.append("[b]Регионов:[/b] %d%s" % [regions, (" · [color=#ffb04a]неспокойных: %d[/color]" % unruly) if unruly > 0 else ""])
 
 
 static func _stability_text(v: float) -> String:

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/event_def.gd" id="1_evt"]
+
+[resource]
+script = ExtResource("1_evt")
+id = &"great_hero"
+display_name = "Великий герой"
+chronicle_kind = &"hero"
+chance = 0.003
+stability_change = 0.08
+duration = 25
+army_mult = 1.35
+text = "В государстве {nation} прославился великий герой {hero} — армия воодушевлена."

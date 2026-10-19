@@ -20,6 +20,12 @@ var rng := RandomNumberGenerator.new()
 
 var nations: Array[Nation] = []
 var cities: Array[City] = []
+## Регионы (провинции) — постоянная нарезка суши, см. RegionGenerator.
+var regions: Array[Region] = []
+## Регион каждой клетки (-1 — вода).
+var region_of := PackedInt32Array()
+## Регион клетки для шейдера (RGBA8: R,G — id + 1), неизменен после создания мира.
+var region_texels := PackedByteArray()
 
 ## id государства-владельца для каждой клетки (-1 — ничья).
 var owner := PackedInt32Array()
@@ -41,6 +47,8 @@ var city_cell := PackedInt32Array()
 var city_block := PackedByteArray()
 ## Растёт при каждом изменении границ — рендер по нему понимает, что пора обновиться.
 var ownership_version := 0
+
+var diplomacy := Diplomacy.new()
 
 ## Летопись: {year, kind, text, nations: PackedInt32Array}.
 var chronicle: Array[Dictionary] = []
@@ -79,6 +87,13 @@ func _init(world_map: WorldMap) -> void:
 		owner_texels[i * 4 + 3] = 255
 	_place_deposits()
 	_compute_cell_yields()
+	regions = RegionGenerator.new().generate(self)
+	region_texels.resize(n * 4)
+	for i in n:
+		var v := region_of[i] + 1
+		region_texels[i * 4] = v & 0xff
+		region_texels[i * 4 + 1] = (v >> 8) & 0xff
+		region_texels[i * 4 + 3] = 255
 
 
 # ---------------------------------------------------------------------------
@@ -86,11 +101,15 @@ func _init(world_map: WorldMap) -> void:
 # ---------------------------------------------------------------------------
 
 ## Передаёт клетку государству nation_id (-1 — сделать ничьей).
-## Жители клетки переезжают вместе с ней в пропорции её доли в ёмкости земли.
+## Жители клетки переезжают вместе с ней в пропорции её доли в ёмкости земли;
+## город в клетке переходит к новому владельцу. Поддерживает учёт регионов
+## и длины общих границ между государствами.
 func set_owner(cell: int, nation_id: int) -> void:
 	var old := owner[cell]
 	if old == nation_id:
 		return
+	_update_borders(cell, old, nation_id)
+	_update_region(cell, old, nation_id)
 	var r := cell_race[cell]
 	var moved := 0.0
 	if old >= 0:
@@ -115,7 +134,203 @@ func set_owner(cell: int, nation_id: int) -> void:
 		_add_cell(nn, cell)
 		nn.capacity[r] += cell_capacity(RaceDB.by_index(r), cell)
 		nn.pop[r] += moved
+	if city_cell[cell] >= 0:
+		_transfer_city(cities[city_cell[cell]], nation_id)
 	ownership_version += 1
+
+
+## Длина общих границ: число пар соседних клеток разных владельцев.
+func _update_borders(cell: int, old: int, new: int) -> void:
+	for nb in map.neighbors4(cell):
+		var o := owner[nb]
+		if o < 0:
+			continue
+		if old >= 0 and o != old:
+			_add_border(old, o, -1)
+		if new >= 0 and o != new:
+			_add_border(new, o, 1)
+
+
+func _add_border(a: int, b: int, delta: int) -> void:
+	for pair in [[a, b], [b, a]]:
+		var borders := nations[pair[0]].borders
+		var v: int = borders.get(pair[1], 0) + delta
+		if v <= 0:
+			borders.erase(pair[1])
+		else:
+			borders[pair[1]] = v
+
+
+func _update_region(cell: int, old: int, new: int) -> void:
+	var rid := region_of[cell]
+	if rid < 0:
+		return
+	var region := regions[rid]
+	if old >= 0:
+		_dec(region.owner_counts, old)
+		_dec(nations[old].region_counts, rid)
+	if new >= 0:
+		region.owner_counts[new] = region.owner_counts.get(new, 0) + 1
+		nations[new].region_counts[rid] = nations[new].region_counts.get(rid, 0) + 1
+		if region.name.is_empty():
+			# Регион называет тот, кто первым его заселил, — на своём языке.
+			region.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(nations[new].race, rng))
+		if old >= 0:
+			region.conquered_year = year
+
+
+static func _dec(counts: Dictionary, key: int) -> void:
+	var v: int = counts.get(key, 0) - 1
+	if v <= 0:
+		counts.erase(key)
+	else:
+		counts[key] = v
+
+
+## Город сменил владельца вместе со своей клеткой.
+func _transfer_city(city: City, new_owner: int) -> void:
+	var old := city.nation_id
+	if old >= 0:
+		var on := nations[old]
+		var idx := on.city_ids.find(city.id)
+		if idx >= 0:
+			on.city_ids.remove_at(idx)
+		if on.capital_city == city.id:
+			city.is_capital = false
+			choose_capital(on)
+	city.nation_id = new_owner
+	if new_owner >= 0:
+		var nn := nations[new_owner]
+		nn.city_ids.append(city.id)
+		if nn.capital_city < 0:
+			city.is_capital = true
+			nn.capital_city = city.id
+	else:
+		destroy_city(city)
+
+
+## Новая столица — крупнейший из оставшихся городов (или -1, если городов нет).
+func choose_capital(nation: Nation) -> void:
+	nation.capital_city = -1
+	var best: City = null
+	for id in nation.city_ids:
+		var c := cities[id]
+		if best == null or c.population > best.population:
+			best = c
+	if best != null:
+		best.is_capital = true
+		nation.capital_city = best.id
+
+
+## Город разрушен: исчезает с карты, освобождает место для новых городов.
+func destroy_city(city: City) -> void:
+	if not city.alive:
+		return
+	city.alive = false
+	city_cell[city.cell] = -1
+	_mark_city_area(city.cell, -1)
+	if city.nation_id >= 0:
+		var nation := nations[city.nation_id]
+		var idx := nation.city_ids.find(city.id)
+		if idx >= 0:
+			nation.city_ids.remove_at(idx)
+		if nation.capital_city == city.id:
+			city.is_capital = false
+			choose_capital(nation)
+	city.nation_id = -1
+
+
+## Откалывает от old регионы region_ids в новое государство расы race
+## (восстание, гражданская война, распад). Жители, города, часть армии и
+## казны уходят вместе с землёй.
+func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nation:
+	var old_pop := old.population
+	var nation := found_nation(race)
+	nation.tech = old.tech
+	for rid in region_ids:
+		var region := regions[rid]
+		region.unrest = 0.0
+		region.conquered_year = year
+		for c in region.cells:
+			if owner[c] == old.id:
+				set_owner(c, nation.id)
+	if nation.cell_count == 0:
+		nation.alive = false
+		return nation
+	choose_capital(nation)
+	if nation.capital_city < 0:
+		# Городов не было — столицей становится центр самого крупного региона.
+		var site := regions[region_ids[0]].center
+		if owner[site] != nation.id:
+			site = nation.cells[0]
+		if city_cell[site] < 0:
+			var city := add_city(nation, site, race, true)
+			city.population = 500.0
+	var share := clampf(nation.population / maxf(old_pop, 1.0), 0.05, 0.9)
+	nation.army = old.army * share * 1.2  # гарнизоны переходят на сторону мятежников
+	old.army *= 1.0 - share
+	for g in Goods.COUNT:
+		nation.stock[g] = maxf(0.0, old.stock[g]) * share
+		old.stock[g] -= nation.stock[g]
+	nation.stability = 0.6
+	CitySystem.recompute_building_effects(self, nation)
+	CitySystem.recompute_building_effects(self, old)
+	return nation
+
+
+## Помечает погибшими государства без земли и вычищает их из дипломатии.
+func cleanup_dead() -> void:
+	for nation in nations:
+		if nation.alive and nation.cell_count == 0:
+			nation.alive = false
+			nation.army = 0.0
+			for id in nation.city_ids.duplicate():
+				destroy_city(cities[id])
+			diplomacy.forget_nation(self, nation.id)
+			log_event(&"fall", "Государство %s пало." % nation.name, PackedInt32Array([nation.id]))
+
+
+func region_at(cell: int) -> Region:
+	var rid := region_of[cell]
+	return regions[rid] if rid >= 0 else null
+
+
+## Самый многочисленный народ региона (RaceDef.index или NO_RACE).
+func region_majority_race(region: Region, owner_id: int = -2) -> int:
+	# Однородному государству считать нечего — там живёт его народ.
+	if owner_id >= 0 and nations[owner_id].primary_share() > 0.999:
+		return nations[owner_id].race.index
+	var counts := PackedInt32Array()
+	counts.resize(RaceDB.count())
+	var best := NO_RACE
+	var best_count := 0
+	for c in region.cells:
+		if owner_id != -2 and owner[c] != owner_id:
+			continue
+		var r := cell_race[c]
+		if r == NO_RACE:
+			continue
+		counts[r] += 1
+		if counts[r] > best_count:
+			best_count = counts[r]
+			best = r
+	return best
+
+
+## Население части региона, принадлежащей государству: ёмкость его клеток × заселённость.
+func region_population(region: Region, owner_id: int) -> float:
+	if owner_id < 0:
+		return 0.0
+	var nation := nations[owner_id]
+	var total := 0.0
+	for c in region.cells:
+		if owner[c] != owner_id:
+			continue
+		var r := cell_race[c]
+		if r == NO_RACE or nation.capacity[r] <= 0.0:
+			continue
+		total += cell_capacity(RaceDB.by_index(r), c) * nation.pop[r] / nation.capacity[r]
+	return total
 
 
 func _add_cell(nation: Nation, cell: int) -> void:
@@ -229,6 +444,7 @@ func add_city(nation: Nation, cell: int, race: RaceDef, is_capital: bool) -> Cit
 	city.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(race, rng))
 	city.coastal = is_coastal(cell)
 	city.weight = clampf(site_score(race, cell) * 0.5, 0.5, 2.0)
+	city.luck = clampf(exp(rng.randfn(0.0, 0.6)), 0.25, 5.0)
 	city.near_biomes = biome_mask_near(cell, 2)
 	cities.append(city)
 	city_cell[cell] = city.id

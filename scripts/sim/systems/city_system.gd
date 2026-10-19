@@ -19,23 +19,38 @@ func tick(world: World, nation: Nation) -> void:
 		_try_build(world, nation)
 
 
-## Горожане — доля населения страны, распределённая по «весу» городов
-## (столица притягивает больше, постройки тоже добавляют привлекательности).
+## Горожане — доля населения страны, распределённая по «весу» городов.
+## Вес = место × удача × постройки × возраст (× столица), в степени 1.4 —
+## так распределение получается неравномерным (как в жизни: одна столица,
+## пара крупных городов, много городков и деревень).
 func _grow_cities(world: World, nation: Nation) -> void:
 	var total_w := 0.0
+	var weights := PackedFloat32Array()
 	for id in nation.city_ids:
-		total_w += _city_weight(world.cities[id])
+		var w := pow(_city_weight(world, world.cities[id]), 1.4)
+		weights.append(w)
+		total_w += w
 	if total_w <= 0.0:
 		return
 	var urban := nation.population * nation.race.urban_share
-	for id in nation.city_ids:
-		var city := world.cities[id]
-		var target := urban * _city_weight(city) / total_w
-		city.population = lerpf(city.population, target, 0.12)
+	for k in nation.city_ids.size():
+		var city := world.cities[nation.city_ids[k]]
+		var target := urban * weights[k] / total_w
+		# Растут медленно, сжимаются быстрее (голод, войны, бегство жителей).
+		city.population += (target - city.population) * (0.05 if target > city.population else 0.1)
 
 
-func _city_weight(city: City) -> float:
-	return city.weight * (2.5 if city.is_capital else 1.0) * (1.0 + city.buildings.size() * 0.06)
+func _city_weight(world: World, city: City) -> float:
+	var w := city.weight * city.luck * (1.0 + city.buildings.size() * 0.08)
+	if city.buildings.has(&"harbor"):
+		w *= 1.35
+	if city.buildings.has(&"market"):
+		w *= 1.25
+	if city.is_capital:
+		w *= 3.0
+	# Молодые города ещё не успели вырасти.
+	w *= clampf((world.year - city.founded_year + 10) / 80.0, 0.15, 1.0)
+	return w
 
 
 func _maybe_found_city(world: World, nation: Nation) -> void:
@@ -53,7 +68,7 @@ func _maybe_found_city(world: World, nation: Nation) -> void:
 	nation.stock[Goods.GOLD] -= FOUND_COST_GOLD
 	var settlers_race := RaceDB.by_index(world.cell_race[site]) if world.cell_race[site] != World.NO_RACE else race
 	var city := world.add_city(nation, site, settlers_race, false)
-	city.population = nation.population * 0.01
+	city.population = world.rng.randf_range(200.0, 600.0)
 	world.log_event(&"city", "%s основывает город %s." % [nation.name, city.name], PackedInt32Array([nation.id]))
 
 
