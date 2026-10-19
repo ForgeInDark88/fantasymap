@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"deep_mine"
+display_name = "Глубинные копи"
+description = "Дворфийские копи уходят к самым корням гор."
+notable = true
+cost = Dictionary[StringName, float]({&"wood": 40.0, &"stone": 40.0, &"gold": 60.0})
+min_population = 3000.0
+requires_biomes = Array[StringName]([&"mountains", &"hills"])
+required_traits = Array[StringName]([&"miners"])
+production = Dictionary[StringName, float]({&"metal": 10.0, &"stone": 6.0, &"gold": 5.0})

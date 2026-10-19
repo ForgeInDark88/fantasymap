@@ -14,7 +14,6 @@ var _world: World
 var _map: WorldMap
 var _rng: RandomNumberGenerator
 var _land_cells := PackedInt32Array()
-var _coastal := PackedByteArray()
 var _capitals: Array[Vector2i] = []
 
 
@@ -46,20 +45,13 @@ func seed_world(world: World) -> void:
 		if site < 0:
 			continue
 		_found_nation(race, site)
-	world.compute_label_anchors()
+	world.update_label_anchors()
 
 
 func _prepare() -> void:
-	var n := _map.cell_count()
-	_coastal.resize(n)
-	for i in n:
-		if not _map.is_land(i):
-			continue
-		_land_cells.append(i)
-		for nb in _map.neighbors4(i):
-			if _map.biome[nb] == Biome.OCEAN or _map.biome[nb] == Biome.SEA:
-				_coastal[i] = 1
-				break
+	for i in _map.cell_count():
+		if _map.is_land(i):
+			_land_cells.append(i)
 	_capitals.clear()
 
 
@@ -70,26 +62,6 @@ func _pick_races() -> Array[RaceDef]:
 		if enabled.is_empty() or enabled.has(race.id):
 			result.append(race)
 	return result
-
-
-## Привлекательность клетки для основания поселения расой race.
-func site_score(race: RaceDef, cell: int) -> float:
-	var b := _map.biome[cell]
-	var score := race.affinity_by_biome[b] * 1.6 + BiomeDB.get_def(b).habitability * 0.7
-	if _map.river[cell] > 0:
-		score += 0.35
-	if _coastal[cell] == 1:
-		score += race.coast_affinity * 0.5
-	# Окрестности тоже важны: столица посреди одинокой клетки леса — плохая идея.
-	var p := _map.cell_pos(cell)
-	var around := 0.0
-	var samples := 0
-	for dy in range(-3, 4, 3):
-		for dx in range(-3, 4, 3):
-			if _map.in_bounds(p.x + dx, p.y + dy):
-				around += race.affinity_by_biome[_map.biome[_map.index_of(p.x + dx, p.y + dy)]]
-				samples += 1
-	return score + around / maxf(samples, 1) * 0.8
 
 
 func _pick_site(race: RaceDef, min_dist: float) -> int:
@@ -112,7 +84,7 @@ func _pick_site(race: RaceDef, min_dist: float) -> int:
 					break
 			if not ok:
 				continue
-			var score := site_score(race, cell) + _rng.randf() * 0.25
+			var score := _world.site_score(race, cell) + _rng.randf() * 0.25
 			if score > best_score:
 				best_score = score
 				best = cell
@@ -123,18 +95,14 @@ func _pick_site(race: RaceDef, min_dist: float) -> int:
 
 
 func _found_nation(race: RaceDef, capital_cell: int) -> void:
-	var nation := _world.add_nation(race)
-	nation.short_name = NameGenerator.unique(_world.used_names, NameGenerator.place_name.bind(race, _rng))
-	var title := NameGenerator.state_title(race, nation.short_name, _rng)
-	nation.name = title[0]
-	nation.ruler_title = title[1]
-	nation.ruler_name = NameGenerator.unique(_world.used_names, NameGenerator.person_name.bind(race, _rng))
-	nation.color = _nation_color(nation.id)
+	var nation := _world.found_nation(race)
 	_capitals.append(_map.cell_pos(capital_cell))
 
 	var target := clampi(int(_land_cells.size() * START_TERRITORY_SHARE * race.expansion), 8, 600)
 	var claimed := grow_territory(nation, capital_cell, target)
 	_world.add_city(nation, capital_cell, race, true)
+	_world.log_event(&"nation", "Основано государство %s (%s), столица — %s." % [
+		nation.name, race.display_name, _world.cities[nation.capital_city].name], PackedInt32Array([nation.id]))
 
 	# Второй город — в лучшем месте территории, подальше от столицы.
 	if claimed.size() >= 30:
@@ -145,7 +113,7 @@ func _found_nation(race: RaceDef, capital_cell: int) -> void:
 			var d := Vector2(_map.cell_pos(cell) - cap_pos).length()
 			if d < 5.0:
 				continue
-			var score := site_score(race, cell) + minf(d, 12.0) * 0.05
+			var score := _world.site_score(race, cell) + minf(d, 12.0) * 0.05
 			if score > best_score:
 				best_score = score
 				best = cell
@@ -192,27 +160,22 @@ func grow_territory(nation: Nation, start: int, target: int) -> PackedInt32Array
 	return claimed
 
 
-func _compute_start_stats(nation: Nation, cells: PackedInt32Array) -> void:
+func _compute_start_stats(nation: Nation, _cells: PackedInt32Array) -> void:
 	var race := nation.race
-	var capacity := 0.0
-	for i in cells:
-		capacity += _world.cell_capacity(race, i)
-	nation.population = capacity * 0.5
-	nation.army = nation.population * 0.03 * race.military
-	nation.wealth = nation.population * 0.01 * race.trade
+	# Земля заселена наполовину — дальше население растёт логистически (PopulationSystem).
+	nation.pop[race.index] = nation.capacity[race.index] * 0.5
+	var pop_k := nation.population / 1000.0
+	nation.stock[Goods.FOOD] = pop_k * race.food_need
+	nation.stock[Goods.WOOD] = 30.0
+	nation.stock[Goods.STONE] = 20.0
+	nation.stock[Goods.METAL] = 5.0
+	nation.stock[Goods.GOLD] = 40.0 + pop_k * race.trade
+	nation.army = nation.population * 0.025 * race.military
 	nation.stability = 0.7 + _rng.randf() * 0.2
-	# Население городов — доля от населения страны (столица крупнее).
+	# Население городов — доля от населения страны (столица крупнее); дальше считает CitySystem.
 	for city_id in nation.city_ids:
 		var city := _world.cities[city_id]
-		city.population = nation.population * (0.12 if city.is_capital else 0.05)
-
-
-## Различимые цвета: шаг по оттенку на «золотой угол», с вариацией насыщенности/яркости.
-func _nation_color(id: int) -> Color:
-	var hue := fposmod(0.13 + id * 0.618034, 1.0)
-	var sat := 0.55 + 0.2 * float((id * 7) % 3) / 2.0
-	var val := 0.82 + 0.13 * float((id * 5) % 2)
-	return Color.from_hsv(hue, sat, val)
+		city.population = nation.population * (0.08 if city.is_capital else 0.04)
 
 
 func _shuffle(arr: Array) -> void:

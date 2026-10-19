@@ -30,6 +30,10 @@ extends Resource
 @export_range(0, 2000) var lifespan: int = 70
 ## Потребность в еде (0 — не нуждаются).
 @export_range(0.0, 2.0) var food_need: float = 1.0
+## Сколько клеток территории приходится на один город (чем меньше, тем гуще города).
+@export_range(10, 400) var cells_per_city: int = 70
+## Доля населения, живущая в городах.
+@export_range(0.0, 0.6) var urban_share: float = 0.15
 
 @export_group("Дипломатия")
 ## Отношение к другим расам: id расы → -1 (вражда) .. +1 (дружба). Нет в списке — нейтралитет.
@@ -58,6 +62,8 @@ extends Resource
 @export var connector_vowels: String = "аоу"
 @export_range(0.0, 1.0) var middle_chance: float = 0.4
 
+## Порядковый номер расы (назначает RaceDB); хранится в World.cell_race.
+var index := -1
 ## Сродство по индексу биома (кэш, строится RaceDB при загрузке).
 var affinity_by_biome := PackedFloat32Array()
 

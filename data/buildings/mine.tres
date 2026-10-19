@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"mine"
+display_name = "Шахта"
+description = "Руда и немного золота из недр гор и холмов."
+cost = Dictionary[StringName, float]({&"wood": 30.0, &"gold": 30.0})
+min_population = 1500.0
+requires_biomes = Array[StringName]([&"hills", &"mountains"])
+production = Dictionary[StringName, float]({&"metal": 5.0, &"gold": 2.0})

@@ -1,10 +1,19 @@
 extends CanvasLayer
-## Интерфейс: панель генерации мира, режимы карты, легенда, карточка
-## выбранного государства и информация о клетке под курсором.
+## Интерфейс: управление временем, панель генерации мира, режимы карты,
+## легенда, летопись, карточка выбранного государства и информация о клетке.
 ## Общается с остальной игрой только через EventBus.
 
-## Сколько государств показывать в легенде политической карты.
-const LEGEND_NATIONS := 12
+## Максимальная высота списка легенды (доля высоты экрана); дальше — прокрутка.
+const LEGEND_MAX_HEIGHT := 0.55
+## Сколько последних записей летописи показывать в ленте.
+const FEED_LINES := 7
+## Как часто (мс) обновлять карточку и легенду во время симуляции.
+const PANEL_REFRESH_MS := 300
+const LEGEND_REFRESH_MS := 1000
+const CHRONICLE_COLORS := {
+	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0",
+	&"ruler": "#d6b3ff", &"famine": "#ff9a7a",
+}
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
 @onready var _toggle_gen: Button = %ToggleGenButton
@@ -26,12 +35,23 @@ const LEGEND_NATIONS := 12
 @onready var _status: Label = %StatusLabel
 @onready var _legend: PanelContainer = %Legend
 @onready var _legend_box: VBoxContainer = %LegendBox
+@onready var _legend_title: Label = %LegendTitle
+@onready var _legend_scroll: ScrollContainer = %LegendScroll
 @onready var _cell_info: Label = %CellInfo
 @onready var _nation_panel: NationPanel = %NationPanel
+@onready var _time_controls: HBoxContainer = %TimeControls
+@onready var _year_label: Label = %YearLabel
+@onready var _toggle_chronicle: Button = %ToggleChronicleButton
+@onready var _chronicle_feed: PanelContainer = %ChronicleFeed
+@onready var _chronicle_text: RichTextLabel = %ChronicleText
 
 var _mode := MapMode.POLITICAL
 var _race_checks: Dictionary[StringName, CheckBox] = {}
 var _mode_button_list: Array[Button] = []
+var _speed_buttons: Array[Button] = []
+var _chronicle_shown := -1
+var _panel_refresh_ms := 0
+var _legend_refresh_ms := 0
 
 
 func _ready() -> void:
@@ -42,8 +62,10 @@ func _ready() -> void:
 
 	_build_mode_buttons()
 	_build_race_checks()
+	_build_time_controls()
 
 	_toggle_gen.toggled.connect(func(on: bool) -> void: _gen_panel.visible = on)
+	_toggle_chronicle.toggled.connect(func(on: bool) -> void: _chronicle_feed.visible = on)
 	_land_slider.value_changed.connect(func(v: float) -> void: _land_value.text = "%d%%" % v)
 	_river_slider.value_changed.connect(func(v: float) -> void: _river_value.text = "%d%%" % v)
 	_climate_slider.value_changed.connect(func(v: float) -> void: _climate_value.text = "%+d" % v if v != 0 else "0")
@@ -59,6 +81,8 @@ func _ready() -> void:
 	EventBus.world_generated.connect(_on_world_generated)
 	EventBus.cell_hovered.connect(_on_cell_hovered)
 	EventBus.nation_selected.connect(_on_nation_selected)
+	EventBus.year_passed.connect(_on_year_passed)
+	EventBus.speed_changed.connect(_on_speed_changed)
 	EventBus.map_mode_changed.connect(func(mode: int) -> void:
 		_mode = mode
 		# button_pressed шлёт только toggled (не pressed), а ButtonGroup снимет остальные кнопки.
@@ -73,6 +97,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if key.keycode == KEY_ESCAPE:
 		EventBus.nation_selected.emit(-1)
+	elif key.keycode == KEY_SPACE:
+		WorldState.toggle_pause()
 	# 1..6 — режимы карты.
 	elif key.keycode >= KEY_1 and key.keycode < KEY_1 + MapMode.NAMES.size():
 		EventBus.map_mode_changed.emit(key.keycode - KEY_1)
@@ -93,6 +119,60 @@ func _build_mode_buttons() -> void:
 		_mode_button_list.append(b)
 
 
+func _build_time_controls() -> void:
+	var group := ButtonGroup.new()
+	for i in WorldState.SPEEDS.size():
+		var b := Button.new()
+		b.text = WorldState.SPEED_NAMES[i]
+		b.tooltip_text = "Пауза / продолжить — Пробел" if i == 0 else "%s лет в секунду" % str(WorldState.SPEEDS[i] * WorldState.YEARS_PER_SECOND)
+		b.toggle_mode = true
+		b.button_group = group
+		b.focus_mode = Control.FOCUS_NONE
+		b.button_pressed = i == WorldState.speed_index
+		b.pressed.connect(WorldState.set_speed.bind(i))
+		_time_controls.add_child(b)
+		_speed_buttons.append(b)
+	var step := Button.new()
+	step.text = "+1 год"
+	step.tooltip_text = "Прожить один год"
+	step.focus_mode = Control.FOCUS_NONE
+	step.pressed.connect(func() -> void:
+		WorldState.set_speed(0)
+		WorldState.step_once())
+	_time_controls.add_child(step)
+
+
+func _on_speed_changed(index: int) -> void:
+	_speed_buttons[index].button_pressed = true
+
+
+func _on_year_passed(year: int) -> void:
+	_year_label.text = "Год %d" % year
+	_refresh_chronicle()
+	var now := Time.get_ticks_msec()
+	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
+		_panel_refresh_ms = now
+		_nation_panel.refresh(WorldState.world)
+	if (_mode == MapMode.POLITICAL or _mode == MapMode.RACES) and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+		_legend_refresh_ms = now
+		_rebuild_legend()
+
+
+## Последние записи летописи (полная летопись с фильтрами — этап 5).
+func _refresh_chronicle() -> void:
+	var world := WorldState.world
+	if world == null or world.chronicle_total == _chronicle_shown:
+		return
+	_chronicle_shown = world.chronicle_total
+	var lines: Array[String] = []
+	var entries := world.chronicle.slice(maxi(0, world.chronicle.size() - FEED_LINES))
+	entries.reverse()
+	for e in entries:
+		var color: String = CHRONICLE_COLORS.get(e.kind, "#dddddd")
+		lines.append("[color=#8a90a0]%d[/color]  [color=%s]%s[/color]" % [e.year, color, e.text])
+	_chronicle_text.text = "\n".join(lines)
+
+
 func _build_race_checks() -> void:
 	for race in RaceDB.all():
 		var cb := CheckBox.new()
@@ -110,25 +190,26 @@ func _build_race_checks() -> void:
 # ---------------------------------------------------------------------------
 
 func _rebuild_legend() -> void:
+	var scroll := _legend_scroll.scroll_vertical
 	for child in _legend_box.get_children():
 		_legend_box.remove_child(child)
 		child.queue_free()
 	var world := WorldState.world
+	_legend_title.text = ""
 	match _mode:
 		MapMode.POLITICAL:
-			_legend_title("Государства")
 			if world != null:
 				var nations: Array[Nation] = []
 				for n in world.nations:
 					if n.alive:
 						nations.append(n)
+				# Крупнейшие — сверху; список целиком, с прокруткой.
 				nations.sort_custom(func(a: Nation, b: Nation) -> bool: return a.cell_count > b.cell_count)
-				for nation in nations.slice(0, LEGEND_NATIONS):
+				_legend_title.text = "Государства (%d)" % nations.size()
+				for nation in nations:
 					_legend_nation_row(nation)
-				if nations.size() > LEGEND_NATIONS:
-					_legend_text("… и ещё %d" % (nations.size() - LEGEND_NATIONS))
 		MapMode.RACES:
-			_legend_title("Расы")
+			_legend_title.text = "Расы"
 			var counts := {}
 			if world != null:
 				for nation in world.nations:
@@ -137,24 +218,22 @@ func _rebuild_legend() -> void:
 			for race in RaceDB.all():
 				_legend_row(race.color, race.icon, "%s — %d" % [race.display_name, counts.get(race.id, 0)], race.description)
 		MapMode.BIOMES:
-			_legend_title("Биомы")
+			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():
 				_legend_row(def.color, null, def.display_name, "")
 	_legend.visible = _legend_box.get_child_count() > 0 and not _nation_panel.visible
+	_fit_legend_scroll.call_deferred(scroll)
 
 
-func _legend_title(text: String) -> void:
-	var title := Label.new()
-	title.text = text
-	_legend_box.add_child(title)
-
-
-func _legend_text(text: String) -> void:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", Color(0.7, 0.74, 0.8))
-	_legend_box.add_child(label)
+## Высота прокрутки = высоте содержимого, но не больше доли экрана.
+func _fit_legend_scroll(scroll: int) -> void:
+	var content := _legend_box.get_combined_minimum_size()
+	var max_h := get_viewport().get_visible_rect().size.y * LEGEND_MAX_HEIGHT
+	_legend_scroll.custom_minimum_size = Vector2(content.x + 12.0, minf(content.y, max_h))
+	_legend_scroll.scroll_vertical = scroll
+	# Схлопываем панель в угол — с grow = BEGIN она вырастет вверх-влево ровно под содержимое.
+	_legend.offset_left = _legend.offset_right
+	_legend.offset_top = _legend.offset_bottom
 
 
 func _legend_row(color: Color, icon: Texture2D, text: String, tooltip: String) -> HBoxContainer:
@@ -263,6 +342,9 @@ func _on_world_generated(world: World, elapsed_ms: int) -> void:
 	_status.text = "Мир %d×%d: %d государств, %d городов. Создан за %.2f с" % [
 		world.map.width, world.map.height, world.nations.size(), world.cities.size(), elapsed_ms / 1000.0]
 	_nation_panel.hide()
+	_year_label.text = "Год %d" % world.year
+	_chronicle_shown = -1
+	_refresh_chronicle()
 	_rebuild_legend()
 
 
@@ -286,11 +368,14 @@ func _on_cell_hovered(cell: int) -> void:
 	var parts: Array[String] = []
 	var city := world.city_at(cell)
 	if city != null:
-		parts.append(("★ " if city.is_capital else "● ") + city.name)
+		parts.append("%s%s (%s жит.)" % ["★ " if city.is_capital else "● ", city.name, NationPanel.fmt(city.population)])
 	var nation := world.nation_at(cell)
 	if nation != null:
 		parts.append("%s (%s)" % [nation.name, nation.race.display_name])
 	parts.append(BiomeDB.get_def(map.biome[cell]).display_name)
+	var dep := world.deposit_at(cell)
+	if dep != null:
+		parts.append("месторождение: " + dep.display_name)
 	if map.is_land(cell):
 		parts.append("%d м" % roundi(map.altitude_meters(cell)))
 	else:

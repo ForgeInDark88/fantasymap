@@ -13,17 +13,12 @@ static func ensure_loaded() -> void:
 	if not _races.is_empty():
 		return
 	BiomeDB.ensure_loaded()
-	for file_name in _resource_files(TRAITS_DIR):
-		var t := load(TRAITS_DIR + file_name) as TraitDef
-		if t == null:
-			push_error("RaceDB: %s не является TraitDef" % file_name)
-			continue
+	for res in DataLoader.load_dir(TRAITS_DIR, TraitDef):
+		var t := res as TraitDef
 		_traits[t.id] = t
-	for file_name in _resource_files(RACES_DIR):
-		var race := load(RACES_DIR + file_name) as RaceDef
-		if race == null:
-			push_error("RaceDB: %s не является RaceDef" % file_name)
-			continue
+	for res in DataLoader.load_dir(RACES_DIR, RaceDef):
+		var race := res as RaceDef
+		race.index = _races.size()
 		race.build_cache()
 		for t in race.traits:
 			if not _traits.has(t):
@@ -39,20 +34,20 @@ static func all() -> Array[RaceDef]:
 	return _races
 
 
+static func count() -> int:
+	ensure_loaded()
+	return _races.size()
+
+
 static func get_race(id: StringName) -> RaceDef:
 	ensure_loaded()
 	return _by_id.get(id)
 
 
+static func by_index(index: int) -> RaceDef:
+	return _races[index]
+
+
 static func get_trait(id: StringName) -> TraitDef:
 	ensure_loaded()
 	return _traits.get(id)
-
-
-static func _resource_files(dir: String) -> PackedStringArray:
-	var result := PackedStringArray()
-	for file_name in ResourceLoader.list_directory(dir):
-		if file_name.ends_with(".tres") or file_name.ends_with(".res"):
-			result.append(file_name)
-	result.sort()  # стабильный порядок → детерминированная генерация
-	return result

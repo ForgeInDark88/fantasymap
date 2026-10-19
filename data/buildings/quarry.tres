@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"quarry"
+display_name = "Каменоломня"
+description = "Добыча камня в холмах и горах."
+cost = Dictionary[StringName, float]({&"wood": 20.0, &"gold": 20.0})
+requires_biomes = Array[StringName]([&"hills", &"mountains", &"desert"])
+production = Dictionary[StringName, float]({&"stone": 5.0})

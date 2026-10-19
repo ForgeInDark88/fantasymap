@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"necropolis"
+display_name = "Некрополь"
+description = "Город мёртвых пополняет легионы нежити."
+notable = true
+cost = Dictionary[StringName, float]({&"stone": 60.0, &"gold": 30.0})
+min_population = 1500.0
+required_traits = Array[StringName]([&"raise_dead"])
+army_bonus = 0.25

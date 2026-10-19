@@ -19,3 +19,23 @@ extends Resource
 @export_range(0.5, 10.0) var move_cost: float = 1.0
 ## Насколько клетка пригодна для поселений (0 = непригодна).
 @export_range(0.0, 1.0) var habitability: float = 0.5
+
+@export_group("Добыча в год")
+@export var wood_yield: float = 0.0
+@export var stone_yield: float = 0.0
+@export var metal_yield: float = 0.0
+@export var gold_yield: float = 0.0
+
+
+## Добыча ресурса goods (индекс Goods) с клетки этого биома без месторождений.
+func yield_of(goods: int) -> float:
+	match goods:
+		Goods.WOOD:
+			return wood_yield
+		Goods.STONE:
+			return stone_yield
+		Goods.METAL:
+			return metal_yield
+		Goods.GOLD:
+			return gold_yield
+	return 0.0
