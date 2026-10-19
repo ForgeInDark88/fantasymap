@@ -132,6 +132,17 @@ func generate(world: World) -> Array[Region]:
 	return _compact(regions, label)
 
 
+## Регионы по готовой разметке world.region_of (при загрузке сохранения).
+func rebuild(world: World, count: int) -> Array[Region]:
+	_world = world
+	_map = world.map
+	var label := world.region_of.duplicate()
+	var regions := _build_regions(label, count)
+	# id регионов сохраняются как есть (даже пустые — ушедшие под воду), чтобы данные совпали.
+	_finalize(regions, label)
+	return regions
+
+
 ## Целая стоимость шага: рельеф + пересечение реки + немного шума для «живых» границ.
 func _step_cost(from: int, to: int, rng: RandomNumberGenerator) -> int:
 	var cost := 4
@@ -197,10 +208,18 @@ func _compact(regions: Array[Region], label: PackedInt32Array) -> Array[Region]:
 		remap[region.id] = result.size()
 		region.id = result.size()
 		result.append(region)
-	var w := _map.width
 	for i in label.size():
 		label[i] = remap[label[i]] if label[i] >= 0 else -1
+	_finalize(result, label)
+	return result
+
+
+## Центры, соседи и побережье регионов; записывает разметку в мир.
+func _finalize(result: Array[Region], label: PackedInt32Array) -> void:
+	var w := _map.width
 	for region in result:
+		if region.cells.is_empty():
+			continue
 		var sx := 0.0
 		var sy := 0.0
 		var nbs := {}
@@ -223,4 +242,3 @@ func _compact(regions: Array[Region], label: PackedInt32Array) -> Array[Region]:
 				region.center = c
 		region.neighbors = PackedInt32Array(nbs.keys())
 	_world.region_of = label
-	return result

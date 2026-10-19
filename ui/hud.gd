@@ -57,6 +57,7 @@ var _speed_buttons: Array[Button] = []
 var _left_panels: Dictionary = {}
 var _clicked_cell := -1
 var _fate_panel: FatePanel
+var _saves_panel := SavesPanel.new()
 var _fate_button: Button
 var _chronicle_shown := -1
 var _panel_refresh_ms := 0
@@ -109,6 +110,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		EventBus.nation_selected.emit(-1)
 	elif key.keycode == KEY_SPACE:
 		WorldState.toggle_pause()
+	elif key.keycode == KEY_F5:
+		_saves_panel.save_game(SavesPanel.QUICK_SAVE)
+		_status.text = "Быстрое сохранение: " + WorldState.world.date_text() if WorldState.world != null else ""
+	elif key.keycode == KEY_F9:
+		_saves_panel.load_game(SavesPanel.QUICK_SAVE)
 	# 1..8 — режимы карты.
 	elif key.keycode >= KEY_1 and key.keycode < KEY_1 + MapMode.NAMES.size():
 		EventBus.map_mode_changed.emit(key.keycode - KEY_1)
@@ -167,6 +173,7 @@ func _build_left_panels() -> void:
 		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
 		["Статистика", "Графики по эпохам", StatsPanel.new()],
 		["Герои", "Герои мира", HeroesPanel.new()],
+		["Сохранения", "Сохранить или загрузить мир (F5 / F9)", _saves_panel],
 	]
 	var root: Control = _gen_panel.get_parent()
 	for d in defs:
@@ -424,8 +431,9 @@ func _on_world_generated(world: World, elapsed_ms: int) -> void:
 	_river_slider.value = roundf(s.river_density * 100.0)
 	_climate_slider.value = roundf(s.temperature_bias * 100.0)
 	_nations_spin.value = s.nation_count
-	_status.text = "Мир %d×%d: %d государств, %d городов. Создан за %.2f с" % [
-		world.map.width, world.map.height, world.nations.size(), world.cities.size(), elapsed_ms / 1000.0]
+	_status.text = "Мир %d×%d: %d государств, %d городов. %s за %.2f с" % [
+		world.map.width, world.map.height, world.nations.size(), world.cities.size(),
+		"Создан" if world.year <= 0 else "Загружен (%s)" % world.date_text(), elapsed_ms / 1000.0]
 	_nation_panel.hide()
 	_year_label.text = world.date_text()
 	_chronicle_shown = -1

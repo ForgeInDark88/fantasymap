@@ -37,6 +37,7 @@ static func meet(world: World, a: Hero, b: Hero, where: String) -> void:
 	var likeness := 1.0 - absf(a.karma - b.karma)  # 1 — одна натура, -1 — противоположные
 	var race := a.race.relation_to(b.race)
 	var delta := (likeness - 0.4) * 0.25 + race * 0.1 + rng.randf_range(-0.1, 0.1)
+	var before := a.bond(b.id)
 	a.add_bond(b, delta)
 	var bond := a.bond(b.id)
 	var ids := _ids(a, b)
@@ -60,10 +61,10 @@ static func meet(world: World, a: Hero, b: Hero, where: String) -> void:
 		world.log_event(&"hero", "Герои %s и %s сочетались браком в регионе %s." % [a.display_name(), b.display_name(), where], ids)
 		return
 	if bond > 0.5:
-		_friendship(world, a, b, where, ids)
+		_friendship(world, a, b, where, ids, before <= 0.5)
 		return
 	if bond < -0.4:
-		if rng.randf() < 0.3:
+		if before >= -0.4:
 			world.log_event(&"hero", QUARRELS[rng.randi_range(0, QUARRELS.size() - 1)] % [a.display_name(), b.display_name(), where], ids)
 		return
 	if delta > 0.05 and rng.randf() < 0.15:
@@ -72,9 +73,9 @@ static func meet(world: World, a: Hero, b: Hero, where: String) -> void:
 	b.add_xp(world, 0.3)
 
 
-static func _friendship(world: World, a: Hero, b: Hero, where: String, ids: PackedInt32Array) -> void:
+static func _friendship(world: World, a: Hero, b: Hero, where: String, ids: PackedInt32Array, new_friends: bool) -> void:
 	var rng := world.rng
-	if not a.deeds.any(func(d: String) -> bool: return d.contains("дружбе с героем " + b.name)):
+	if new_friends:
 		a.add_deed(world, "поклялся в дружбе с героем " + b.name)
 		b.add_deed(world, "поклялся в дружбе с героем " + a.name)
 		world.log_event(&"hero", "%s и %s поклялись в вечной дружбе в регионе %s." % [a.display_name(), b.display_name(), where], ids)

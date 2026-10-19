@@ -62,10 +62,17 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Странствующие (живые и не на троне) герои — чтобы не перебирать ежедневно всех павших.
+var _wandering: Array[Hero] = []
+## Те же герои, разложенные по «своему» дню месяца (id % 30); пересобирается при изменениях.
+var _by_day: Array = []
+var _by_day_dirty := true
 ## Источники силы, порталы, пустые троны, чудеса света.
 var landmarks: Array[Landmark] = []
 ## Павшие герои, ждущие суда Судьбы (id героев).
 var fate_queue := PackedInt32Array()
+## Отложенные события (эпидемии, пришедшие от соседей): [nation_id, event_id].
+var pending_events: Array = []
 ## Снимки статистики раз в HISTORY_STEP лет: {year, races: PackedFloat32Array, nations: {id: [население, клетки]}}.
 var history: Array[Dictionary] = []
 const HISTORY_STEP := 5
@@ -87,7 +94,8 @@ static func create(s: MapSettings) -> World:
 	return world
 
 
-func _init(world_map: WorldMap) -> void:
+## generate = false — пустой мир для загрузки сохранения (без месторождений и регионов).
+func _init(world_map: WorldMap, generate: bool = true) -> void:
 	map = world_map
 	settings = world_map.settings
 	rng.seed = hash(str(settings.world_seed) + ":world")
@@ -107,15 +115,38 @@ func _init(world_map: WorldMap) -> void:
 	for i in n:
 		owner_texels[i * 4 + 2] = 255 if map.is_land(i) else 0
 		owner_texels[i * 4 + 3] = 255
+	deposit.resize(n)
+	if not generate:
+		return
 	_place_deposits()
 	_compute_cell_yields()
 	regions = RegionGenerator.new().generate(self)
+	_fill_region_texels()
+
+
+func _fill_region_texels() -> void:
+	var n := map.cell_count()
 	region_texels.resize(n * 4)
 	for i in n:
 		var v := region_of[i] + 1
 		region_texels[i * 4] = v & 0xff
 		region_texels[i * 4 + 1] = (v >> 8) & 0xff
 		region_texels[i * 4 + 3] = 255
+
+
+## Восстановление после загрузки: добыча по месторождениям и регионы по region_of.
+func restore_geography(region_count: int) -> void:
+	_compute_cell_yields()
+	regions = RegionGenerator.new().rebuild(self, region_count)
+	_fill_region_texels()
+
+
+## Восстановление города после загрузки (без генерации имени и учёта владельца).
+func restore_city(city: City) -> void:
+	cities.append(city)
+	if city.alive:
+		city_cell[city.cell] = city.id
+		_mark_city_area(city.cell, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +357,45 @@ func active_landmarks(kind: StringName) -> Array[Landmark]:
 
 
 ## Сколько источников силы контролирует государство.
+## Живые герои не на троне. Павшие и воцарившиеся отсеиваются при обращении.
+func wandering_heroes() -> Array[Hero]:
+	var k := 0
+	for h in _wandering:
+		if h.alive and not h.is_ruler:
+			_wandering[k] = h
+			k += 1
+	if k != _wandering.size():
+		_wandering.resize(k)
+		_by_day_dirty = true
+	return _wandering
+
+
+## Странствующие герои, действующие в этот день месяца (могут попасться павшие —
+## проверяйте alive).
+func heroes_acting_on(day_of_month: int) -> Array:
+	if _by_day_dirty:
+		var list := wandering_heroes()
+		_by_day_dirty = false
+		_by_day.resize(Simulation.DAYS)
+		for d in Simulation.DAYS:
+			_by_day[d] = []
+		for h in list:
+			_by_day[h.id % Simulation.DAYS].append(h)
+	return _by_day[day_of_month]
+
+
+## Герой (снова) странствует: появился или вернулся с того света.
+func add_wandering(hero: Hero) -> void:
+	if _wandering.has(hero):
+		return
+	# Порядок по id — тот же, что после загрузки сохранения (детерминизм).
+	var i := _wandering.size()
+	while i > 0 and _wandering[i - 1].id > hero.id:
+		i -= 1
+	_wandering.insert(i, hero)
+	_by_day_dirty = true
+
+
 func sources_of(nation_id: int) -> int:
 	var count := 0
 	for lm in landmarks:
@@ -636,7 +706,6 @@ func deposit_at(cell: int) -> DepositDef:
 
 func _place_deposits() -> void:
 	var n := map.cell_count()
-	deposit.resize(n)
 	var defs := EconomyDB.deposits()
 	for i in n:
 		if not map.is_land(i):

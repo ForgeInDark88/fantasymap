@@ -34,6 +34,7 @@ static func second_chance(world: World, hero: Hero) -> bool:
 	if cell < 0:
 		return false
 	hero.alive = true
+	world.add_wandering(hero)
 	hero.returns += 1
 	hero.fate = &"returned"
 	hero.cell = cell

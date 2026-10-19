@@ -8,7 +8,7 @@ extends RefCounted
 ## дворфы легко занимают горы, а эльфы почти не выходят из лесов.
 
 ## Множитель скорости экспансии.
-const RATE := 1.0
+const RATE := 1.8
 const DIRS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
 	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1),

@@ -106,6 +106,29 @@ func generate(new_settings: MapSettings) -> void:
 	_task_id = WorkerThreadPool.add_task(_generate_task.bind(settings), false, "World generation")
 
 
+## Сохраняет текущий мир под именем name (user://saves/<name>.json).
+func save_game(save_name: String) -> Error:
+	if world == null or is_generating:
+		return ERR_UNAVAILABLE
+	return SaveSystem.save_world(world, SaveSystem.save_path(save_name))
+
+
+## Загружает мир в фоне; результат — тот же сигнал EventBus.world_generated.
+func load_game(save_name: String) -> bool:
+	var path := SaveSystem.save_path(save_name)
+	if is_generating or not FileAccess.file_exists(path):
+		return false
+	is_generating = true
+	_gen_started_ms = Time.get_ticks_msec()
+	EventBus.generation_started.emit()
+	_task_id = WorkerThreadPool.add_task(_load_task.bind(path), false, "World loading")
+	return true
+
+
+func _load_task(path: String) -> void:
+	_on_generation_finished.call_deferred(SaveSystem.load_world(path))
+
+
 func _generate_task(s: MapSettings) -> void:
 	var result := World.create(s)
 	_on_generation_finished.call_deferred(result)
@@ -114,7 +137,13 @@ func _generate_task(s: MapSettings) -> void:
 func _on_generation_finished(result: World) -> void:
 	WorkerThreadPool.wait_for_task_completion(_task_id)
 	_task_id = -1
-	world = result
 	is_generating = false
+	if result == null:
+		# Загрузка не удалась — остаёмся в прежнем мире.
+		if world != null:
+			EventBus.world_generated.emit(world, 0)
+		return
+	world = result
+	settings = world.settings
 	_day_accum = 0.0
 	EventBus.world_generated.emit(world, Time.get_ticks_msec() - _gen_started_ms)

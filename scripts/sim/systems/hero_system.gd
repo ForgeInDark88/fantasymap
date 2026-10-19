@@ -20,11 +20,8 @@ const MIN_GREAT_LEVEL := 7
 ## Появление героя в регионе государства. Возвращает героя или null (лимит;
 ## force — игнорировать лимит, для панели Бога).
 static func spawn(world: World, nation: Nation, region: Region, force: bool = false) -> Hero:
-	var alive := 0
+	var alive := world.wandering_heroes().size()
 	var nations := 0
-	for h in world.heroes:
-		if h.alive and not h.is_ruler:
-			alive += 1
 	for n in world.nations:
 		if n.alive:
 			nations += 1
@@ -51,6 +48,7 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 	hero.cell = region.cells[rng.randi_range(0, region.cells.size() - 1)]
 	hero.move_in = rng.randi_range(1, 4)
 	world.heroes.append(hero)
+	world.add_wandering(hero)
 	hero.add_deed(world, "объявился в регионе %s" % region.name)
 	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
 		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
@@ -60,13 +58,15 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 
 ## Каждый герой действует раз в месяц — в «свой» день.
 func tick_day(world: World) -> void:
-	var acting: Array[Hero] = []
-	for hero in world.heroes:
-		if hero.alive and not hero.is_ruler and hero.id % Simulation.DAYS == world.day:
-			acting.append(hero)
+	# Сила героев в армиях — раз в месяц (уровни растут медленно).
+	if world.day == 0:
+		_update_power(world)
+	var acting := world.heroes_acting_on(world.day)
 	if acting.is_empty():
 		return
-	for hero in acting:
+	for hero: Hero in acting:
+		if not hero.alive or hero.is_ruler:
+			continue
 		if hero.id % Simulation.MONTHS == world.month:
 			_yearly(world, hero)
 		if not hero.alive:
@@ -80,17 +80,17 @@ func tick_day(world: World) -> void:
 		if hero.goal_cell >= 0 and world.region_of[hero.cell] == world.region_of[hero.goal_cell]:
 			_throne_attempt(world, hero)
 	# Встречи: действующий герой встречает любого героя в своём регионе.
-	for hero in acting:
-		if not hero.alive or hero.cell < 0:
+	var wandering := world.wandering_heroes()
+	var region_of := world.region_of
+	for hero: Hero in acting:
+		if not hero.alive or hero.is_ruler or hero.cell < 0:
 			continue
-		var rid := world.region_of[hero.cell]
-		for other in world.heroes:
-			if other == hero or not other.alive or other.is_ruler or other.cell < 0:
+		var rid := region_of[hero.cell]
+		for other in wandering:
+			if other.cell < 0 or region_of[other.cell] != rid or other == hero or not other.alive or other.is_ruler:
 				continue
-			if acting.has(other) and other.id < hero.id:
+			if other.id % Simulation.DAYS == world.day and other.id < hero.id:
 				continue  # пара уже рассмотрена
-			if world.region_of[other.cell] != rid:
-				continue
 			var where := world.regions[rid].name if rid >= 0 else "диких землях"
 			if world.rng.randf() < _duel_chance(world, hero, other):
 				duel(world, hero, other, where)
@@ -98,7 +98,6 @@ func tick_day(world: World) -> void:
 					break
 			elif world.rng.randf() < 0.5:
 				HeroRelations.meet(world, hero, other, where)
-	_update_power(world)
 
 
 ## Годовые дела героя: возраст, служба, поступки, великие деяния, трон.
@@ -605,9 +604,7 @@ static func duel(world: World, a: Hero, b: Hero, where: String) -> void:
 static func on_battle(world: World, war: War, winner: int) -> void:
 	var rng := world.rng
 	var sides := {1: [], -1: []}
-	for h in world.heroes:
-		if not h.alive or h.is_ruler:
-			continue
+	for h in world.wandering_heroes():
 		for side in [1, -1]:
 			for m in war.members(side):
 				if h.fights_for(m) and not sides[side].has(h):
@@ -630,7 +627,7 @@ static func on_battle(world: World, war: War, winner: int) -> void:
 func _update_power(world: World) -> void:
 	for n in world.nations:
 		n.hero_power = 0.0
-	for h in world.heroes:
+	for h in world.wandering_heroes():
 		if h.alive and not h.is_ruler:
 			if h.nation_id >= 0:
 				world.nations[h.nation_id].hero_power += h.power()

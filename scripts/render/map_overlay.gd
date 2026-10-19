@@ -225,7 +225,7 @@ func _draw_heroes(world: World, zoom: float) -> void:
 	var inv := Vector2.ONE / zoom
 	var view := _visible_rect()
 	var scale := clampf(zoom, 0.7, 1.2)
-	for hero in world.heroes:
+	for hero in world.wandering_heroes():
 		if not hero.alive or hero.is_ruler or hero.cell < 0:
 			continue
 		var pos := renderer.cell_center(hero.cell)
