@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://ui/nation_panel.tscn" id="2_nation_panel"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -195,6 +196,27 @@ layout_mode = 2
 text = "0"
 horizontal_alignment = 2
 
+[node name="NationsLabel" type="Label" parent="Root/GenPanel/VBox/Grid"]
+layout_mode = 2
+text = "Государства"
+
+[node name="NationsSpin" type="SpinBox" parent="Root/GenPanel/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Сколько государств появляется в начале мира"
+max_value = 40.0
+value = 14.0
+
+[node name="RacesLabel" type="Label" parent="Root/GenPanel/VBox"]
+layout_mode = 2
+text = "Расы"
+
+[node name="RacesGrid" type="GridContainer" parent="Root/GenPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
 [node name="RegenButton" type="Button" parent="Root/GenPanel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -227,7 +249,6 @@ offset_right = -8.0
 offset_bottom = -8.0
 grow_horizontal = 0
 grow_vertical = 0
-mouse_filter = 2
 
 [node name="LegendBox" type="VBoxContainer" parent="Root/Legend"]
 unique_name_in_owner = true
@@ -250,3 +271,16 @@ mouse_filter = 2
 unique_name_in_owner = true
 layout_mode = 2
 text = "Наведите курсор на карту"
+
+[node name="NationPanel" parent="Root" instance=ExtResource("2_nation_panel")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -328.0
+offset_top = 48.0
+offset_right = -8.0
+offset_bottom = 48.0
+grow_horizontal = 0

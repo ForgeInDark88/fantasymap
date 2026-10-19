@@ -11,7 +11,7 @@ signal generate_requested(settings: MapSettings)
 @warning_ignore("unused_signal")
 signal generation_started
 @warning_ignore("unused_signal")
-signal world_generated(map: WorldMap, elapsed_ms: int)
+signal world_generated(world: World, elapsed_ms: int)
 
 # --- Отображение ---
 @warning_ignore("unused_signal")
@@ -22,3 +22,7 @@ signal map_mode_changed(mode: int)
 signal cell_hovered(cell: int)
 @warning_ignore("unused_signal")
 signal cell_clicked(cell: int)
+
+# --- Выбор объектов (-1 = снять выбор) ---
+@warning_ignore("unused_signal")
+signal nation_selected(nation_id: int)
