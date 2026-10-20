@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/blood_totem.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"blood_totem"
+display_name = "Кровавый Тотем"
+description = "Сила — единственная правда. Кровь врагов радует тотемных духов."
+symbol = "ᚦ"
+icon = ExtResource("2_icon")
+color = Color(0.75, 0.15, 0.15, 1)
+races = Dictionary[StringName, float]({&"orcs": 1.0, &"goblins": 0.35})
+dogmas = PackedStringArray("Право сильного", "Жертвы перед битвой")
+effects = Dictionary[StringName, float]({&"army_mult": 1.12, &"science_mult": 0.88, &"aggression_mult": 1.2})
+missionary = 0.35
+tolerance = 0.3
+zeal = 0.8
+magic = 0.0
+undead = -0.2
+demons = -0.4

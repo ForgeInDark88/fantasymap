@@ -34,7 +34,7 @@ func _run() -> void:
 		await bus.year_passed
 	ws.call("set_speed", 0)
 	await _frames(3)
-	for mode in 8:
+	for mode in MapMode.NAMES.size():
 		bus.map_mode_changed.emit(mode)
 		await _frames(2)
 		_shot(out_dir, "mode%d.png" % mode)

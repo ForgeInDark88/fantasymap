@@ -98,6 +98,17 @@ func _consider_war(world: World, nation: Nation, target: Nation, op: float) -> v
 		&"revenge": d.grudge(nation.id, target.id) * 0.8,
 		&"reconquest": 0.25 if d.has_claims_against(world, nation.id, target.id) else 0.0,
 	}
+	# Вера: священная война против иноверцев, крестовый поход — против нежити и демонов.
+	if nation.state_religion >= 0 and target.state_religion >= 0 and nation.state_religion != target.state_religion:
+		var ours := world.religions[nation.state_religion]
+		var theirs := world.religions[target.state_religion]
+		var theocracy := 1.6 if nation.government != null and nation.government.id == &"theocracy" else 1.0
+		var holy := ours.hostility(theirs) * ours.zeal * 0.2 * theocracy
+		if theirs.def != null and (theirs.def.id == &"eternal_night" or theirs.def.id == &"abyss") \
+				and minf(ours.undead, ours.demons) <= -0.8:
+			causes[&"crusade"] = holy + 0.1
+		else:
+			causes[&"holy"] = holy
 	var desire := 0.3 * (0.5 - op)
 	var main_cause: StringName = &"expansion"
 	var best := 0.0

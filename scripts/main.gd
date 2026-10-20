@@ -86,6 +86,12 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.spawn_hero(world, cell)
 		&"source":
 			HeroSystem.power_source(world, null, cell)
+		&"religion":
+			if world.owner[cell] >= 0:
+				ReligionSystem.found_religion(world, world.nations[world.owner[cell]])
+		&"heresy":
+			if world.owner[cell] >= 0:
+				ReligionSystem.start_heresy(world, world.nations[world.owner[cell]])
 		&"portal":
 			var demons := HeroSystem.open_portal(world, cell, null)
 			if demons != null:

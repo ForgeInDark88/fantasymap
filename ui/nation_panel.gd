@@ -144,6 +144,8 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 		lines.append("[color=#e8d9a0][b]Регион %s[/b][/color] — %d кл., народ: %s, %s жит.; лояльность %d%%, недовольство %d%%" % [
 			region.name, region.cells.size(), people_name, fmt(world.region_population(region, nation.id)),
 			roundi(region.loyalty * 100.0), roundi(minf(region.unrest, 1.0) * 100.0)])
+		if not region.faith.is_empty():
+			lines.append("Вера: " + faith_text(world, region.faith, 3))
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")
@@ -204,6 +206,25 @@ func _append_diplomacy(world: World, nation: Nation, lines: Array[String]) -> vo
 			if region.unrest >= 0.5:
 				unruly += 1
 	lines.append("[b]Регионов:[/b] %d%s" % [regions, (" · [color=#ffb04a]неспокойных: %d[/color]" % unruly) if unruly > 0 else ""])
+	if nation.state_religion >= 0:
+		var faith := world.religions[nation.state_religion]
+		lines.append("[b]Вера:[/b] [color=#%s]%s %s[/color]%s — единство %d%%; догматы: %s" % [faith.color.to_html(false), faith.symbol,
+			faith.name, " (ересь)" if faith.is_heresy() else "", roundi(nation.faith_unity * 100.0), ", ".join(faith.dogmas).to_lower()])
+		var shares := ReligionSystem.nation_shares(world, nation)
+		shares.erase(nation.state_religion)
+		if not shares.is_empty():
+			lines.append("Иноверцы: " + faith_text(world, shares, 4))
+
+
+## «☀ Церковь Света 70%, ☾ Вечная Ночь 20%» — крупнейшие доли вер.
+static func faith_text(world: World, faith: Dictionary, top: int) -> String:
+	var ids := faith.keys()
+	ids.sort_custom(func(a: int, b: int) -> bool: return faith[a] > faith[b])
+	var parts: Array[String] = []
+	for id in ids.slice(0, top):
+		var r := world.religions[id]
+		parts.append("[color=#%s]%s %s[/color] %d%%" % [r.color.to_html(false), r.symbol, r.name, roundi(faith[id] * 100.0)])
+	return ", ".join(parts)
 
 
 static func _stability_text(v: float) -> String:

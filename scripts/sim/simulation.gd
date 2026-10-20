@@ -25,6 +25,7 @@ var diplomacy := DiplomacySystem.new()
 var wars := WarSystem.new()
 var heroes := HeroSystem.new()
 var enclaves := EnclaveSystem.new()
+var religion := ReligionSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -66,6 +67,7 @@ func step_day(world: World) -> void:
 		_t("rulers", rulers.tick.bind(world, nation))
 		_t("unrest", unrest.tick.bind(world, nation))
 		_t("events", events.tick.bind(world, nation))
+		_t("religion", religion.tick.bind(world, nation))
 		_t("diplomacy", diplomacy.tick_nation.bind(world, nation))
 		_t("enclaves", enclaves.tick.bind(world, nation))
 	_t("wars", wars.tick_day.bind(world))
@@ -77,6 +79,7 @@ func step_day(world: World) -> void:
 func _new_year(world: World) -> void:
 	events.flush_pending(world)
 	diplomacy.tick_year(world)
+	religion.tick_year(world)
 	_portals(world)
 	world.record_history()
 

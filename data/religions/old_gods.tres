@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/old_gods.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"old_gods"
+display_name = "Старые боги"
+description = "Древние духи рек, гор и очага — терпимая вера простого люда."
+symbol = "ᛟ"
+icon = ExtResource("2_icon")
+color = Color(0.55, 0.75, 0.4, 1)
+races = Dictionary[StringName, float]({&"humans": 0.7, &"halflings": 0.6, &"orcs": 0.1})
+dogmas = PackedStringArray("Жертвы духам урожая", "Почитание рощ")
+effects = Dictionary[StringName, float]({&"growth_mult": 1.06})
+missionary = 0.25
+tolerance = 0.85
+zeal = 0.15
+magic = 0.3
+undead = -0.3
+demons = -0.8

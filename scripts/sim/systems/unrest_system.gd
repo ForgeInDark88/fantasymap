@@ -65,13 +65,21 @@ func _loyalty(world: World, nation: Nation, region: Region, is_capital: bool, ca
 		loyalty -= 0.25 * (1.0 - since / 40.0)
 	if nation.overlord >= 0:
 		loyalty -= 0.05
+	# Иноверцы: тем недовольнее, чем нетерпимее государственная вера.
+	if nation.state_religion >= 0 and not region.faith.is_empty():
+		var faith := world.religions[nation.state_religion]
+		loyalty -= (1.0 - region.faith.get(nation.state_religion, 0.0)) * 0.12 * (1.1 - faith.tolerance)
 	return clampf(loyalty, 0.0, 1.0)
 
 
 func _revolt(world: World, nation: Nation, region: Region, capital_region: int) -> void:
 	var people := world.region_majority_race(region, nation.id)
 	var foreign := people != World.NO_RACE and people != nation.race.index
-	if not foreign and nation.stability >= 0.35:
+	# Иноверцы (своего народа) поднимают восстание за веру.
+	var other_faith := region.main_faith()
+	var religious := not foreign and other_faith >= 0 and other_faith != nation.state_religion \
+			and region.faith[other_faith] > 0.65 and (nation.stability < 0.5 or world.religions[other_faith].zeal > 0.6)
+	if not foreign and not religious and nation.stability >= 0.35:
 		_suppress(world, nation, region)
 		return
 	# К мятежу примыкают соседние недовольные регионы того же народа.
@@ -84,6 +92,8 @@ func _revolt(world: World, nation: Nation, region: Region, capital_region: int) 
 			if group.has(nb) or nb == capital_region or other.controller() != nation.id or other.unrest < 0.4:
 				continue
 			if world.region_majority_race(other, nation.id) != people:
+				continue
+			if religious and other.main_faith() != other_faith:
 				continue
 			group.append(nb)
 			queue.append(nb)
@@ -99,7 +109,11 @@ func _revolt(world: World, nation: Nation, region: Region, capital_region: int) 
 	if not rebel.alive:
 		return
 	var ids := PackedInt32Array([nation.id, rebel.id])
-	if foreign:
+	if religious:
+		rebel.state_religion = other_faith
+		world.log_event(&"religion", "Восстание за веру в государстве %s: последователи веры «%s» региона %s провозглашают %s." % [
+			nation.short_name, world.religions[other_faith].name, region.name, rebel.name], ids)
+	elif foreign:
 		world.log_event(&"rebellion", "Восстание: %s региона %s сбрасывают власть государства %s и провозглашают %s." % [
 			race.display_name, region.name, nation.short_name, rebel.name], ids)
 	else:
@@ -107,7 +121,7 @@ func _revolt(world: World, nation: Nation, region: Region, capital_region: int) 
 			nation.short_name, rebel.ruler_display(), rebel.name, region.name], ids)
 	# Слабое государство отпускает мятежников без боя, иначе — война.
 	if nation.stability >= 0.2:
-		world.diplomacy.declare_war(world, rebel.id, nation.id, &"independence" if foreign else &"civil")
+		world.diplomacy.declare_war(world, rebel.id, nation.id, &"independence" if foreign else (&"religious" if religious else &"civil"))
 
 
 func _suppress(world: World, nation: Nation, region: Region) -> void:

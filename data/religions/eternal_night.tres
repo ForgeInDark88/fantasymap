@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/eternal_night.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"eternal_night"
+display_name = "Вечная Ночь"
+description = "Смерть — лишь порог. Нежить служит Ночи и несёт её всем живым."
+symbol = "☾"
+icon = ExtResource("2_icon")
+color = Color(0.45, 0.3, 0.6, 1)
+races = Dictionary[StringName, float]({&"undead": 1.0})
+dogmas = PackedStringArray("Нежизнь священна", "Тлен — путь к вечности")
+effects = Dictionary[StringName, float]({&"army_mult": 1.06, &"growth_mult": 0.95, &"aggression_mult": 1.1})
+missionary = 0.45
+tolerance = 0.15
+zeal = 0.7
+magic = 0.8
+undead = 1.0
+demons = 0.0

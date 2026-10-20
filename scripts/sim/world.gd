@@ -62,6 +62,8 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Веры мира: стартовые (по data/religions) и рождённые в истории (ереси, новые веры).
+var religions: Array[Religion] = []
 ## Странствующие (живые и не на троне) герои — чтобы не перебирать ежедневно всех павших.
 var _wandering: Array[Hero] = []
 ## Те же герои, разложенные по «своему» дню месяца (id % 30); пересобирается при изменениях.
@@ -118,10 +120,18 @@ func _init(world_map: WorldMap, generate: bool = true) -> void:
 	deposit.resize(n)
 	if not generate:
 		return
+	init_religions()
 	_place_deposits()
 	_compute_cell_yields()
 	regions = RegionGenerator.new().generate(self)
 	_fill_region_texels()
+
+
+## Стартовые веры — по одной на каждый data/religions/*.tres.
+func init_religions() -> void:
+	religions.clear()
+	for d in ReligionDB.all():
+		religions.append(Religion.from_def(d as ReligionDef, religions.size()))
 
 
 func _fill_region_texels() -> void:
@@ -230,6 +240,8 @@ func _update_region(cell: int, old: int, new: int) -> void:
 		if region.name.is_empty():
 			# Регион называет тот, кто первым его заселил, — на своём языке.
 			region.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(nations[new].race, rng))
+		# Первые поселенцы приносят свою веру.
+		ReligionSystem.ensure_faith(region, nations[new].state_religion)
 		if old >= 0:
 			region.conquered_year = year
 
@@ -302,6 +314,8 @@ func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nati
 	var old_pop := old.population
 	var nation := found_nation(race)
 	nation.tech = old.tech
+	# Отколовшиеся исповедуют веру большинства своих земель.
+	nation.state_religion = ReligionSystem.majority_faith(self, region_ids, old.state_religion)
 	for rid in region_ids:
 		var region := regions[rid]
 		region.unrest = 0.0
@@ -569,6 +583,8 @@ func found_nation(race: RaceDef) -> Nation:
 	nation.government = PoliticsDB.government(StringName(title[2]))
 	new_ruler(nation, true)
 	nation.color = nation_color(nation.id)
+	if not religions.is_empty():
+		nation.state_religion = ReligionSystem.pick_for_race(self, race)
 	return nation
 
 

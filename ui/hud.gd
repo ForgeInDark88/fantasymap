@@ -16,7 +16,7 @@ const CHRONICLE_COLORS := {
 	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b",
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
-	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff",
+	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -115,9 +115,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_status.text = "Быстрое сохранение: " + WorldState.world.date_text() if WorldState.world != null else ""
 	elif key.keycode == KEY_F9:
 		_saves_panel.load_game(SavesPanel.QUICK_SAVE)
-	# 1..8 — режимы карты.
-	elif key.keycode >= KEY_1 and key.keycode < KEY_1 + MapMode.NAMES.size():
-		EventBus.map_mode_changed.emit(key.keycode - KEY_1)
+	# 1–9, 0, −, = — режимы карты.
+	elif MapMode.HOTKEYS.find(key.keycode) >= 0 and MapMode.HOTKEYS.find(key.keycode) < MapMode.NAMES.size():
+		EventBus.map_mode_changed.emit(MapMode.HOTKEYS.find(key.keycode))
 
 
 func _build_mode_buttons() -> void:
@@ -125,7 +125,7 @@ func _build_mode_buttons() -> void:
 	for mode in MapMode.NAMES.size():
 		var b := Button.new()
 		b.text = MapMode.NAMES[mode]
-		b.tooltip_text = "Клавиша %d" % (mode + 1)
+		b.tooltip_text = "Клавиша %s" % MapMode.hotkey_label(mode)
 		b.toggle_mode = true
 		b.button_group = group
 		b.button_pressed = mode == _mode
@@ -310,6 +310,26 @@ func _rebuild_legend() -> void:
 			_legend_row(Color(0.25, 0.55, 0.2), null, "лес — дерево", "")
 			_legend_row(Color(0.65, 0.65, 0.7), null, "камень", "")
 			_legend_row(Color(0.45, 0.55, 0.8), null, "руда в горах", "")
+		MapMode.RELIGION:
+			_legend_title.text = "Религии"
+			if world != null:
+				var regions := {}
+				var states := {}
+				for region in world.regions:
+					var r := region.main_faith()
+					if r >= 0:
+						regions[r] = regions.get(r, 0) + 1
+				for n in world.nations:
+					if n.alive and n.state_religion >= 0:
+						states[n.state_religion] = states.get(n.state_religion, 0) + 1
+				var ids := regions.keys()
+				ids.sort_custom(func(a: int, b: int) -> bool: return regions[a] > regions[b])
+				for id in ids:
+					var faith := world.religions[id]
+					var tip := "%s\nДогматы: %s\nМиссионерство %.0f%%, терпимость %.0f%%, рвение %.0f%%" % [
+						faith.def.description if faith.def != null and not faith.is_heresy() else "Ответвление веры «%s» (%d г.)" % [world.religions[faith.parent].name, faith.founded_year] if faith.is_heresy() else "",
+						", ".join(faith.dogmas), faith.missionary * 100.0, faith.tolerance * 100.0, faith.zeal * 100.0]
+					_legend_row(faith.color, faith.icon(), "%s %s — регионов %d, держав %d" % [faith.symbol, faith.name, regions[id], states.get(id, 0)], tip)
 		MapMode.BIOMES:
 			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():

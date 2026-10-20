@@ -156,6 +156,15 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 	var best_score := -INF
 	var coastal_best := -1
 	var coastal_score := -INF
+	# Регионы с городами проигравших и с трофеями — заранее, без обхода клеток.
+	var city_regions := {}
+	for m in losers:
+		for id in world.nations[m].city_ids:
+			city_regions[world.region_of[world.cities[id].cell]] = true
+	var trophy_regions := {}
+	for lm in world.landmarks:
+		if lm.active and (lm.kind == &"source" or lm.kind == &"portal"):
+			trophy_regions[world.region_of[lm.cell]] = true
 	for m in losers:
 		for rid in world.nations[m].region_counts:
 			var region := world.regions[rid]
@@ -169,14 +178,13 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 			if not front and not coast:
 				continue
 			var score := float(world.nations[m].region_counts[rid]) + world.rng.randf() * 20.0
-			if _region_city(world, rid, losers) != null:
+			if city_regions.has(rid):
 				score += 40.0  # города — главная цель
 			for w in winners:
 				if region.claims.has(w):
 					score += 60.0  # возвращаем своё
-			for lm in world.landmarks:
-				if lm.active and (lm.kind == &"source" or lm.kind == &"portal") and world.region_of[lm.cell] == rid:
-					score += 80.0  # источник силы и врата бездны — главные трофеи
+			if trophy_regions.has(rid):
+				score += 80.0  # источник силы и врата бездны — главные трофеи
 			if front and score > best_score:
 				best_score = score
 				best = rid

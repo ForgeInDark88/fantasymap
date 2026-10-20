@@ -444,6 +444,10 @@ static func open_portal(world: World, cell: int, hero: Hero) -> Nation:
 	if hero != null:
 		hero.add_deed(world, "отворил Врата бездны в регионе " + region.name)
 		hero.karma = -1.0
+	# Бездна сразу нападает на всех, с кем соприкоснулась.
+	for other in nation.borders.keys():
+		if world.nations[other].alive and world.diplomacy.war_between(nation.id, other) == null:
+			world.diplomacy.declare_war(world, nation.id, other, &"demonic")
 	return nation
 
 

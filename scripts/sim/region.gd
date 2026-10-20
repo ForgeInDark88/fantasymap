@@ -27,6 +27,19 @@ var conquered_year := -1000
 var pacified_until := -1000
 ## Претензии: государство, потерявшее регион, → год, до которого оно помнит о нём.
 var claims: Dictionary[int, int] = {}
+## Вера жителей: id религии → доля (сумма ≈ 1; пусто — регион не заселён).
+var faith: Dictionary[int, float] = {}
+
+
+## Самая распространённая вера (-1 — нет).
+func main_faith() -> int:
+	var best := -1
+	var best_share := 0.0
+	for r in faith:
+		if faith[r] > best_share:
+			best_share = faith[r]
+			best = r
+	return best
 
 
 ## Государство, которому принадлежит большая часть клеток региона (-1 — ничей).

@@ -5,7 +5,8 @@ extends RefCounted
 ## (allies, trade_partners, overlord), а меняются только через этот класс.
 
 const CAUSE_NAMES := {
-	&"territory": "за земли", &"resources": "за богатства", &"racial": "священная",
+	&"territory": "за земли", &"resources": "за богатства", &"racial": "расовая",
+	&"holy": "священная", &"crusade": "крестовый поход", &"schism": "раскол", &"religious": "за веру",
 	&"revenge": "мести", &"independence": "за независимость", &"civil": "гражданская",
 	&"expansion": "завоевательная", &"reconquest": "за возвращение земель", &"coalition": "коалиции",
 }
@@ -96,6 +97,12 @@ func opinion(world: World, a: int, b: int) -> float:
 	# Гегемона боятся все.
 	if b == hegemon:
 		o -= 0.15
+	# Единоверцы ближе, иноверцы — тем дальше, чем нетерпимее вера a.
+	if na.state_religion >= 0 and nb.state_religion >= 0:
+		if na.state_religion == nb.state_religion:
+			o += 0.12
+		else:
+			o -= 0.1 * world.religions[na.state_religion].hostility(world.religions[nb.state_religion])
 	# Претензии на земли друг друга.
 	if has_claims_against(world, a, b):
 		o -= 0.2
@@ -191,7 +198,15 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 static func _cause_title(cause: StringName) -> String:
 	match cause:
 		&"racial":
+			return "Расовая война:"
+		&"holy":
 			return "Священная война:"
+		&"crusade":
+			return "Крестовый поход:"
+		&"schism":
+			return "Война раскола:"
+		&"religious":
+			return "Восстание за веру:"
 		&"independence":
 			return "Освободительная война:"
 		&"civil":

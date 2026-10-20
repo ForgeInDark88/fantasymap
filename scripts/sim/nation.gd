@@ -94,6 +94,18 @@ var collapse_years := 0
 ## Временные эффекты событий: {id, until, army_mult, growth_mult, science_mult}.
 var modifiers: Array[Dictionary] = []
 
+# --- Вера (ReligionSystem) ---
+## Государственная религия (id в World.religions, -1 — нет) и доля её
+## последователей среди подданных (по клеткам регионов).
+var state_religion := -1
+var faith_unity := 1.0
+
+# --- Эффекты (религия, технологии, организации, кризисы) ---
+## Источник → {ключ: значение}. Ключи *_mult перемножаются, остальные
+## (stability) складываются; итог — в effects (см. set_effects / effect).
+var effect_sources: Dictionary[StringName, Dictionary] = {}
+var effects: Dictionary[StringName, float] = {}
+
 var founded_year := 0
 var alive := true
 ## Клетка для подписи названия.
@@ -118,9 +130,10 @@ func ruler_display() -> String:
 	return "%s %s%s" % [ruler_title, ruler_name, number]
 
 
-## Политический множитель: форма правления × характер правителя (aggression_mult, trade_mult…).
+## Политический множитель: форма правления × характер правителя × эффекты
+## веры, технологий и прочего (aggression_mult, trade_mult, science_mult, army_mult).
 func policy(key: String) -> float:
-	var m := 1.0
+	var m: float = effects.get(StringName(key), 1.0)
 	if government != null:
 		m *= government.get(key)
 	if ruler_trait != null:
@@ -129,7 +142,30 @@ func policy(key: String) -> float:
 
 
 func policy_stability() -> float:
-	return (government.stability_bonus if government != null else 0.0) + (ruler_trait.stability if ruler_trait != null else 0.0)
+	return (government.stability_bonus if government != null else 0.0) + (ruler_trait.stability if ruler_trait != null else 0.0) \
+			+ effects.get(&"stability", 0.0)
+
+
+## Задаёт эффекты одного источника (&"religion", &"techs"…) и пересчитывает итог.
+func set_effects(source: StringName, values: Dictionary) -> void:
+	if values.is_empty():
+		effect_sources.erase(source)
+	else:
+		effect_sources[source] = values
+	effects.clear()
+	for src in effect_sources:
+		var d: Dictionary = effect_sources[src]
+		for k in d:
+			var key := StringName(k)
+			if String(key).ends_with("_mult"):
+				effects[key] = effects.get(key, 1.0) * float(d[k])
+			else:
+				effects[key] = effects.get(key, 0.0) + float(d[k])
+
+
+## Итоговый эффект по ключу: множитель (1 по умолчанию) или прибавка (0).
+func effect(key: StringName) -> float:
+	return effects.get(key, 1.0 if String(key).ends_with("_mult") else 0.0)
 
 
 func total_capacity() -> float:

@@ -23,6 +23,11 @@ uniform int selected_id = -1;
 // Внутренние границы регионов (видны только при приближении).
 uniform bool show_regions = true;
 uniform float region_min_px = 2.5;
+// Заливка по регионам (религии, культура): цвет региона из region_palette_tex
+// (256 в строке), альфа — насколько уверенно (доля веры и т.п.).
+uniform bool region_fill = false;
+uniform sampler2D region_palette_tex : filter_nearest, repeat_disable;
+uniform float region_fill_alpha = 0.65;
 
 int owner_at(ivec2 c, ivec2 size) {
 	c = clamp(c, ivec2(0), size - ivec2(1));
@@ -48,6 +53,13 @@ void fragment() {
 	vec2 local = fract(cell_f);
 	int id = owner_at(cell, size);
 	vec3 col = base.rgb;
+	if (region_fill) {
+		int rid0 = region_at(cell, size);
+		if (rid0 >= 0) {
+			vec4 rc = texelFetch(region_palette_tex, ivec2(rid0 % 256, rid0 / 256), 0);
+			col = mix(col, rc.rgb, rc.a * region_fill_alpha);
+		}
+	}
 
 	if (id < 0) {
 		bool land = texelFetch(owner_tex, clamp(cell, ivec2(0), size - ivec2(1)), 0).b > 0.5;

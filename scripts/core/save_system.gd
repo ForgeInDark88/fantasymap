@@ -7,7 +7,9 @@ class_name SaveSystem
 ## границ, счётчики регионов) не сохраняется: при загрузке он пересобирается
 ## через World.set_owner, поэтому гарантированно согласован.
 
-const VERSION := 1
+## Версия формата. 1 — этап 6; 2 — религии, технологии и далее (этапы 7+).
+## Старые версии загружаются: недостающее заполняется значениями по умолчанию.
+const VERSION := 2
 const SAVE_DIR := "user://saves/"
 const EXACT_PREFIX := "~"
 
@@ -43,7 +45,7 @@ static func load_world(path: String) -> World:
 		push_error("SaveSystem: не удалось прочитать " + path)
 		return null
 	var data = JSON.parse_string(text)
-	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) != VERSION:
+	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) < 1 or int(data.get("version", 0)) > VERSION:
 		push_error("SaveSystem: неверный формат сохранения " + path)
 		return null
 	return from_dict(unexact(data))
@@ -60,7 +62,8 @@ static func to_dict(world: World) -> Dictionary:
 	for r in world.regions:
 		regions.append({"name": r.name, "center": r.center, "loyalty": r.loyalty, "unrest": r.unrest,
 			"conquered": r.conquered_year, "pacified": r.pacified_until, "claims": _int_dict(r.claims),
-			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal})
+			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal,
+			"faith": _int_dict(r.faith)})
 	var nations := []
 	for n in world.nations:
 		nations.append(_nation_dict(n))
@@ -111,6 +114,7 @@ static func to_dict(world: World) -> Dictionary:
 		"cities": cities,
 		"heroes": heroes,
 		"landmarks": landmarks,
+		"religions": world.religions.map(_religion_dict),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -142,11 +146,82 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"famine": n.famine_years, "founded": n.founded_year, "alive": n.alive, "label": n.label_cell,
 		"overlord": n.overlord, "vassal_since": n.vassal_since, "allies": n.allies.keys(), "trade": n.trade_partners.keys(),
 		"stalled": n.stalled_years, "collapse": n.collapse_years,
+		"religion": n.state_religion, "unity": n.faith_unity, "effects": _effects_dict(n),
 		"modifiers": n.modifiers.map(func(m: Dictionary) -> Dictionary:
 			var c := m.duplicate()
 			c.id = str(m.id)
 			return c),
 	}
+
+
+static func _effects_dict(n: Nation) -> Dictionary:
+	var out := {}
+	for src in n.effect_sources:
+		out[str(src)] = _str_dict(n.effect_sources[src])
+	return out
+
+
+static func _str_dict(d: Dictionary) -> Dictionary:
+	var out := {}
+	for k in d:
+		out[str(k)] = d[k]
+	return out
+
+
+static func _religion_dict(r: Religion) -> Dictionary:
+	return {"id": r.id, "name": r.name, "symbol": r.symbol, "color": r.color.to_html(), "def": str(r.def.id) if r.def != null else "",
+		"parent": r.parent, "root": r.root, "founded": r.founded_year, "origin": r.origin_nation, "dogmas": Array(r.dogmas),
+		"effects": _str_dict(r.effects), "missionary": r.missionary, "tolerance": r.tolerance, "zeal": r.zeal,
+		"magic": r.magic, "undead": r.undead, "demons": r.demons, "alive": r.alive}
+
+
+## Религии (v2). В сохранениях v1 их нет — веры назначаются заново по расам.
+static func _load_religions(world: World, data: Dictionary) -> void:
+	if not data.has("religions"):
+		world.init_religions()
+		for n in world.nations:
+			n.state_religion = ReligionSystem.pick_for_race(world, n.race)
+		for region in world.regions:
+			var c := region.controller()
+			if c >= 0:
+				region.faith = {world.nations[c].state_religion: 1.0}
+		return
+	for rd in data.religions:
+		var r := Religion.new()
+		r.id = int(rd.id)
+		r.name = rd.name
+		r.symbol = rd.symbol
+		r.color = Color.html(rd.color)
+		r.def = ReligionDB.find(StringName(rd.def)) if not rd.def.is_empty() else null
+		r.parent = int(rd.parent)
+		r.root = int(rd.root)
+		r.founded_year = int(rd.founded)
+		r.origin_nation = int(rd.origin)
+		r.dogmas = PackedStringArray(rd.dogmas)
+		for k in rd.effects:
+			r.effects[StringName(k)] = float(rd.effects[k])
+		r.missionary = rd.missionary
+		r.tolerance = rd.tolerance
+		r.zeal = rd.zeal
+		r.magic = rd.magic
+		r.undead = rd.undead
+		r.demons = rd.demons
+		r.alive = rd.alive
+		world.religions.append(r)
+	for i in data.regions.size():
+		var region := world.regions[i]
+		region.faith.clear()
+		var fd: Dictionary = data.regions[i].get("faith", {})
+		for k in fd:
+			region.faith[int(k)] = float(fd[k])
+	for k in data.nations.size():
+		var nd: Dictionary = data.nations[k]
+		var n := world.nations[k]
+		n.state_religion = int(nd.get("religion", -1))
+		n.faith_unity = nd.get("unity", 1.0)
+		var eff: Dictionary = nd.get("effects", {})
+		for src in eff:
+			n.set_effects(StringName(src), eff[src])
 
 
 static func _hero_dict(h: Hero) -> Dictionary:
@@ -373,6 +448,7 @@ static func from_dict(data: Dictionary) -> World:
 			ns[int(k)] = PackedFloat32Array(snap.nations[k])
 		world.history.append({"year": int(snap.year), "races": PackedFloat32Array(snap.races), "nations": ns})
 	world.terrain_version = int(data.get("terrain_version", 0))
+	_load_religions(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])

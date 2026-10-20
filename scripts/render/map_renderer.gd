@@ -33,6 +33,10 @@ var _dynamic_painted_ms := 0
 const DYNAMIC_REPAINT_MS := 1500
 var _region_texture: ImageTexture
 var _terrain_version := 0
+## Палитра регионов для режимов «Религии», «Культура» (обновляется раз в REGION_PALETTE_MS).
+var _region_palette: ImageTexture
+var _region_palette_ms := -100000
+const REGION_PALETTE_MS := 700
 
 
 func _ready() -> void:
@@ -60,6 +64,8 @@ func _process(_delta: float) -> void:
 		redraw()
 	if world != null and world.ownership_version != _owner_version:
 		refresh_political()
+	if world != null and MapMode.is_region_mode(mode) and Time.get_ticks_msec() - _region_palette_ms > REGION_PALETTE_MS:
+		refresh_region_palette()
 	if world != null and MapMode.is_dynamic(mode) and Time.get_ticks_msec() - _dynamic_painted_ms > DYNAMIC_REPAINT_MS \
 			and WorldState.speed_index > 0:
 		_painted_base_mode = -1
@@ -70,7 +76,29 @@ func set_mode(new_mode: int) -> void:
 	if new_mode == mode:
 		return
 	mode = new_mode
+	if MapMode.is_region_mode(mode):
+		refresh_region_palette()
 	redraw()
+
+
+## Цвет каждого региона в режимах по регионам: вера большинства (альфа — её доля).
+func refresh_region_palette() -> void:
+	if world == null:
+		return
+	_region_palette_ms = Time.get_ticks_msec()
+	var colors := PackedColorArray()
+	colors.resize(world.regions.size())
+	for region in world.regions:
+		var c := Color(0, 0, 0, 0)
+		match mode:
+			MapMode.RELIGION:
+				var r := region.main_faith()
+				if r >= 0:
+					c = world.religions[r].color
+					c.a = 0.35 + 0.65 * region.faith[r]
+		colors[region.id] = c
+	_region_palette = _make_palette(colors, _region_palette)
+	_material.set_shader_parameter("region_palette_tex", _region_palette)
 
 
 func redraw() -> void:
@@ -145,9 +173,10 @@ func cell_center(cell: int) -> Vector2:
 func _apply_mode_uniforms() -> void:
 	var political := mode == MapMode.POLITICAL or mode == MapMode.RACES
 	_material.set_shader_parameter("show_fill", political)
-	# В режимах биомов, населения и ресурсов оставляем тонкие границы — видно, кто где живёт.
+	_material.set_shader_parameter("region_fill", MapMode.is_region_mode(mode))
+	# В режимах биомов, населения, ресурсов и по регионам оставляем тонкие границы — видно, кто где живёт.
 	_material.set_shader_parameter("show_borders", political or mode == MapMode.BIOMES
-			or mode == MapMode.POPULATION or mode == MapMode.RESOURCES)
+			or mode == MapMode.POPULATION or mode == MapMode.RESOURCES or MapMode.is_region_mode(mode))
 	_material.set_shader_parameter("fill_alpha", 0.55 if mode == MapMode.RACES else 0.45)
 	_material.set_shader_parameter("unowned_desaturate", 0.35 if political else 0.0)
 	_material.set_shader_parameter("palette_tex", _race_palette if mode == MapMode.RACES else _nation_palette)

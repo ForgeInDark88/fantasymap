@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/light.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"light"
+display_name = "Церковь Света"
+description = "Вера в Солнце-Творца: порядок, милосердие и долг перед престолом."
+symbol = "☀"
+icon = ExtResource("2_icon")
+color = Color(0.98, 0.85, 0.35, 1)
+races = Dictionary[StringName, float]({&"humans": 1.0, &"halflings": 0.4, &"elves": 0.15})
+dogmas = PackedStringArray("Божественное право королей", "Милосердие к слабым")
+effects = Dictionary[StringName, float]({&"stability": 0.04, &"trade_mult": 1.05})
+missionary = 0.7
+tolerance = 0.55
+zeal = 0.4
+magic = 0.0
+undead = -0.8
+demons = -1.0

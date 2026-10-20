@@ -9,6 +9,8 @@ extends RefCounted
 
 ## Множитель скорости экспансии.
 const RATE := 1.8
+## Сколько промахов подряд (клетка занята или вода) допустимо за год.
+const MAX_MISSES := 30
 const DIRS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
 	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1),
@@ -30,8 +32,11 @@ func tick(world: World, nation: Nation) -> void:
 	var claimed := 0
 	# Кому расти некуда — лишь изредка «прощупывает» границу (иначе тратим время впустую).
 	var attempts := 10 if nation.stalled_years >= 3 else mini(int(rate * 4.0) + 6, 120)
-	while attempts > 0 and nation.expansion_points > 0.0:
+	# Много промахов подряд — свободной земли у границы почти нет, дальше не ищем.
+	var misses := 0
+	while attempts > 0 and nation.expansion_points > 0.0 and misses < MAX_MISSES:
 		attempts -= 1
+		misses += 1
 		var c := nation.cells[rng.randi_range(0, n - 1)]
 		var d := DIRS[rng.randi_range(0, 7)]
 		var x := c % map.width + d.x
@@ -50,6 +55,7 @@ func tick(world: World, nation: Nation) -> void:
 				break
 			continue
 		world.set_owner(nb, nation.id)
+		misses = 0
 		nation.expansion_points -= cost
 		n += 1
 		claimed += 1

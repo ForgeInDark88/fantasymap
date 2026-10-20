@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/forest_song.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"forest_song"
+display_name = "Песнь Леса"
+description = "Эльфы слышат песнь древних деревьев и хранят равновесие жизни."
+symbol = "❦"
+icon = ExtResource("2_icon")
+color = Color(0.3, 0.75, 0.45, 1)
+races = Dictionary[StringName, float]({&"elves": 1.0, &"halflings": 0.15})
+dogmas = PackedStringArray("Священные рощи", "Долг перед жизнью")
+effects = Dictionary[StringName, float]({&"growth_mult": 1.04, &"science_mult": 1.06})
+missionary = 0.2
+tolerance = 0.7
+zeal = 0.25
+magic = 0.7
+undead = -0.9
+demons = -1.0

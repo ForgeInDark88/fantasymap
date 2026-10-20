@@ -17,7 +17,7 @@ func tick(_world: World, nation: Nation) -> void:
 		var race := RaceDB.by_index(r)
 		if p < 1.0:
 			p = cap * 0.01  # первые поселенцы
-		var dp := BASE_GROWTH * race.growth * nation.modifier("growth_mult") * p * (1.0 - p / cap)
+		var dp := BASE_GROWTH * race.growth * nation.modifier("growth_mult") * nation.effect(&"growth_mult") * p * (1.0 - p / cap)
 		if nation.famine_years > 0 and race.food_need > 0.0:
 			dp -= p * 0.05
 		nation.pop[r] = maxf(0.0, p + dp)

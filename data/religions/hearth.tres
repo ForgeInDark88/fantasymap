@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/hearth.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"hearth"
+display_name = "Домашний Очаг"
+description = "Полурослики чтят богиню очага: сытость, гостеприимство и мир."
+symbol = "⌂"
+icon = ExtResource("2_icon")
+color = Color(0.95, 0.65, 0.4, 1)
+races = Dictionary[StringName, float]({&"halflings": 1.0, &"humans": 0.15})
+dogmas = PackedStringArray("Священный стол", "Гость — дар богов")
+effects = Dictionary[StringName, float]({&"growth_mult": 1.08, &"stability": 0.03, &"aggression_mult": 0.8})
+missionary = 0.2
+tolerance = 0.9
+zeal = 0.05
+magic = 0.1
+undead = -0.5
+demons = -1.0
