@@ -16,7 +16,9 @@ const COMMANDS := [
 	[&"good", "Доброе деяние", 1], [&"evil", "Злое деяние", 1], [&"swear", "Присягнуть державе края", 0],
 	[&"join_order", "Вступить в орден", 0], [&"faith", "Принять веру края", 0], [&"friends", "Искать друзей", 1],
 	[&"marry", "Предложить брак", 0], [&"mentor", "Наставничество", 1], [&"mercenary", "Наняться на войну", 0],
-	[&"great", "Великое деяние", 3], [&"rest", "Отдыхать", 1],
+	[&"great", "Великое деяние", 3], [&"rest", "Отдыхать и лечиться", 1],
+	[&"shop", "Рынок и лекарь", 0], [&"board", "Доска заданий", 0], [&"invite", "Позвать в отряд", 0],
+	[&"quest_go", "К цели задания", 0],
 ]
 ## Шанс в месяц события в пути (в дороге — выше).
 const EVENT_CHANCE := 0.06
@@ -27,6 +29,20 @@ const SEA_MONTHS := 3
 const JOURNAL_MAX := 200
 ## Риск охоты на чудовищ (ниже, чем у автономных героев: игрок выбирает сам).
 const HUNT_RISK := 0.02
+## Раны: заживление в месяц (в пути и без дела / отдых / отдых в городе), рана на охоте, в поединке.
+const HEAL_IDLE := 0.04
+const HEAL_REST := 0.12
+const HEAL_CITY := 0.25
+const HUNT_WOUND := Vector2(0.2, 0.45)
+const DUEL_WOUND := Vector2(0.3, 0.7)
+## Награда державы за чудовище и доля добычи в руинах (золотом).
+const BOUNTY := Vector2(5.0, 15.0)
+const LOOT := Vector2(10.0, 40.0)
+## Стартовый кошель своего героя; сила спутника в бою героя игрока.
+const START_GOLD := 30.0
+const COMPANION_SHARE := 0.5
+## Развитие: что даёт очко.
+const PERKS := {"strength": "Сила (+8% к силе)", "wit": "Ум (+0.04 к уму)", "charm": "Обаяние (скидки, переговоры, репутация)"}
 
 
 static func hero_of(world: World) -> Hero:
@@ -78,6 +94,7 @@ static func create_hero(world: World, race: RaceDef, cls: HeroClassDef, name: St
 	if not clean.is_empty():
 		world.used_names[clean] = true
 	hero.level = 1
+	hero.gold = START_GOLD
 	hero.add_deed(world, "начал свой путь в регионе %s" % region.name)
 	world.log_event(&"hero", "В регионе %s начал свой путь герой %s — %s, %s." % [region.name, hero.name,
 		race.display_name.to_lower(), cls.display_name.to_lower()])
@@ -92,6 +109,8 @@ static func release(world: World) -> void:
 	world.player_choice = {}
 	world.player_journal.clear()
 	world.player_rep.clear()
+	world.player_quests.clear()
+	world.player_offers.clear()
 	world.player_idle = 0
 
 
@@ -178,6 +197,15 @@ static func why_not(world: World, kind: StringName) -> String:
 		&"great":
 			if h.level < HeroSystem.MIN_GREAT_LEVEL:
 				return "нужен %d-й уровень" % HeroSystem.MIN_GREAT_LEVEL
+		&"shop", &"board":
+			if PlayerQuests.city_here(world, h) == null:
+				return "в этом краю нет города"
+		&"invite":
+			if _companion_candidate(world, h) == null:
+				return "рядом нет героя, готового идти с вами"
+		&"quest_go":
+			if world.player_quests.is_empty():
+				return "нет заданий"
 	return ""
 
 
@@ -198,10 +226,20 @@ static func command(world: World, kind: StringName, arg: int = -1) -> String:
 		note(world, "В путь — в регион %s (≈%d мес.)." % [target.name, int(plan.months)])
 		h.thought = "Иду в регион %s." % target.name
 		return ""
+	if kind == &"quest_go":
+		var q := world.player_quests[clampi(arg, 0, world.player_quests.size() - 1)]
+		var cell := PlayerQuests.target_cell(world, q)
+		if cell < 0 or world.region_of[cell] < 0:
+			return "цель задания не найти"
+		if world.region_of[cell] == world.region_of[h.cell]:
+			return "вы уже на месте"
+		return command(world, &"travel", world.region_of[cell])
 	for c in COMMANDS:
 		if c[0] == kind:
 			world.player_cmd = {"kind": String(kind), "wait": int(c[2])}
 	_execute(world, h, kind)
+	if kind == &"shop" or kind == &"board":
+		world.player_cmd = {}
 	return ""
 
 
@@ -264,16 +302,20 @@ static func _execute(world: World, h: Hero, kind: StringName) -> void:
 	var deeds := h.deeds.size()
 	match kind:
 		&"hunt":
-			if world.rng.randf() < HUNT_RISK * (1.3 - h.wits() * 0.6) * (0.5 if h.level >= 4 else 1.0):
-				note(world, "Чудовище в регионе %s оказалось сильнее." % where)
-				world.log_event(&"hero", "Герой %s погиб в схватке с чудовищем в регионе %s." % [h.display_name(), where])
-				h.die(world)
+			if world.rng.randf() < HUNT_RISK * 6.0 * (1.3 - h.wits() * 0.6) * (0.5 if h.level >= 4 else 1.0):
+				note(world, "Чудовище в регионе %s оказалось сильнее — вы ранены." % where)
+				wound(world, h, world.rng.randf_range(HUNT_WOUND.x, HUNT_WOUND.y), "погиб в схватке с чудовищем в регионе " + where)
 				return
 			h.monsters_slain += 1
+			if owner >= 0:
+				var bounty := roundf(world.rng.randf_range(BOUNTY.x, BOUNTY.y))
+				h.gold += bounty
+				note(world, "Держава %s заплатила за голову чудовища %d золотых." % [world.nations[owner].short_name, int(bounty)])
+			PlayerQuests.check(world, h, &"hunt")
 			h.add_xp(world, 2.0)
 			h.add_deed(world, "сразил чудовище в регионе " + where)
 			if owner >= 0:
-				_rep(world, "n%d" % owner, 0.03)
+				rep(world, "n%d" % owner, 0.03)
 			note(world, "Охота удалась: чудовище в регионе %s сражено." % where)
 		&"explore":
 			var cave := _cave_here(world, h)
@@ -284,30 +326,35 @@ static func _execute(world: World, h: Hero, kind: StringName) -> void:
 				note(world, "Вы исследовали пещеру «%s»." % cave.name)
 			else:
 				RuinSystem.hero_explore(world, h, true)
-				if h.deeds.size() > deeds:
-					note(world, "Руины: %s." % h.deeds[h.deeds.size() - 1])
+				if h.alive and h.deeds.size() > deeds:
+					var loot := roundf(world.rng.randf_range(LOOT.x, LOOT.y))
+					h.gold += loot
+					note(world, "Руины: %s. Ваша доля добычи — %d золотых." % [h.deeds[h.deeds.size() - 1], int(loot)])
+			if h.alive:
+				PlayerQuests.check(world, h, &"explore")
 		&"good":
 			HeroSystem.new()._good_deed(world, h)
 			if owner >= 0:
-				_rep(world, "n%d" % owner, 0.05)
+				rep(world, "n%d" % owner, 0.05)
 		&"evil":
 			HeroSystem.new()._evil_deed(world, h)
+			h.gold += roundf(world.rng.randf_range(5.0, 25.0))
 			if owner >= 0:
-				_rep(world, "n%d" % owner, -0.1)
+				rep(world, "n%d" % owner, -0.1)
 		&"swear":
 			h.leave_service(world)
 			h.nation_id = owner
 			world.nations[owner].hero_ids.append(h.id)
 			h.add_deed(world, "присягнул государству %s" % world.nations[owner].name)
-			_rep(world, "n%d" % owner, 0.3)
+			rep(world, "n%d" % owner, 0.3)
 			world.log_event(&"hero", "Герой %s присягнул государству %s." % [h.display_name(), world.nations[owner].name], PackedInt32Array([owner]))
 		&"join_order":
 			var o := _order_near(world, h)
 			OrderSystem.join(world, o, h)
-			_rep(world, "o%d" % o.id, 0.3)
+			rep(world, "o%d" % o.id, 0.3)
 		&"faith":
 			var faith := world.regions[world.region_of[h.cell]].main_faith()
-			_rep(world, "r%d" % faith, 0.3)
+			rep(world, "r%d" % faith, 0.3)
 			h.patron_god = &""
 			var gods := GodSystem.gods_of(world, faith)
 			if not gods.is_empty():
@@ -349,13 +396,72 @@ static func _execute(world: World, h: Hero, kind: StringName) -> void:
 		&"great":
 			HeroSystem.new()._great_deed(world, h)
 		&"rest":
-			note(world, "Отдых в регионе %s." % where)
+			var city := PlayerQuests.city_here(world, h)
+			note(world, "Отдых %s." % (("в городе " + city.name) if city != null else "в регионе " + where))
+		&"shop":
+			PlayerQuests.open_shop(world, h)
+		&"board":
+			PlayerQuests.open_board(world, h)
+		&"invite":
+			var c := _companion_candidate(world, h)
+			c.party_leader = h.id
+			c.cell = h.cell
+			c.add_bond(h, 0.1)
+			h.add_deed(world, "позвал в свой отряд героя %s" % c.name)
+			c.add_deed(world, "присоединился к отряду героя %s" % h.name)
 	if h.alive and h.deeds.size() > deeds and kind != &"explore":
 		note(world, h.deeds[h.deeds.size() - 1].substr(0, 1).to_upper() + h.deeds[h.deeds.size() - 1].substr(1) + ".")
 
 
-static func _rep(world: World, key: String, amount: float) -> void:
+static func rep(world: World, key: String, amount: float) -> void:
 	world.player_rep[key] = clampf(float(world.player_rep.get(key, 0.0)) + amount, -1.0, 1.0)
+
+
+## Рана героя игрока; при ранах ≥ 1 — гибель (cause — для летописи).
+static func wound(world: World, h: Hero, amount: float, cause: String) -> void:
+	h.wounds = minf(1.0, h.wounds + amount)
+	if h.wounds >= 1.0:
+		world.log_event(&"hero", "Герой %s %s." % [h.display_name(), cause])
+		h.die(world)
+	elif h.wounds > 0.6:
+		note(world, "Раны тяжелы (%d%%): пора к лекарю или на отдых." % roundi(h.wounds * 100.0))
+
+
+## Сила в бою с учётом спутников по отряду.
+static func fight_power(world: World, h: Hero) -> float:
+	var p := h.power()
+	for o in world.wandering_heroes():
+		if o.party_leader == h.id and o.alive and o.cell >= 0 and h.cell >= 0 and world.region_of[o.cell] == world.region_of[h.cell]:
+			p += o.power() * COMPANION_SHARE
+	return p
+
+
+static func companions(world: World, h: Hero) -> Array[Hero]:
+	var res: Array[Hero] = []
+	for o in world.wandering_heroes():
+		if o.party_leader == h.id and o.alive:
+			res.append(o)
+	return res
+
+
+static func _companion_candidate(world: World, h: Hero) -> Hero:
+	var rid := world.region_of[h.cell]
+	for o in world.wandering_heroes():
+		if o != h and o.alive and o.party_leader < 0 and o.nation_id < 0 and o.cell >= 0 and world.region_of[o.cell] == rid \
+				and o.bond(h.id) + h.charm * 0.05 > 0.2 and not companions(world, o).size() > 0:
+			return o
+	return null
+
+
+## Вложить очко развития: "strength", "wit" или "charm".
+static func spend_perk(world: World, stat: String) -> bool:
+	var h := hero_of(world)
+	if h == null or h.perk_points <= 0 or not PERKS.has(stat):
+		return false
+	h.perk_points -= 1
+	h.set(stat, int(h.get(stat)) + 1)
+	note(world, "Развитие: %s." % String(PERKS[stat]).to_lower())
+	return true
 
 
 static func _cave_here(world: World, h: Hero) -> Cave:
@@ -420,6 +526,14 @@ static func tick_month(world: World, h: Hero) -> void:
 			return
 	h.add_xp(world, 0.1)
 	var cmd := world.player_cmd
+	if h.wounds > 0.0:
+		var heal := HEAL_IDLE
+		if not cmd.is_empty() and cmd.kind == "rest":
+			heal = HEAL_CITY if PlayerQuests.city_here(world, h) != null else HEAL_REST
+		h.wounds = maxf(0.0, h.wounds - heal)
+	PlayerQuests.check(world, h, &"month")
+	if not h.alive:
+		return
 	if cmd.is_empty():
 		world.player_idle += 1
 		if world.rng.randf() < EVENT_CHANCE:
@@ -458,6 +572,7 @@ static func _travel_step(world: World, h: Hero, cmd: Dictionary) -> void:
 		if h.artifact_id < 0:
 			ArtifactSystem.try_pick_up(world, h)
 		world.player_cmd = {}
+		PlayerQuests.check(world, h, &"arrive")
 
 
 ## Годовые дела героя игрока: возраст, служба, семья, боги. Ничего не решает за игрока.
@@ -472,6 +587,11 @@ static func _yearly(world: World, h: Hero) -> void:
 		note(world, "Срок наёмной службы истёк.")
 	if h.vendetta >= 0 and not world.heroes[h.vendetta].alive:
 		h.vendetta = -1
+	if h.guards > 0 and world.year >= h.guards_until:
+		h.guards = 0
+		note(world, "Срок найма охраны вышел — бойцы ушли.")
+	if h.ally_nation >= 0:
+		h.gold += 20.0  # жалованье наёмника
 	if h.nation_id >= 0 and not world.nations[h.nation_id].alive:
 		h.leave_service(world)
 		note(world, "Держава, которой вы служили, пала.")
@@ -495,7 +615,7 @@ static func start_event(world: World, h: Hero) -> bool:
 	var total := 0.0
 	for res in LoreDB.hero_events():
 		var e := res as HeroEventDef
-		if (e.where == &"nation" and owner < 0) or (e.where == &"wild" and owner >= 0):
+		if (e.where == &"nation" and owner < 0) or (e.where == &"wild" and owner >= 0) or not _terrain_ok(world, h, e.terrain):
 			continue
 		pool.append(e)
 		total += e.weight
@@ -510,10 +630,39 @@ static func start_event(world: World, h: Hero) -> bool:
 			break
 	var options: Array = []
 	for i in ev.options.size():
-		options.append({"text": ev.options[i].get("text", "…"), "act": "event", "index": i})
+		var cost := -float(ev.options[i].get("gold", 0.0))
+		if cost > 0.0 and h.gold < cost:
+			continue  # не по карману
+		var label := String(ev.options[i].get("text", "…"))
+		if cost > 0.0:
+			label += " (%d зол.)" % int(cost)
+		options.append({"text": label, "act": "event", "index": i})
 	world.player_choice = {"kind": "event", "event": String(ev.id), "title": ev.title,
 		"text": ev.text.format({"where": world.region_label(h.cell, "диких земель"), "owner": world.nations[owner].short_name if owner >= 0 else "?"}),
 		"options": options}
+	return true
+
+
+static func _terrain_ok(world: World, h: Hero, terrain: StringName) -> bool:
+	if terrain == &"":
+		return true
+	var b := world.map.biome[h.cell]
+	match terrain:
+		&"forest":
+			return b == Biome.FOREST or b == Biome.JUNGLE
+		&"mountains":
+			return b == Biome.MOUNTAINS or b == Biome.HILLS
+		&"desert":
+			return b == Biome.DESERT or b == Biome.STEPPE
+		&"swamp":
+			return b == Biome.SWAMP
+		&"cold":
+			return b == Biome.TUNDRA or b == Biome.SNOW
+		&"coast":
+			var rid := world.region_of[h.cell]
+			return rid >= 0 and world.regions[rid].coastal
+		&"city":
+			return PlayerQuests.city_here(world, h) != null
 	return true
 
 
@@ -539,6 +688,38 @@ static func encounter(world: World, h: Hero, other: Hero, hostile: bool) -> void
 			options.append({"text": "Предложить союз сердец", "act": "propose", "other": other.id})
 		options.append({"text": "Пройти мимо", "act": "pass", "other": other.id})
 	world.player_choice = {"kind": "meet", "title": "Встреча", "text": text, "options": options}
+
+
+## Поединок героя игрока: победитель — по силе (со спутниками) и удаче.
+## Проигравший игрок получает рану (гибнет при ранах ≥ 1 или от руки злодея),
+## победивший — решает судьбу соперника (выбор «добить / пощадить»).
+static func player_duel(world: World, h: Hero, o: Hero) -> String:
+	var rng := world.rng
+	var pa := fight_power(world, h) * rng.randf_range(0.6, 1.4)
+	var pb := o.power() * rng.randf_range(0.6, 1.4)
+	if pa >= pb:
+		h.kills += 1
+		h.add_xp(world, 1.0 + o.level * 0.5)
+		if h.kills >= 3 and h.epithet.is_empty():
+			h.epithet = "Непобедимый"
+		if h.vendetta == o.id:
+			h.vendetta = -1
+		world.player_choice = {"kind": "mercy", "title": "Победа", "text": "%s повержен и молит о пощаде." % o.display_name(),
+			"options": [{"text": "Добить", "act": "kill", "other": o.id}, {"text": "Пощадить", "act": "spare", "other": o.id}]}
+		return "Вы одолели героя %s." % o.display_name()
+	o.kills += 1
+	o.add_xp(world, 1.0 + h.level * 0.5)
+	h.add_deed(world, "проиграл поединок герою %s" % o.name)
+	if o.karma < -0.5 and h.wounds > 0.4 and rng.randf() < 0.5:
+		world.log_event(&"hero", "Поединок: %s сразил героя %s." % [o.display_name(), h.display_name()])
+		h.die(world, o)
+		return "%s не знает пощады." % o.display_name()
+	h.wounds = minf(1.0, h.wounds + rng.randf_range(DUEL_WOUND.x, DUEL_WOUND.y))
+	if h.wounds >= 1.0:
+		world.log_event(&"hero", "Поединок: %s сразил героя %s." % [o.display_name(), h.display_name()])
+		h.die(world, o)
+		return "Раны оказались смертельными."
+	return "%s одолел вас; израненный (раны %d%%), вы отступили." % [o.display_name(), roundi(h.wounds * 100.0)]
 
 
 static func _compare(h: Hero, other: Hero) -> String:
@@ -580,8 +761,7 @@ static func choose(world: World, index: int) -> String:
 			result = "Вы поговорили с героем %s (отношение %+.2f)." % [o.display_name(), h.bond(o.id)]
 		"duel":
 			var o := world.heroes[int(opt.other)]
-			HeroSystem.duel(world, h, o, world.region_label(h.cell, "диких землях"))
-			result = "Поединок с героем %s: %s." % [o.display_name(), "победа" if h.alive and h.kills > 0 and not o.alive else ("вы живы" if h.alive else "вы пали")]
+			result = player_duel(world, h, o)
 		"flee":
 			var o := world.heroes[int(opt.other)]
 			if world.rng.randf() < 0.3 + h.wits() * 0.6:
@@ -593,17 +773,15 @@ static func choose(world: World, index: int) -> String:
 				h.add_bond(o, -0.2)
 				result = "Вы скрылись от героя %s." % o.display_name()
 			else:
-				result = "Уйти не удалось — бой неизбежен."
-				HeroSystem.duel(world, h, o, world.region_label(h.cell, "диких землях"))
+				result = "Уйти не удалось — бой неизбежен. " + player_duel(world, h, o)
 		"parley":
 			var o := world.heroes[int(opt.other)]
-			if world.rng.randf() < 0.4 + h.wits() * 0.4:
+			if world.rng.randf() < 0.4 + h.wits() * 0.4 + h.charm * 0.05:
 				o.add_bond(h, 0.3)
 				h.add_bond(o, 0.2)
 				result = "Слово оказалось острее меча: %s опустил оружие." % o.display_name()
 			else:
-				result = "Переговоры не удались."
-				HeroSystem.duel(world, h, o, world.region_label(h.cell, "диких землях"))
+				result = "Переговоры не удались. " + player_duel(world, h, o)
 		"propose":
 			var o := world.heroes[int(opt.other)]
 			if o.bond(h.id) > 0.3 and o.spouse < 0:
@@ -616,6 +794,25 @@ static func choose(world: World, index: int) -> String:
 			else:
 				o.add_bond(h, -0.1)
 				result = "%s вежливо отказал." % o.display_name()
+		"take_quest":
+			result = PlayerQuests.accept(world, h, int(opt.index))
+		"buy":
+			result = PlayerQuests.buy(world, h, String(opt.item), float(opt.cost))
+		"kill":
+			var o := world.heroes[int(opt.other)]
+			h.karma = clampf(h.karma - 0.05 - maxf(0.0, o.karma) * 0.15, -1.0, 1.0)
+			h.add_deed(world, "сразил в поединке героя %s" % o.name)
+			world.log_event(&"hero", "Поединок: %s сразил героя %s." % [h.display_name(), o.display_name()])
+			o.die(world, h)
+			result = "%s пал от вашей руки." % o.display_name()
+		"spare":
+			var o := world.heroes[int(opt.other)]
+			h.karma = minf(1.0, h.karma + 0.05)
+			o.add_bond(h, 0.25)
+			o.level = maxi(1, o.level - 1)
+			o.vendetta = -1
+			h.add_deed(world, "одолел героя %s и пощадил его" % o.name)
+			result = "Вы пощадили героя %s. Он этого не забудет." % o.display_name()
 		_:
 			result = "Вы продолжаете путь."
 	if world.player >= 0:
@@ -634,21 +831,36 @@ static func _event_outcome(world: World, h: Hero, ev: HeroEventDef, index: int) 
 		success = h.power() * world.rng.randf_range(0.6, 1.4) > threat * world.rng.randf_range(0.6, 1.2)
 	if not success:
 		h.add_xp(world, float(opt.get("xp", 0.0)) * 0.3)
-		if world.rng.randf() < float(opt.get("risk", 0.0)):
-			var text := "%s — и это стало концом пути." % String(opt.get("fail", "Неудача"))
-			world.log_event(&"hero", "Герой %s погиб: %s." % [h.display_name(), ev.title.to_lower()])
-			note(world, text)
-			h.die(world)
-			return text
+		var hurt := float(opt.get("risk", 0.0)) * 3.0
+		if hurt > 0.0:
+			wound(world, h, hurt * world.rng.randf_range(0.6, 1.2), "погиб: " + ev.title.to_lower())
+			if not h.alive:
+				return "%s — и это стало концом пути." % String(opt.get("fail", "Неудача"))
+			return "%s Вы ранены (%d%%)." % [String(opt.get("fail", "Не вышло.")), roundi(h.wounds * 100.0)]
 		return String(opt.get("fail", "Не вышло."))
 	h.karma = clampf(h.karma + float(opt.get("karma", 0.0)), -1.0, 1.0)
 	h.add_xp(world, float(opt.get("xp", 0.0)))
 	if owner >= 0 and opt.has("rep"):
-		_rep(world, "n%d" % owner, float(opt.rep))
+		rep(world, "n%d" % owner, float(opt.rep))
 	var rid := world.region_of[h.cell]
 	if rid >= 0 and opt.has("faith") and world.regions[rid].main_faith() >= 0:
-		_rep(world, "r%d" % world.regions[rid].main_faith(), float(opt.faith))
+		rep(world, "r%d" % world.regions[rid].main_faith(), float(opt.faith))
 	var text := String(opt.get("result", "Так и было."))
+	if opt.has("gold"):
+		h.gold = maxf(0.0, h.gold + float(opt.gold))
+		if float(opt.gold) > 0.0:
+			text += " +%d золотых." % int(opt.gold)
+	if opt.has("heal"):
+		h.wounds = maxf(0.0, h.wounds - float(opt.heal))
+	if opt.has("wound"):
+		wound(world, h, float(opt.wound), "погиб: " + ev.title.to_lower())
+		if not h.alive:
+			return text
+	if opt.has("quest") and world.player_quests.size() < PlayerQuests.MAX_ACTIVE:
+		var q := PlayerQuests.rumor_quest(world, h, String(opt.quest))
+		if not q.is_empty():
+			world.player_quests.append(q)
+			text += " Новое задание: %s." % q.title
 	if opt.has("item") and h.artifact_id < 0:
 		var a := ArtifactSystem.create(world, StringName(opt.item), h, "", ev.title.to_lower())
 		if a != null:

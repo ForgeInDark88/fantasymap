@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"blizzard"
+title = "Буран"
+text = "В краю {where} налетел буран: снег слепит, мороз пробирает до костей."
+where = &""
+terrain = &"cold"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Искать укрытие", "heal": 0.1, "xp": 0.3, "result": "Хижина охотника приютила вас до конца бури."}, {"text": "Идти сквозь бурю", "wound": 0.15, "xp": 2.0, "result": "Вы прошли сквозь буран — и закалились."}])

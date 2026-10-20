@@ -124,7 +124,8 @@ static func yearly(world: World, hero: Hero) -> void:
 		hero.ally_nation = -1
 	if hero.party_leader >= 0:
 		var leader := world.heroes[hero.party_leader]
-		if not leader.alive or leader.is_ruler or leader.nation_id >= 0 or rng.randf() < 0.05:
+		var mine := leader.id == world.player
+		if not leader.alive or leader.is_ruler or (leader.nation_id >= 0 and not mine) or rng.randf() < (0.02 if mine else 0.05):
 			hero.party_leader = -1
 	if hero.vendetta >= 0:
 		var target := world.heroes[hero.vendetta]

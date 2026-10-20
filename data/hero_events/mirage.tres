@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"mirage"
+title = "Мираж"
+text = "В раскалённых песках края {where} на горизонте дрожит оазис с пальмами и шатрами."
+where = &""
+terrain = &"desert"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Идти к оазису", "power": 0.2, "risk": 0.15, "xp": 1.0, "gold": 25.0, "heal": 0.2, "result": "Оазис оказался настоящим — и в нём стоянка щедрых кочевников.", "fail": "Мираж растаял, а солнце едва не сожгло вас."}, {"text": "Держаться дороги", "xp": 0.3, "result": "Вы не поддались миражу."}])

@@ -13,6 +13,10 @@ var _status: Label
 var _journal: RichTextLabel
 var _buttons: Dictionary[StringName, Button] = {}
 var _empty: Label
+var _hp: ProgressBar
+var _perks: HBoxContainer
+var _perk_buttons: Dictionary[String, Button] = {}
+var _quests: VBoxContainer
 var _body: VBoxContainer
 var _map_tex: ImageTexture
 var _map_world: World
@@ -41,7 +45,29 @@ func _init() -> void:
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 6)
 	box.add_child(_body)
+	_hp = ProgressBar.new()
+	_hp.max_value = 1.0
+	_hp.custom_minimum_size = Vector2(420, 14)
+	_hp.show_percentage = false
+	_hp.tooltip_text = "Здоровье: раны слабят героя и заживают со временем; при ранах 100% — смерть"
+	_body.add_child(_hp)
 	_stats = _rich(_body)
+	_perks = HBoxContainer.new()
+	for stat in PlayerSystem.PERKS:
+		var b := Button.new()
+		b.text = "+ " + String(PlayerSystem.PERKS[stat]).get_slice(" ", 0)
+		b.tooltip_text = PlayerSystem.PERKS[stat]
+		b.focus_mode = Control.FOCUS_NONE
+		var key: String = stat
+		b.pressed.connect(func() -> void:
+			if WorldState.world != null:
+				PlayerSystem.spend_perk(WorldState.world, key)
+				refresh())
+		_perks.add_child(b)
+		_perk_buttons[stat] = b
+	_body.add_child(_perks)
+	_quests = VBoxContainer.new()
+	_body.add_child(_quests)
 	_minimap = Control.new()
 	_minimap.custom_minimum_size = Vector2(420, 210)
 	_minimap.draw.connect(_draw_minimap)
@@ -142,7 +168,17 @@ func refresh() -> void:
 		_title.text = "Мой герой"
 		return
 	_title.text = "Мой герой: " + h.display_name()
+	_hp.value = 1.0 - h.wounds
+	_hp.modulate = Color(0.5, 1.0, 0.5) if h.wounds < 0.3 else (Color(1.0, 0.85, 0.3) if h.wounds < 0.6 else Color(1.0, 0.4, 0.35))
+	_perks.visible = h.perk_points > 0
+	for stat in _perk_buttons:
+		_perk_buttons[stat].text = "+ %s (%d)" % [String(PlayerSystem.PERKS[stat]).get_slice(" ", 0), int(h.get(stat))]
+	_fill_quests(world)
 	var lines: Array[String] = [
+		"Здоровье %d%% · кошель %d зол. · снаряжение %d/%d%s%s" % [roundi((1.0 - h.wounds) * 100.0), int(h.gold), h.gear, PlayerQuests.GEAR_MAX,
+			(" · охрана %d (до %d г.)" % [h.guards, h.guards_until]) if h.guards > 0 else "",
+			(" · [color=#ffd24a]очков развития: %d[/color]" % h.perk_points) if h.perk_points > 0 else ""],
+		"Развитие: сила %d · ум %d · обаяние %d" % [h.strength, h.wit, h.charm],
 		"%s, %s · уровень %d (опыт %.1f / %.1f) · возраст %d" % [h.race.display_name, h.hero_class.display_name.to_lower(), h.level, h.xp, h.level * 1.5, h.age],
 		"Сила: %.0f · ум: %s (%.2f) · натура: %s (%+.2f)" % [h.power(), h.intellect_name(), h.wits(), h.alignment_name(), h.karma],
 		"Где: %s%s" % [world.region_label(h.cell, "дикие земли"), (" · служит: " + world.nations[h.nation_id].short_name) if h.nation_id >= 0 else ""],
@@ -157,8 +193,10 @@ func refresh() -> void:
 	if h.spouse >= 0 and world.heroes[h.spouse].alive:
 		company.append("супруг(а) " + world.heroes[h.spouse].display_name())
 	for o in world.wandering_heroes():
-		if o.party_leader == h.id or o.mentor == h.id:
-			company.append(o.display_name())
+		if o.party_leader == h.id:
+			company.append("%s (ур. %d)" % [o.display_name(), o.level])
+		elif o.mentor == h.id:
+			company.append("ученик " + o.display_name())
 	if not company.is_empty():
 		lines.append("Спутники: " + ", ".join(company))
 	var rep := PlayerSystem.reputation(world)
@@ -188,6 +226,43 @@ func refresh() -> void:
 	_minimap.queue_redraw()
 
 
+func _fill_quests(world: World) -> void:
+	for c in _quests.get_children():
+		_quests.remove_child(c)
+		c.queue_free()
+	for i in world.player_quests.size():
+		var q := world.player_quests[i]
+		var row := HBoxContainer.new()
+		var l := Label.new()
+		l.text = "❖ %s — %d зол., до %d г." % [q.title, int(q.gold), int(q.deadline)]
+		l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(l)
+		var go := Button.new()
+		go.text = "Идти"
+		go.focus_mode = Control.FOCUS_NONE
+		var index := i
+		go.pressed.connect(func() -> void:
+			var res := PlayerSystem.command(WorldState.world, &"quest_go", index)
+			_status.text = res if not res.is_empty() else "В путь — к цели задания."
+			refresh())
+		row.add_child(go)
+		_quests.add_child(row)
+
+
+## Горячие клавиши режима героя (панель открыта): T — идти, H — охота, R — отдых, Q — к цели задания.
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if not visible or key == null or not key.pressed or key.echo or WorldState.world == null or WorldState.world.player < 0:
+		return
+	var kinds := {KEY_T: &"travel", KEY_H: &"hunt", KEY_R: &"rest", KEY_G: &"quest_go"}
+	if kinds.has(key.keycode):
+		_command(kinds[key.keycode])
+		get_viewport().set_input_as_handled()
+
+
 func _draw_minimap() -> void:
 	var world := WorldState.world
 	var h := PlayerSystem.hero_of(world) if world != null else null
@@ -210,5 +285,10 @@ func _draw_minimap() -> void:
 			var p: Vector2 = at.call(region.cells[region.cells.size() / 2])
 			_minimap.draw_line(prev, p, Color(1.0, 0.9, 0.4), 1.5, true)
 			prev = p
+	for q in world.player_quests:
+		var qc := PlayerQuests.target_cell(world, q)
+		if qc >= 0:
+			_minimap.draw_circle(at.call(qc), 3.5, Color(1.0, 0.85, 0.2))
+			_minimap.draw_arc(at.call(qc), 5.5, 0.0, TAU, 12, Color(0.1, 0.1, 0.1), 1.0)
 	_minimap.draw_circle(at.call(h.cell), 4.0, Color(1.0, 0.3, 0.2))
 	_minimap.draw_arc(at.call(h.cell), 6.0, 0.0, TAU, 16, Color.WHITE, 1.0)

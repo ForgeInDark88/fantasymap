@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"mountain_pass"
+title = "Обвал на перевале"
+text = "На перевале в краю {where} камнепад завалил тропу."
+where = &""
+terrain = &"mountains"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Расчистить завал", "power": 0.4, "risk": 0.1, "xp": 1.5, "result": "Камни поддались; за завалом блеснула жила серебра.", "fail": "Сорвавшийся камень задел вас.", "gold": 20.0}, {"text": "Искать обход", "xp": 0.5, "result": "Обход занял лишние дни, зато без приключений."}, {"text": "Переждать в пещере", "heal": 0.15, "result": "В тёплой пещере вы отдохнули, пока горцы разбирали завал."}])

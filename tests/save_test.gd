@@ -11,7 +11,7 @@ const NEW_KEYS: Array[String] = ["religions", "cultures", "societies", "orgs", "
 const NEW_NATION_KEYS: Array[String] = ["religion", "unity", "effects", "techs", "researching", "research", "tech_seen",
 	"culture", "culture_level", "intel", "legacy", "home", "tdirty"]
 const NEW_REGION_KEYS: Array[String] = ["faith", "culture", "assim"]
-const NEW_HERO_KEYS: Array[String] = ["parents", "children", "lineage", "artifact_id", "order", "god", "chosen", "awits"]
+const NEW_HERO_KEYS: Array[String] = ["parents", "children", "lineage", "artifact_id", "order", "god", "chosen", "awits", "pl"]
 
 
 static func _as_v1(d: Dictionary) -> Dictionary:

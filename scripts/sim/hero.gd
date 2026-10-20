@@ -73,13 +73,27 @@ var patron_god: StringName = &""
 ## Избранник своего бога (дар, лишний второй шанс у Судьбы).
 var chosen := false
 
+# --- Герой игрока (PlayerSystem): у автономных героев всё по нулям ---
+## Раны 0..1 (1 — смерть): слабят героя, заживают со временем и отдыхом.
+var wounds := 0.0
+var gold := 0.0
+## Снаряжение (0..3, кузнец) и наёмная охрана (число бойцов до года guards_until).
+var gear := 0
+var guards := 0
+var guards_until := 0
+## Развитие: очки за уровни и вложенные в силу, ум и обаяние.
+var perk_points := 0
+var strength := 0
+var wit := 0
+var charm := 0
+
 
 ## Трезвость суждений: ум плюс опыт (с уровнями герои умнеют).
 func wits() -> float:
 	var bonus := 0.0
 	if artifact_id >= 0 and _artifact_wits >= 0.0:
 		bonus = _artifact_wits
-	return clampf(intellect + level * 0.008 + bonus, 0.0, 1.0)
+	return clampf(intellect + level * 0.008 + bonus + wit * 0.04, 0.0, 1.0)
 
 
 ## Прибавка к уму от артефакта (ставит ArtifactSystem.equip).
@@ -130,7 +144,10 @@ func fights_for(nation: int) -> bool:
 
 ## Сколько воинов стоит герой в бою.
 func power() -> float:
-	return hero_class.power * level * artifact_mult
+	var base := hero_class.power * level * artifact_mult
+	if wounds > 0.0 or strength > 0 or gear > 0 or guards > 0:
+		base *= (1.0 + strength * 0.08 + gear * 0.1 + guards * 0.05) * (1.0 - wounds * 0.5)
+	return base
 
 
 func display_name() -> String:
@@ -142,6 +159,9 @@ func add_xp(world: World, amount: float) -> void:
 	while xp >= level * 1.5 and level < 20:
 		xp -= level * 1.5
 		level += 1
+		if world.player == id:
+			perk_points += 1
+			PlayerSystem.note(world, "Новый, %d-й уровень! Очко развития: сила, ум или обаяние." % level)
 		if level == 5 or level == 10 or level == 15:
 			world.log_event(&"hero", "Слава героя %s (%s, %s) гремит по миру: он достиг %d-го уровня." % [
 				display_name(), race.display_name.to_lower(), hero_class.display_name.to_lower(), level],
