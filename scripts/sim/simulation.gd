@@ -33,6 +33,8 @@ var roads := RoadSystem.new()
 var climate := ClimateSystem.new()
 var underground := UndergroundSystem.new()
 var ruins := RuinSystem.new()
+var crises := CrisisSystem.new()
+var eras := EraSystem.new()
 var societies := SocietySystem.new()
 var orgs := OrgSystem.new()
 var legacies := LegacySystem.new()
@@ -90,6 +92,7 @@ func step_day(world: World) -> void:
 ## Раз в год для всего мира: эпидемии от соседей, забывание обид, коалиции, статистика.
 func _new_year(world: World) -> void:
 	climate.tick_year(world)
+	crises.tick_year(world)
 	events.flush_pending(world)
 	diplomacy.tick_year(world)
 	religion.tick_year(world)
@@ -97,6 +100,7 @@ func _new_year(world: World) -> void:
 	orgs.tick_year(world)
 	legacies.tick_year(world)
 	underground.tick_year(world)
+	eras.tick_year(world)
 	_portals(world)
 	world.record_history()
 

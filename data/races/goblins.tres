@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"goblins"
+era_title = "Гоблинских царей"
 display_name = "Гоблины"
 description = "Мелкий, хитрый и невероятно плодовитый народ. Трусливы, но их всегда много."
 color = Color(0.72, 0.85, 0.2, 1)

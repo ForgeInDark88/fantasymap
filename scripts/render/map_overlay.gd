@@ -83,6 +83,7 @@ func _draw() -> void:
 		_draw_scars(world, zoom)
 		_draw_roads(world, zoom)
 		_draw_ruins(world, zoom)
+		_draw_titan(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
 		_draw_cities(world, zoom)
@@ -244,6 +245,24 @@ func _draw_caves(world: World, zoom: float) -> void:
 			var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 			draw_string_outline(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.8))
 			draw_string(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.95, 0.92, 0.85))
+	draw_set_transform(Vector2.ZERO)
+
+
+## Титан мирового кризиса — огромная тень с пылающими глазами.
+func _draw_titan(world: World, zoom: float) -> void:
+	if world.crisis.is_empty() or int(world.crisis.get("titan_cell", -1)) < 0:
+		return
+	var pos := renderer.cell_center(int(world.crisis.titan_cell))
+	draw_set_transform(pos, 0.0, Vector2.ONE / zoom)
+	var r := clampf(14.0 * zoom, 14.0, 30.0)
+	draw_circle(Vector2.ZERO, r + 3.0, Color(0.05, 0.03, 0.03, 0.9))
+	draw_circle(Vector2.ZERO, r, Color(0.45, 0.12, 0.08))
+	draw_circle(Vector2(-r * 0.35, -r * 0.15), r * 0.16, Color(1.0, 0.7, 0.2))
+	draw_circle(Vector2(r * 0.35, -r * 0.15), r * 0.16, Color(1.0, 0.7, 0.2))
+	var label := str(world.crisis.titan_name)
+	var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string_outline(_font, Vector2(-w * 0.5, r + 16.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.85))
+	draw_string(_font, Vector2(-w * 0.5, r + 16.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.75, 0.55))
 	draw_set_transform(Vector2.ZERO)
 
 

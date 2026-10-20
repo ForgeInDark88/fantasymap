@@ -37,6 +37,8 @@ var cells := PackedInt32Array()
 var cell_count: int:
 	get:
 		return cells.size()
+## Территория менялась с прошлой проверки анклавов (EnclaveSystem).
+var territory_dirty := true
 var sum_x := 0.0
 var sum_y := 0.0
 ## Добыча с клеток территории в год (по Goods), без построек и бонусов.

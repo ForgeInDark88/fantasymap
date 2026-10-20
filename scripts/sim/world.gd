@@ -78,6 +78,14 @@ var zone_harvest := PackedFloat32Array([1.0, 1.0, 1.0])
 ## Климатические беды поясов: пояс → {kind, until}; пепельная зима — до года ash_until.
 var zone_events: Dictionary[int, Dictionary] = {}
 var ash_until := -1
+## Мировой кризис (CrisisSystem): пусто — нет; иначе {id, stage, stage_start, start,
+## invader, titan_cell, titan_power, titan_name}. История кризисов и эпох.
+var crisis: Dictionary = {}
+var crisis_history: Array[Dictionary] = []
+var last_crisis_end := -1000
+var crisis_harvest := 1.0
+var crisis_events: Dictionary = {}
+var eras: Array[Dictionary] = []
 ## Руины (RuinSystem).
 var ruins: Array[Ruin] = []
 ## Подземный мир: граф пещер (UndergroundSystem).
@@ -434,14 +442,23 @@ func active_landmarks(kind: StringName) -> Array[Landmark]:
 ## Сколько источников силы контролирует государство.
 ## Живые герои не на троне. Павшие и воцарившиеся отсеиваются при обращении.
 func wandering_heroes() -> Array[Hero]:
-	var k := 0
-	for h in _wandering:
+	# Сначала ищем первого выбывшего — чаще всего его нет, и массив не трогаем.
+	var first := -1
+	for i in _wandering.size():
+		var h := _wandering[i]
+		if not h.alive or h.is_ruler:
+			first = i
+			break
+	if first < 0:
+		return _wandering
+	var k := first
+	for i in range(first + 1, _wandering.size()):
+		var h := _wandering[i]
 		if h.alive and not h.is_ruler:
 			_wandering[k] = h
 			k += 1
-	if k != _wandering.size():
-		_wandering.resize(k)
-		_by_day_dirty = true
+	_wandering.resize(k)
+	_by_day_dirty = true
 	return _wandering
 
 
@@ -670,6 +687,7 @@ func region_population(region: Region, owner_id: int) -> float:
 
 
 func _add_cell(nation: Nation, cell: int) -> void:
+	nation.territory_dirty = true
 	cell_slot[cell] = nation.cells.size()
 	nation.cells.append(cell)
 	nation.sum_x += cell % map.width
@@ -680,6 +698,7 @@ func _add_cell(nation: Nation, cell: int) -> void:
 
 
 func _remove_cell(nation: Nation, cell: int) -> void:
+	nation.territory_dirty = true
 	var slot := cell_slot[cell]
 	var last_index := nation.cells.size() - 1
 	var last := nation.cells[last_index]

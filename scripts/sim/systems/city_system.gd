@@ -9,8 +9,13 @@ const FOUND_COST_GOLD := 40.0
 const BUILD_CHANCE := 0.4
 
 
+## Раз в сколько лет пересчитывать население городов (со сдвигом по id).
+const GROW_PERIOD := 2
+
+
 func tick(world: World, nation: Nation) -> void:
-	_grow_cities(world, nation)
+	if (world.year + nation.id) % GROW_PERIOD == 0:
+		_grow_cities(world, nation)
 	# Бонусы взвешены населением городов, а оно меняется плавно — хватит раза в 10 лет.
 	if (world.year + nation.id) % 10 == 0:
 		recompute_building_effects(world, nation)
@@ -38,7 +43,7 @@ func _grow_cities(world: World, nation: Nation) -> void:
 		var city := world.cities[nation.city_ids[k]]
 		var target := urban * weights[k] / total_w
 		# Растут медленно, сжимаются быстрее (голод, войны, бегство жителей).
-		city.population += (target - city.population) * (0.05 if target > city.population else 0.1)
+		city.population += (target - city.population) * (0.05 if target > city.population else 0.1) * GROW_PERIOD
 
 
 func _city_weight(world: World, city: City) -> float:

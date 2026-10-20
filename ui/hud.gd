@@ -17,7 +17,7 @@ const CHRONICLE_COLORS := {
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -241,9 +241,13 @@ func _on_year_passed(year: int) -> void:
 
 ## Дата, время года и климатические беды.
 func _date_line(world: World) -> String:
-	var parts: Array[String] = [world.date_text(), ClimateSystem.season(world.month)]
+	var parts: Array[String] = [world.date_text(), ClimateSystem.season(world.month), EraSystem.current(world)]
 	if world.ash_until > world.year:
 		parts.append("пепельная зима")
+	if not world.crisis.is_empty():
+		var def := CrisisDB.find(StringName(world.crisis.id))
+		if def != null:
+			parts.append("[%s: %s]" % [def.display_name, def.stage_names[int(world.crisis.stage)].to_lower()])
 	return " · ".join(parts)
 
 

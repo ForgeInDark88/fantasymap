@@ -35,6 +35,7 @@ func _initialize() -> void:
 	_scripted_roads()
 	_scripted_underground()
 	_scripted_ruins()
+	_scripted_crises()
 	_scripted_climate()
 	_expect(_digest(17) == _digest(17), "этап 9 недетерминирован")
 	if _failures > 0:
@@ -179,6 +180,44 @@ func _scripted_ruins() -> void:
 		if r.cell >= 0 and not w.map.is_land(r.cell):
 			_expect(false, "руины в воде")
 			break
+
+
+func _scripted_crises() -> void:
+	var s := MapSettings.new()
+	s.world_seed = 37
+	var w := World.create(s)
+	var sim := Simulation.new()
+	for y in 30:
+		sim.step(w)
+	_expect(not w.eras.is_empty() and w.eras[0].name == "Эпоха Зари", "нет первой эпохи")
+	for res in CrisisDB.all():
+		var def := res as CrisisDef
+		_expect(def.stage_years.size() == def.stage_names.size() and def.stage_effects.size() == def.stage_names.size(),
+				"стадии кризиса %s описаны не полностью" % def.id)
+		CrisisSystem.start(w, def)
+		_expect(w.crisis.id == str(def.id), "кризис %s не начался" % def.id)
+		var affected := w.nations.filter(func(n: Nation) -> bool: return n.alive and n.effect_sources.has(&"crisis")).size()
+		_expect(affected > 0 or def.stage_effects[0].is_empty(), "кризис %s не действует на государства" % def.id)
+		if def.special == &"invasion":
+			_expect(int(w.crisis.invader) >= 0 and w.nations[int(w.crisis.invader)].alive, "Орда не высадилась")
+		if def.unite:
+			_expect(w.orgs.any(func(o: Organization) -> bool: return o.alive and o.def.basis == "crisis"), "Великий союз не собран")
+		var total := 0
+		for y in def.stage_years:
+			total += y
+		for y in total + 2:
+			sim.step(w)
+			if w.crisis.is_empty():
+				break
+			if def.special == &"titan" and int(w.crisis.titan_cell) >= w.map.cell_count():
+				_expect(false, "титан ушёл с карты")
+		_expect(w.crisis.is_empty(), "кризис %s не закончился" % def.id)
+		_expect(not w.nations.any(func(n: Nation) -> bool: return n.alive and n.effect_sources.has(&"crisis")), "эффекты кризиса %s не сняты" % def.id)
+		EraSystem.new().tick_year(w)
+	_expect(w.crisis_history.size() == CrisisDB.all().size(), "история кризисов неполна")
+	for i in w.eras.size() - 1:
+		_expect(w.eras[i].end == w.eras[i + 1].start, "эпохи идут с разрывом")
+	_check_accounting(w)
 
 
 func _check_caves(world: World) -> void:

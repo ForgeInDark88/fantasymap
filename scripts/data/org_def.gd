@@ -15,7 +15,7 @@ extends Resource
 @export_group("Кто вступает")
 ## trade — торговые связи; tech — нужна технология; faith — общая вера;
 ## hegemon — страх перед гегемоном; abyss — пока в мире есть демоны.
-@export_enum("trade", "tech", "faith", "hegemon", "abyss") var basis: String = "trade"
+@export_enum("trade", "tech", "faith", "hegemon", "abyss", "crisis") var basis: String = "trade"
 @export var requires_tech: StringName = &""
 ## Минимум торговых договоров (для basis = trade).
 @export var min_trade_partners: int = 2

@@ -90,7 +90,8 @@ func tick_day(world: World) -> void:
 	var region_of := world.region_of
 	var met: Array[Hero] = []
 	for hero: Hero in acting:
-		if not hero.alive or hero.is_ruler or hero.cell < 0:
+		# Встречи — раз в два месяца (каждый герой в свои месяцы).
+		if not hero.alive or hero.is_ruler or hero.cell < 0 or (world.month + hero.id) % 2 != 0:
 			continue
 		var rid := region_of[hero.cell]
 		met.clear()

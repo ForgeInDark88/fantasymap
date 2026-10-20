@@ -14,7 +14,9 @@ const MIN_COASTAL_POCKET := 15
 
 
 func tick(world: World, nation: Nation) -> void:
-	if (world.year + nation.id) % PERIOD == 0:
+	# Полная проверка — только если территория менялась с прошлой.
+	if (world.year + nation.id) % PERIOD == 0 and nation.territory_dirty:
+		nation.territory_dirty = false
 		absorb(world, nation)
 
 

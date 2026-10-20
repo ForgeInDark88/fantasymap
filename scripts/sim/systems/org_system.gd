@@ -117,10 +117,10 @@ func _update(world: World, org: Organization) -> void:
 				world.log_event(&"org", "%s вступает в организацию «%s»." % [n.name, org.name], PackedInt32Array([n.id]))
 	if org.founder >= 0 and not org.members.has(org.founder) and not org.members.is_empty():
 		org.founder = org.members[0]
-	if org.members.size() < 2 or (def.basis == "abyss" and not _demons_exist(world)) \
+	if org.members.size() < 2 or (def.basis == "abyss" and not _demons_exist(world)) or (def.basis == "crisis" and world.crisis.is_empty()) \
 			or (def.basis == "hegemon" and d.hegemon < 0 and world.year - org.founded_year > 20):
 		org.alive = false
-		var why := "Врата бездны больше не грозят миру" if def.basis == "abyss" else ("угроза миновала" if def.basis == "hegemon" else "в ней не осталось членов")
+		var why := "Врата бездны больше не грозят миру" if def.basis == "abyss" else ("угроза миновала" if def.basis == "hegemon" or def.basis == "crisis" else "в ней не осталось членов")
 		world.log_event(&"org", "Организация «%s» распущена: %s." % [org.name, why], org.members)
 		return
 	# Взносы.
@@ -198,6 +198,8 @@ static func _qualifies(world: World, def: OrgDef, n: Nation, faith: int, member:
 					and world.diplomacy.opinion(world, n.id, h) < 0.2))
 		"abyss":
 			return _demons_exist(world) and n.army > 2000.0
+		"crisis":
+			return not world.crisis.is_empty() and n.army > 2000.0 and n.id != int(world.crisis.get("invader", -1))
 	return false
 
 

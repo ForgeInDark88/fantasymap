@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CrisisDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/crisis_def.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+id = &"horde"
+display_name = "Нашествие из-за края мира"
+description = "С неведомых земель за краем карты приходит Орда, сметающая всё на пути."
+era_name = "Эпоха Орды"
+weight = 1.0
+min_year = 120
+stage_names = PackedStringArray("Высадка", "Великое нашествие", "Последние набеги")
+stage_years = PackedInt32Array(5, 15, 10)
+stage_effects = Array[Dictionary]([{"stability": -0.02}, {"army_mult": 1.05, "stability": -0.04}, {}])
+stage_harvest = PackedFloat32Array(1.0, 0.95, 1.0)
+stage_pop_loss = PackedFloat32Array(0.0, 0.0, 0.0)
+stage_events = Array[Dictionary]([{}, {}, {}])
+special = &"invasion"
+invader_race = &"orcs"
+unite = true
+immune_traits = Array[StringName]([])
+start_text = "С края мира приходит Орда: её корабли и полчища несчётны."
+end_text = "Нашествие из-за края мира иссякло."

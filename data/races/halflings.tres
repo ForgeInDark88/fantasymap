@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"halflings"
+era_title = "Мирных холмов"
 display_name = "Полурослики"
 description = "Мирные земледельцы холмистых равнин. Любят уют, сытную еду и стараются не попадаться на глаза."
 color = Color(0.95, 0.55, 0.65, 1)

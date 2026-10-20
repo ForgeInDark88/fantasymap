@@ -7,7 +7,7 @@ extends RefCounted
 const CAUSE_NAMES := {
 	&"territory": "за земли", &"resources": "за богатства", &"racial": "расовая",
 	&"holy": "священная", &"crusade": "крестовый поход", &"schism": "раскол", &"religious": "за веру",
-	&"espionage": "возмездия", &"reunification": "за воссоединение",
+	&"espionage": "возмездия", &"reunification": "за воссоединение", &"invasion": "нашествие",
 	&"revenge": "мести", &"independence": "за независимость", &"civil": "гражданская",
 	&"expansion": "завоевательная", &"reconquest": "за возвращение земель", &"coalition": "коалиции",
 }
@@ -57,6 +57,26 @@ func war_between(a: int, b: int) -> War:
 			if sa != 0 and war.side_of(b) == -sa:
 				return war
 	return null
+
+
+## Государства, ведущие войну (приблизительный кэш: обновляется при объявлении и
+## окончании войн; для эвристик героев и разведки, не для учёта).
+var _at_war: Dictionary = {}
+var _at_war_key := Vector2i(-1, -1)
+
+
+func at_war(nation_id: int) -> bool:
+	var key := Vector2i(wars.size(), _next_war_id)
+	if key != _at_war_key:
+		_at_war_key = key
+		_at_war.clear()
+		for war in wars:
+			if war.active:
+				for m in war.attackers:
+					_at_war[m] = true
+				for m in war.defenders:
+					_at_war[m] = true
+	return _at_war.has(nation_id)
 
 
 func wars_of(nation_id: int) -> Array[War]:
@@ -224,6 +244,8 @@ static func _cause_title(cause: StringName) -> String:
 			return "Война возмездия:"
 		&"reunification":
 			return "Война за воссоединение:"
+		&"invasion":
+			return "Нашествие:"
 		&"independence":
 			return "Освободительная война:"
 		&"civil":

@@ -40,6 +40,7 @@ func _ready() -> void:
 	ReligionDB.ensure_loaded()
 	TechDB.ensure_loaded()
 	OrgDB.ensure_loaded()
+	CrisisDB.ensure_loaded()
 	EventBus.generate_requested.connect(generate)
 
 

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CrisisDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/crisis_def.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+id = &"ice_age"
+display_name = "Ледниковый век"
+description = "Солнце тускнеет, снега не тают; льды наступают на поля."
+era_name = "Ледниковая эпоха"
+weight = 0.7
+min_year = 150
+stage_names = PackedStringArray("Долгие зимы", "Великий холод", "Оттепель")
+stage_years = PackedInt32Array(15, 35, 20)
+stage_effects = Array[Dictionary]([{"growth_mult": 0.9}, {"growth_mult": 0.75, "stability": -0.03}, {"growth_mult": 0.95}])
+stage_harvest = PackedFloat32Array(0.85, 0.65, 0.9)
+stage_pop_loss = PackedFloat32Array(0.0, 0.004, 0.0)
+stage_events = Array[Dictionary]([{"great_famine": 2.0}, {"great_famine": 3.0, "monsters": 1.5}, {}])
+special = &"ice"
+invader_race = &"orcs"
+unite = false
+immune_traits = Array[StringName]([])
+start_text = "Начинается ледниковый век: зимы длятся по полгода, ледники сползают с гор."
+end_text = "Лёд отступает — настаёт оттепель, и мир оживает."

@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"humans"
+era_title = "Людских королей"
 display_name = "Люди"
 description = "Самая многочисленная и приспособляемая раса. Хорошие торговцы и строители империй."
 color = Color(0.25, 0.45, 0.9, 1)

@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"dwarves"
+era_title = "Железных королей"
 display_name = "Дворфы"
 description = "Подгорный народ рудокопов и кузнецов. Строят шахты и неприступные крепости."
 color = Color(0.8, 0.52, 0.2, 1)

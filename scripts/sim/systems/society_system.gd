@@ -19,6 +19,8 @@ const GROWTH := 0.05
 const SUPPRESS := 0.06
 ## Расползание в соседний регион.
 const SPREAD := 0.05
+## Больше стольких регионов тайное общество не охватывает (ячейки не уследят друг за другом).
+const MAX_REGIONS := 12
 ## Охота разведки: цена в очках и сколько влияния снимает.
 const HUNT_COST := 5.0
 const HUNT_POWER := 0.25
@@ -111,7 +113,7 @@ func _tick_society(world: World, s: Society) -> void:
 	var add := {}
 	for rid in s.influence.keys():
 		var region := world.regions[rid]
-		var owner := region.controller()
+		var owner := world.owner[region.center] if region.center >= 0 else -1
 		var v: float = s.influence[rid]
 		if owner < 0:
 			v -= 0.05
@@ -141,7 +143,7 @@ func _tick_society(world: World, s: Society) -> void:
 			_maybe_coup(world, s, n, region, v)
 			if not s.alive:
 				return
-		if v > 0.3 and not region.neighbors.is_empty():
+		if v > 0.3 and not region.neighbors.is_empty() and s.influence.size() + add.size() < MAX_REGIONS:
 			var nb: int = region.neighbors[rng.randi_range(0, region.neighbors.size() - 1)]
 			add[nb] = add.get(nb, 0.0) + SPREAD
 		s.influence[rid] = clampf(v, 0.0, 1.0)

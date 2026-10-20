@@ -22,6 +22,7 @@ const TOOLS := [
 	[&"drought", "Засуха", "Клик: на климатический пояс клетки обрушивается великая сушь."],
 	[&"invasion", "Нашествие из глубин", "Клик: из ближайшего логова чудовищ полчища вырываются на поверхность."],
 	[&"ruin", "Древние руины", "Клик по суше: из-под земли открывается древнее святилище, полное сокровищ и опасностей."],
+	[&"crisis", "Мировой кризис", "Клик по карте: на мир обрушивается выбранный кризис (идущий — заканчивается)."],
 	[&"road", "Проложить дорогу", "Клик у города: от него пройдёт дорога (или морской путь) к ближайшему городу."],
 	[&"collector", "Собиратель земель", "Клик по государству-наследнику империи: оно провозглашает себя собирателем её земель."],
 	[&"raise", "Поднять землю", "Клик: земля поднимается (вода становится сушей, равнины — холмами и горами)."],
@@ -33,6 +34,7 @@ var _race: OptionButton
 var _event: OptionButton
 var _op: OptionButton
 var _org: OptionButton
+var _crisis: OptionButton
 var _radius: HSlider
 var _hint: Label
 var _tool: StringName = &""
@@ -84,6 +86,12 @@ func _init() -> void:
 				_op.add_item(op.display_name)
 			_op.item_selected.connect(func(_i: int) -> void: _emit())
 			box.add_child(_op)
+		elif t[0] == &"crisis":
+			_crisis = OptionButton.new()
+			for c in CrisisDB.all():
+				_crisis.add_item(c.display_name)
+			_crisis.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_crisis)
 		elif t[0] == &"org":
 			_org = OptionButton.new()
 			for o in OrgDB.orgs():
@@ -148,5 +156,6 @@ func _emit() -> void:
 		"radius": int(_radius.value),
 		"op": OrgDB.ops()[_op.selected],
 		"org": OrgDB.orgs()[_org.selected],
+		"crisis": CrisisDB.all()[_crisis.selected],
 	}
 	EventBus.god_tool_changed.emit(_tool, params)

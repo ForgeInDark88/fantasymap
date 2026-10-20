@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CrisisDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/crisis_def.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+id = &"great_drought"
+display_name = "Великая засуха"
+description = "Годами не идут дожди; реки мелеют, пустыни ползут на поля."
+era_name = "Эпоха Зноя"
+weight = 1.0
+min_year = 60
+stage_names = PackedStringArray("Сухие годы", "Великая сушь", "Первые дожди")
+stage_years = PackedInt32Array(5, 12, 6)
+stage_effects = Array[Dictionary]([{"growth_mult": 0.9}, {"growth_mult": 0.75, "stability": -0.04}, {}])
+stage_harvest = PackedFloat32Array(0.85, 0.6, 0.9)
+stage_pop_loss = PackedFloat32Array(0.0, 0.006, 0.0)
+stage_events = Array[Dictionary]([{"great_famine": 2.0, "locusts": 2.0}, {"great_famine": 3.0, "locusts": 3.0}, {}])
+special = &"drought"
+invader_race = &"orcs"
+unite = false
+immune_traits = Array[StringName]([])
+start_text = "Приходит великая засуха: небо выгорело добела, и дождей не будет годами."
+end_text = "Хлынули дожди: великая засуха кончилась."

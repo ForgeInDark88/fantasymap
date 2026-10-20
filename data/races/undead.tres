@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"undead"
+era_title = "Мёртвых властелинов"
 display_name = "Нежить"
 description = "Армии мертвецов под властью личей. Не нуждаются в еде, внушают страх всем живым."
 color = Color(0.55, 0.3, 0.75, 1)

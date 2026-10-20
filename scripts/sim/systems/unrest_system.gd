@@ -59,7 +59,8 @@ func _loyalty(world: World, nation: Nation, region: Region, is_capital: bool, ca
 	var loyalty := 0.35 + nation.stability * 0.55
 	if is_capital:
 		loyalty += 0.3
-	var people := world.region_majority_race(region, nation.id)
+	# Народ региона — по клетке-центру (точный подсчёт по клеткам — только для бунта).
+	var people := nation.race.index if nation.primary_share() > 0.999 else (world.cell_race[region.center] if region.center >= 0 else World.NO_RACE)
 	if people != World.NO_RACE and people != nation.race.index:
 		var relation := nation.race.relation_to(RaceDB.by_index(people))
 		loyalty -= 0.3 - relation * 0.2

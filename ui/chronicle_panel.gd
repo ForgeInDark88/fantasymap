@@ -22,6 +22,7 @@ const CATEGORIES := {
 	"Климат": [&"climate"],
 	"Подземье": [&"underground"],
 	"Руины": [&"ruins"],
+	"Кризисы и эпохи": [&"crisis", &"era"],
 }
 const COLORS := {
 	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0", &"ruler": "#d6b3ff", &"famine": "#ff9a7a",
@@ -29,7 +30,7 @@ const COLORS := {
 	&"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070", &"fall": "#d06060", &"colony": "#7fc8ff",
 	&"plague": "#b8d070", &"disaster": "#e0a070", &"monsters": "#e08cc0", &"hero": "#ffe680",
 	&"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8",
 }
 
 var _checks: Dictionary[String, CheckBox] = {}

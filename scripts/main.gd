@@ -106,6 +106,8 @@ func _apply_tool(world: World, cell: int) -> void:
 			UndergroundSystem.invasion(world, cell)
 		&"ruin":
 			GodTools.ancient_ruin(world, cell)
+		&"crisis":
+			CrisisSystem.start(world, _tool_params.crisis)
 		&"road":
 			GodTools.road_from(world, cell)
 		&"collector":

@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"elves"
+era_title = "Звёздных владык"
 display_name = "Эльфы"
 description = "Древний лесной народ. Живут веками, редко нападают первыми, но страшны в обороне своих лесов."
 color = Color(0.2, 0.78, 0.5, 1)
