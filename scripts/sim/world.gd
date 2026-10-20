@@ -86,6 +86,13 @@ var last_crisis_end := -1000
 var crisis_harvest := 1.0
 var crisis_events: Dictionary = {}
 var eras: Array[Dictionary] = []
+## Артефакты-предметы (ArtifactSystem), роды героев, ордена и гильдии (этап 10.1).
+var artifacts: Array[Artifact] = []
+## Роды героев: {name, founder, year}.
+var lineages: Array[Dictionary] = []
+## Ещё не выросшие дети героев: {parents, name, race, class, karma, intellect, adult, cell, lineage}.
+var hero_births: Array[Dictionary] = []
+var orders: Array[HeroOrder] = []
 ## Руины (RuinSystem).
 var ruins: Array[Ruin] = []
 ## Подземный мир: граф пещер (UndergroundSystem).

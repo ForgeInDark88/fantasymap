@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ArtifactDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/artifact_def.gd" id="1_art"]
+
+[resource]
+script = ExtResource("1_art")
+id = &"legendary_weapon"
+display_name = "Легендарное оружие"
+kind = "weapon"
+name_patterns = PackedStringArray("{weapon} «{place}»", "{weapon} Зари", "{weapon} Сотни Битв")
+power_mult = 1.8
+karma_drift = 0.0
+wits_bonus = 0.0
+nation_effects = Dictionary[StringName, float]({})
+cursed = false
+weight = 0.0
+famous = true

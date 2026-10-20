@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"deep_serpent_god"
+display_name = "Змей Глубин"
+genitive = "Змея Глубин"
+title = "Держатель островов"
+description = "Змей, на чьей спине лежат острова мира."
+sphere = &"sea"
+karma = 0.1
+religions = Array[StringName]([&"deep_serpent"])
+color = Color(0.2, 0.6, 0.7, 1)
+symbol = "§"
+boon = Dictionary[StringName, float]({&"trade_mult": 1.06, &"naval_mult": 1.2})
+boon_text = "смиряет морские бури"
+curse_weapon = "Трезубец Змея"

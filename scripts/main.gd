@@ -110,6 +110,16 @@ func _apply_tool(world: World, cell: int) -> void:
 			CrisisSystem.start(world, _tool_params.crisis)
 		&"road":
 			GodTools.road_from(world, cell)
+		&"artifact":
+			GodTools.gift_artifact(world, _tool_params.artifact, cell)
+		&"bless":
+			GodTools.bless(world, _tool_params.god, cell)
+		&"chosen":
+			GodTools.choose_hero(world, _tool_params.god, cell)
+		&"child":
+			GodTools.hero_child(world, cell)
+		&"order":
+			GodTools.found_order(world, cell)
 		&"collector":
 			var o := world.owner[cell]
 			if o >= 0 and world.nations[o].legacy >= 0:

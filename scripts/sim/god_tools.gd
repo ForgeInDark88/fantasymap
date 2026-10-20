@@ -276,3 +276,82 @@ static func ancient_ruin(world: World, cell: int) -> Ruin:
 		r.wealth *= 2.0
 		world.log_event(&"ruins", "Земля разверзлась в регионе %s: открылись древние руины — %s." % [world.region_label(cell, "диких землях"), name])
 	return r
+
+
+# --- Этап 10.1: артефакты, боги, роды, ордена ---
+
+## Ближайший к клетке живой герой-странник (не дальше max_dist клеток).
+static func nearest_hero(world: World, cell: int, max_dist: float = 25.0) -> Hero:
+	var p := Vector2(world.map.cell_pos(cell))
+	var best: Hero = null
+	var best_d := max_dist
+	for h in world.wandering_heroes():
+		if h.alive and h.cell >= 0:
+			var d := p.distance_to(Vector2(world.map.cell_pos(h.cell)))
+			if d < best_d:
+				best_d = d
+				best = h
+	return best
+
+
+## Даровать артефакт: ближайшему герою, иначе в сокровищницу владельца, иначе — лежит в земле.
+static func gift_artifact(world: World, def: ArtifactDef, cell: int) -> Artifact:
+	if def == null or not world.map.is_land(cell):
+		return null
+	var hero := nearest_hero(world, cell)
+	var a := ArtifactSystem.create(world, def.id, null, "", "явлен по воле богов")
+	if hero != null:
+		ArtifactSystem.give(world, a, hero, "дарован богами")
+		hero.add_deed(world, "получил от богов %s" % a.name)
+		world.log_event(&"artifact", "По воле богов герою %s явлен предмет — %s." % [hero.display_name(), a.name])
+	elif world.owner[cell] >= 0:
+		ArtifactSystem.to_treasury(world, a, world.nations[world.owner[cell]], "явлен по воле богов")
+		world.log_event(&"artifact", "По воле богов в сокровищнице %s явилась реликвия — %s." % [world.nations[world.owner[cell]].name, a.name],
+				PackedInt32Array([world.owner[cell]]))
+	else:
+		ArtifactSystem.drop(world, a, cell)
+		world.log_event(&"artifact", "По воле богов в краю %s скрыт предмет — %s. Кто найдёт его?" % [world.region_label(cell, "диких земель"), a.name])
+	return a
+
+
+## Милость бога державе под клеткой.
+static func bless(world: World, god: GodDef, cell: int) -> bool:
+	var o := world.owner[cell]
+	if god == null or o < 0:
+		return false
+	GodSystem.grant_boon(world, world.nations[o], god)
+	return true
+
+
+## Бог избирает ближайшего героя.
+static func choose_hero(world: World, god: GodDef, cell: int) -> Hero:
+	var hero := nearest_hero(world, cell)
+	if god == null or hero == null:
+		return null
+	GodSystem.make_chosen(world, hero, god)
+	return hero
+
+
+## Дитя героев: у ближайшего героя (с супругом — общее, иначе находится пара рядом) рождается ребёнок.
+static func hero_child(world: World, cell: int) -> Dictionary:
+	var hero := nearest_hero(world, cell)
+	if hero == null:
+		return {}
+	var other: Hero = world.heroes[hero.spouse] if hero.spouse >= 0 and world.heroes[hero.spouse].alive else null
+	if other == null:
+		for h in world.wandering_heroes():
+			if h != hero and h.alive and h.spouse < 0 and h.race == hero.race:
+				other = h
+				break
+		if other == null:
+			return {}
+		hero.spouse = other.id
+		other.spouse = hero.id
+		world.log_event(&"lineage", "По воле богов герои %s и %s сочетались браком." % [hero.display_name(), other.display_name()])
+	return LineageSystem.birth(world, hero, other)
+
+
+## Ближайший герой основывает орден.
+static func found_order(world: World, cell: int) -> HeroOrder:
+	var hero := nearest_hero(world, cell)
+	return OrderSystem.found(world, hero) if hero != null else null

@@ -161,12 +161,14 @@ func _scripted_ruins() -> void:
 		hero.level = 20
 		hero.intellect = 1.0
 		hero.cell = cell
-		var wealth := ruin.wealth
+		# Герой идёт в ближайшие руины края (это могут быть и другие руины рядом).
+		var target := RuinSystem.near(w, cell)
+		var wealth := target.wealth
 		for i in 60:
-			if ruin.wealth < wealth or not hero.alive:
+			if target.wealth < wealth or not hero.alive:
 				break
 			RuinSystem.hero_explore(w, hero)
-		_expect(ruin.wealth < wealth or not hero.alive, "герой так и не исследовал руины")
+		_expect(target.wealth < wealth or not hero.alive, "герой так и не исследовал руины")
 	# Проклятый герой получает трон в глухих руинах, если они есть.
 	var remote := RuinSystem.remote_ruin(w)
 	var h2 := HeroSystem.spawn(w, w.nations[0], w.regions[0], true)

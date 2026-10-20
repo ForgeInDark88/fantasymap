@@ -138,6 +138,7 @@ static func to_dict(world: World) -> Dictionary:
 			"regions": Array(l.regions), "founded": l.founded_year, "until": l.until_year, "collector": l.collector, "alive": l.alive}),
 		"cultures": world.cultures.map(func(c: Culture) -> Dictionary: return {"id": c.id, "name": c.name, "race": c.race,
 			"color": _col(c.color), "customs": Array(c.customs), "origin": c.origin_nation, "founded": c.founded_year}),
+		"lore": _lore_dict(world),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -351,7 +352,83 @@ static func _hero_dict(h: Hero) -> Dictionary:
 		"fate": str(h.fate), "returns": h.returns, "goal": h.goal_cell, "bonds": _int_dict(h.bonds),
 		"spouse": h.spouse, "mentor": h.mentor, "party": h.party_leader, "ally": h.ally_nation, "ally_until": h.ally_until,
 		"vendetta": h.vendetta, "killed_by": h.killed_by, "intellect": h.intellect, "thought": h.thought,
+		"parents": Array(h.parents), "children": Array(h.children), "lineage": h.lineage, "artifact_id": h.artifact_id,
+		"order": h.order, "god": str(h.patron_god), "chosen": h.chosen, "awits": h._artifact_wits,
 	}
+
+
+## Этап 10.1: артефакты, роды, дети, ордена, милости богов.
+static func _lore_dict(world: World) -> Dictionary:
+	return {
+		"artifacts": world.artifacts.map(func(a: Artifact) -> Dictionary: return {"def": str(a.def.id) if a.def != null else "",
+			"name": a.name, "hero": a.hero, "nation": a.nation, "cell": a.cell, "year": a.created_year, "history": Array(a.history)}),
+		"lineages": world.lineages,
+		"births": world.hero_births,
+		"orders": world.orders.map(func(o: HeroOrder) -> Dictionary: return {"name": o.name, "kind": str(o.kind), "founder": o.founder,
+			"leader": o.leader, "founded": o.founded_year, "ended": o.ended_year, "karma": o.karma, "hall": o.hall_cell,
+			"members": Array(o.members), "alive": o.alive, "total": o.total}),
+		"boons": world.nations.map(func(n: Nation) -> Array: return [str(n.god_boon), n.god_boon_until]),
+	}
+
+
+static func _load_lore(world: World, data: Dictionary) -> void:
+	if not data.has("lore"):
+		# Старое сохранение: оружие героев (строки) становится предметами без ГСЧ.
+		for h in world.heroes:
+			if h.artifact.is_empty():
+				continue
+			var a := Artifact.new()
+			a.id = world.artifacts.size()
+			a.def = LoreDB.artifact(&"legendary_weapon" if h.artifact_mult >= 1.75 else (&"cursed_weapon" if h.artifact_mult >= 1.5 else &"ancient_weapon"))
+			a.name = h.artifact
+			a.created_year = h.born_year
+			if h.alive and not h.is_ruler:
+				a.hero = h.id
+				h.artifact_id = a.id
+			elif h.is_ruler and h.nation_id >= 0:
+				a.nation = h.nation_id
+			else:
+				a.cell = h.cell
+			world.artifacts.append(a)
+		for n in world.nations:
+			ArtifactSystem.apply_nation_effects(world, n)
+		return
+	var lore: Dictionary = data.lore
+	for ad in lore.artifacts:
+		var a := Artifact.new()
+		a.id = world.artifacts.size()
+		a.def = LoreDB.artifact(StringName(ad.def))
+		a.name = ad.name
+		a.hero = int(ad.hero)
+		a.nation = int(ad.nation)
+		a.cell = int(ad.cell)
+		a.created_year = int(ad.year)
+		a.history = PackedStringArray(ad.history)
+		world.artifacts.append(a)
+	for l in lore.lineages:
+		world.lineages.append({"name": str(l.name), "founder": int(l.founder), "year": int(l.year), "heroes": int(l.heroes)})
+	for b in lore.births:
+		world.hero_births.append({"parents": [int(b.parents[0]), int(b.parents[1])], "race": str(b.race), "class": str(b["class"]),
+			"name": str(b.name), "karma": float(b.karma), "intellect": float(b.intellect), "adult": int(b.adult),
+			"lineage": int(b.lineage), "cell": int(b.cell), "born": int(b.born), "epithet": str(b.epithet)})
+	for od in lore.orders:
+		var o := HeroOrder.new()
+		o.id = world.orders.size()
+		o.name = od.name
+		o.kind = StringName(od.kind)
+		o.founder = int(od.founder)
+		o.leader = int(od.leader)
+		o.founded_year = int(od.founded)
+		o.ended_year = int(od.ended)
+		o.karma = od.karma
+		o.hall_cell = int(od.hall)
+		o.members = PackedInt32Array(od.members)
+		o.alive = od.alive
+		o.total = int(od.total)
+		world.orders.append(o)
+	for i in mini(lore.boons.size(), world.nations.size()):
+		world.nations[i].god_boon = StringName(lore.boons[i][0])
+		world.nations[i].god_boon_until = int(lore.boons[i][1])
 
 
 static func _war_dict(w: War) -> Dictionary:
@@ -641,6 +718,7 @@ static func from_dict(data: Dictionary) -> World:
 		road.safety = rd[6]
 		road.traffic = rd[7]
 		road.alive = rd[8]
+	_load_lore(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])
@@ -736,6 +814,14 @@ static func _restore_hero(hd: Dictionary) -> Hero:
 	h.killed_by = int(hd.killed_by)
 	h.intellect = hd.get("intellect", h.hero_class.intellect)
 	h.thought = hd.get("thought", "")
+	h.parents = PackedInt32Array(hd.get("parents", []))
+	h.children = PackedInt32Array(hd.get("children", []))
+	h.lineage = int(hd.get("lineage", -1))
+	h.artifact_id = int(hd.get("artifact_id", -1))
+	h.order = int(hd.get("order", -1))
+	h.patron_god = StringName(hd.get("god", ""))
+	h.chosen = hd.get("chosen", false)
+	h._artifact_wits = hd.get("awits", 0.0)
 	return h
 
 

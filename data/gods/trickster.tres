@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"trickster"
+display_name = "Шут-Обманщик"
+genitive = "Шута-Обманщика"
+title = "Бог плутов и случая"
+description = "Смеётся над богами и смертными; удача и обман — его дары."
+sphere = &"trickery"
+karma = -0.1
+religions = Array[StringName]([])
+color = Color(0.6, 0.5, 0.8, 1)
+symbol = "♣"
+boon = Dictionary[StringName, float]({&"trade_mult": 1.04})
+boon_text = "посылает удачу и обман"
+curse_weapon = "Кости Шута"

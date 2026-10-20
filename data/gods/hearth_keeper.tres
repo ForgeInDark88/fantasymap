@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"hearth_keeper"
+display_name = "Хранительница Очага"
+genitive = "Хранительницы Очага"
+title = "Добрая хозяйка"
+description = "Сытость, гостеприимство и мир в доме."
+sphere = &"home"
+karma = 0.9
+religions = Array[StringName]([&"hearth", &"old_gods"])
+color = Color(0.95, 0.65, 0.4, 1)
+symbol = "⌂"
+boon = Dictionary[StringName, float]({&"stability": 0.04, &"growth_mult": 1.04})
+boon_text = "хранит дома от бед"
+curse_weapon = "Кочерга Очага"

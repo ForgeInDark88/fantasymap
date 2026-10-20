@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"great_worm"
+display_name = "Великий Червь"
+genitive = "Великого Червя"
+title = "Грызущий корни"
+description = "Тот, кто прорыл подземный мир."
+sphere = &"trickery"
+karma = -0.2
+religions = Array[StringName]([&"cave_worm"])
+color = Color(0.55, 0.6, 0.2, 1)
+symbol = "∿"
+boon = Dictionary[StringName, float]({&"trade_mult": 1.08})
+boon_text = "указывает пути к кладам"
+curse_weapon = "Кинжал Червя"

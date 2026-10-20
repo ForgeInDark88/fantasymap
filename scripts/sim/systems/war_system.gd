@@ -333,6 +333,8 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 			world.log_event(&"conquest", "%s захватывает регион %s и город %s." % [conqueror.short_name, region.name, city.name], ids)
 	else:
 		world.log_event(&"conquest", "%s захватывает регион %s." % [conqueror.short_name, region.name], ids)
+	if capital_lost != null:
+		ArtifactSystem.on_capital_taken(world, capital_lost, world.nations[war.leader(winner)])
 	if capital_lost != null and capital_lost.alive:
 		war.score += winner * 25.0
 		capital_lost.stability = maxf(0.0, capital_lost.stability - 0.15)

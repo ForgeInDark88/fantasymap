@@ -24,6 +24,11 @@ const TOOLS := [
 	[&"ruin", "Древние руины", "Клик по суше: из-под земли открывается древнее святилище, полное сокровищ и опасностей."],
 	[&"crisis", "Мировой кризис", "Клик по карте: на мир обрушивается выбранный кризис (идущий — заканчивается)."],
 	[&"road", "Проложить дорогу", "Клик у города: от него пройдёт дорога (или морской путь) к ближайшему городу."],
+	[&"artifact", "Даровать артефакт", "Клик у героя: он получает предмет выбранного вида (нет героя — реликвия в сокровищницу или клад в земле)."],
+	[&"bless", "Милость бога", "Клик по государству: выбранный бог дарует ему свою милость на 10 лет."],
+	[&"chosen", "Избранник бога", "Клик у героя: выбранный бог избирает его и одаривает."],
+	[&"child", "Дитя героев", "Клик у героя: у него (и супруга или героя рядом) родится ребёнок — продолжатель рода."],
+	[&"order", "Основать орден", "Клик у героя: он основывает орден или гильдию своего класса."],
 	[&"collector", "Собиратель земель", "Клик по государству-наследнику империи: оно провозглашает себя собирателем её земель."],
 	[&"raise", "Поднять землю", "Клик: земля поднимается (вода становится сушей, равнины — холмами и горами)."],
 	[&"lower", "Опустить землю", "Клик: земля опускается (может уйти под воду вместе с городами)."],
@@ -35,6 +40,8 @@ var _event: OptionButton
 var _op: OptionButton
 var _org: OptionButton
 var _crisis: OptionButton
+var _artifact: OptionButton
+var _god: OptionButton
 var _radius: HSlider
 var _hint: Label
 var _tool: StringName = &""
@@ -92,6 +99,18 @@ func _init() -> void:
 				_crisis.add_item(c.display_name)
 			_crisis.item_selected.connect(func(_i: int) -> void: _emit())
 			box.add_child(_crisis)
+		elif t[0] == &"artifact":
+			_artifact = OptionButton.new()
+			for a in LoreDB.artifacts():
+				_artifact.add_item(a.display_name)
+			_artifact.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_artifact)
+		elif t[0] == &"chosen":
+			_god = OptionButton.new()
+			for g in LoreDB.gods():
+				_god.add_item("%s %s" % [g.symbol, g.display_name])
+			_god.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_god)
 		elif t[0] == &"org":
 			_org = OptionButton.new()
 			for o in OrgDB.orgs():
@@ -157,5 +176,7 @@ func _emit() -> void:
 		"op": OrgDB.ops()[_op.selected],
 		"org": OrgDB.orgs()[_org.selected],
 		"crisis": CrisisDB.all()[_crisis.selected],
+		"artifact": LoreDB.artifacts()[_artifact.selected],
+		"god": LoreDB.gods()[_god.selected],
 	}
 	EventBus.god_tool_changed.emit(_tool, params)

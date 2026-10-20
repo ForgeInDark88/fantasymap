@@ -96,6 +96,22 @@ func refresh(world: World) -> void:
 		var lg := world.legacies[nation.legacy]
 		lines.append("[b]Наследие:[/b] осколок державы %s (память — до %d г.)%s" % [lg.name, lg.until_year,
 			" · [color=#ffd24a]собиратель земель[/color]" if lg.collector == nation.id else ""])
+	var relics: Array[String] = []
+	for a in world.artifacts:
+		if a.nation == nation.id:
+			relics.append(a.name)
+	if not relics.is_empty():
+		lines.append("[b]Сокровищница:[/b] [color=#e8c060]%s[/color]" % ", ".join(relics))
+	if nation.god_boon != &"" and LoreDB.god(nation.god_boon) != null:
+		var g := LoreDB.god(nation.god_boon)
+		lines.append("[b]Милость бога:[/b] [color=#%s]%s %s[/color] %s (до %d г.)" % [g.color.to_html(false), g.symbol, g.display_name,
+			g.boon_text, nation.god_boon_until])
+	var halls: Array[String] = []
+	for o in world.orders:
+		if o.alive and o.hall_cell >= 0 and world.owner[o.hall_cell] == nation.id:
+			halls.append("%s (%d)" % [o.name, o.members.size()])
+	if not halls.is_empty():
+		lines.append("[b]Обители орденов:[/b] [color=#a8c8f0]%s[/color]" % ", ".join(halls))
 	var secret: Array[String] = []
 	for s in world.societies:
 		if not s.alive:

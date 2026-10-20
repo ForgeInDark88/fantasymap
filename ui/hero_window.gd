@@ -229,7 +229,23 @@ func _fill_stats(world: World, h: Hero) -> void:
 	_stat_text("Сила", "%.0f воинов" % h.power())
 	_stat_text("Победы", "%d в поединках, %d чудовищ" % [h.kills, h.monsters_slain])
 	if not h.artifact.is_empty():
-		_stat_text("Оружие", "%s (×%.1f к силе)" % [h.artifact, h.artifact_mult])
+		var a: Artifact = world.artifacts[h.artifact_id] if h.artifact_id >= 0 else null
+		var extra := ""
+		if a != null and a.def != null:
+			extra = " · %s" % a.def.display_name.to_lower()
+			if a.def.wits_bonus > 0.0:
+				extra += ", +%.2f к уму" % a.def.wits_bonus
+			if a.def.karma_drift != 0.0:
+				extra += ", тянет к %s" % ("свету" if a.def.karma_drift > 0.0 else "тьме")
+		_stat_text("Предмет", "%s (×%.2f к силе%s)" % [h.artifact, h.artifact_mult, extra])
+	var god := LoreDB.god(h.patron_god) if h.patron_god != &"" else null
+	if god != null:
+		_stat_text("Бог", "%s %s, %s%s" % [god.symbol, god.display_name, god.title.to_lower(), " — избранник" if h.chosen else ""])
+	if h.order >= 0:
+		var o := world.orders[h.order]
+		_stat_text("Орден", "%s (%s%s)" % [o.name, o.kind_name(), ", глава" if o.leader == h.id else ""])
+	if h.lineage >= 0:
+		_stat_text("Род", "%s (основан в %d г.)" % [world.lineages[h.lineage].name, int(world.lineages[h.lineage].year)])
 	if h.nation_id >= 0:
 		_stat_text("Служит", world.nations[h.nation_id].name)
 	if h.ally_nation >= 0:
@@ -241,7 +257,12 @@ func _fill_stats(world: World, h: Hero) -> void:
 		_stat_text("Где", where + ((" (%s)" % world.nations[owner].short_name) if owner >= 0 else ""))
 	if h.goal_cell >= 0:
 		var goal := world.region_at(h.goal_cell)
-		_stat_text("Цель", "пустой трон" + ((" в регионе " + goal.name) if goal != null else ""))
+		var what := "пустой трон"
+		for a in world.artifacts:
+			if a.is_lost() and a.cell >= 0 and world.region_of[a.cell] == world.region_of[h.goal_cell]:
+				what = a.name
+				break
+		_stat_text("Цель", what + ((" в регионе " + goal.name) if goal != null else ""))
 	_stat_text("Родился", "%d г.%s" % [h.born_year, (" · возвращён Судьбой %d раз" % h.returns) if h.returns > 0 else ""])
 
 
@@ -318,6 +339,17 @@ func _relations_text(world: World, h: Hero) -> String:
 		lines.append("[color=#ffe680]В отряде героя[/color] " + _hero_link(world, h.party_leader))
 	if not party.is_empty():
 		lines.append("[color=#ffe680]Ведёт отряд:[/color] " + ", ".join(party))
+	if not h.parents.is_empty():
+		lines.append("[color=#f0d0b0]Родители:[/color] " + ", ".join(Array(h.parents).map(func(p: int) -> String: return _hero_link(world, p))))
+	var kids: Array[String] = []
+	for c in h.children:
+		kids.append(_hero_link(world, c))
+	for c in LineageSystem.unborn_children(world, h):
+		kids.append("%s [color=#8a90a0](растёт, станет героем к %d г.)[/color]" % [c.name, int(c.adult)])
+	if not kids.is_empty():
+		lines.append("[color=#f0d0b0]Дети:[/color] " + ", ".join(kids))
+	if h.artifact_id >= 0 and not world.artifacts[h.artifact_id].history.is_empty():
+		lines.append("[color=#e8c060]История предмета:[/color] " + "; ".join(world.artifacts[h.artifact_id].history.slice(-4)))
 	if h.vendetta >= 0:
 		lines.append("[color=#ff6b5b]Поклялся отомстить:[/color] " + _hero_link(world, h.vendetta))
 	if h.killed_by >= 0:

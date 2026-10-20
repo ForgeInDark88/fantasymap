@@ -60,10 +60,30 @@ var ally_until := 0
 var vendetta := -1
 var killed_by := -1
 
+# --- Родословная, артефакт, орден, бог (этап 10.1) ---
+## Родители и дети (id героев), род (id в World.lineages, -1 — нет).
+var parents := PackedInt32Array()
+var children := PackedInt32Array()
+var lineage := -1
+## Артефакт-предмет (id в World.artifacts, -1 — нет; имя и сила — в artifact/artifact_mult).
+var artifact_id := -1
+## Орден или гильдия (id в World.orders) и бог-покровитель (id GodDef, пусто — нет).
+var order := -1
+var patron_god: StringName = &""
+## Избранник своего бога (дар, лишний второй шанс у Судьбы).
+var chosen := false
+
 
 ## Трезвость суждений: ум плюс опыт (с уровнями герои умнеют).
 func wits() -> float:
-	return clampf(intellect + level * 0.008, 0.0, 1.0)
+	var bonus := 0.0
+	if artifact_id >= 0 and _artifact_wits >= 0.0:
+		bonus = _artifact_wits
+	return clampf(intellect + level * 0.008 + bonus, 0.0, 1.0)
+
+
+## Прибавка к уму от артефакта (ставит ArtifactSystem.equip).
+var _artifact_wits := 0.0
 
 
 ## Как герой видит силу противника. Чем он глупее, тем больше ошибается —
@@ -146,6 +166,7 @@ func leave_service(world: World) -> void:
 ## Смерть: герой уходит со службы и встаёт в очередь на суд Судьбы.
 func die(world: World, killer: Hero = null) -> void:
 	RuinSystem.on_hero_died(world, self)
+	ArtifactSystem.on_hero_death(world, self, killer)
 	leave_service(world)
 	alive = false
 	ally_nation = -1
@@ -183,6 +204,7 @@ func alignment_name() -> String:
 
 func become_ruler(world: World) -> void:
 	var nation := nation_id
+	ArtifactSystem.on_crowned(world, self, world.nations[nation])
 	leave_service(world)
 	is_ruler = true
 	add_deed(world, "взошёл на трон государства %s" % world.nations[nation].name)

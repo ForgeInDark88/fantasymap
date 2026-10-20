@@ -123,15 +123,14 @@ static func hero_explore(world: World, hero: Hero) -> void:
 		hero.karma = maxf(-1.0, hero.karma - 0.4)
 		r.cursed = false
 		what = "навлёк на себя древнее проклятие"
-	elif r.kind == &"tomb" and r.hero_id >= 0 and hero.artifact.is_empty() and not world.heroes[r.hero_id].artifact.is_empty() and roll < 0.6:
-		var dead := world.heroes[r.hero_id]
-		hero.artifact = dead.artifact
-		hero.artifact_mult = maxf(1.2, dead.artifact_mult)
-		what = "взял оружие покойного — %s" % dead.artifact
-	elif hero.artifact.is_empty() and roll < 0.4:
-		hero.artifact = "%s из %s" % [hero.hero_class.weapon, r.name.replace("Руины ", "руин ").replace("Храм ", "храма ").replace("Гробница ", "гробницы ")]
-		hero.artifact_mult = 1.25
-		what = "нашёл древнее оружие — %s" % hero.artifact
+	elif hero.artifact_id < 0 and _lost_here(world, r) != null and roll < 0.7:
+		var found := _lost_here(world, r)
+		ArtifactSystem.give(world, found, hero, "найден в «%s»" % r.name)
+		what = "нашёл там %s" % found.name
+	elif hero.artifact_id < 0 and roll < 0.4:
+		var kind := _find_kind(world)
+		var a := ArtifactSystem.create(world, kind, hero, "", "найден в «%s»" % r.name)
+		what = "нашёл древний предмет — %s" % a.name
 	elif hero.nation_id >= 0 and roll < 0.7:
 		var n := world.nations[hero.nation_id]
 		var t: TechDef = null
@@ -153,6 +152,27 @@ static func hero_explore(world: World, hero: Hero) -> void:
 	if not what.begins_with("нашёл клад") or rng.randf() < 0.15:
 		world.log_event(&"ruins", "Герой %s проник в «%s» и %s." % [hero.display_name(), r.name, what],
 				PackedInt32Array([hero.nation_id]) if hero.nation_id >= 0 else PackedInt32Array())
+
+
+## Потерянный предмет, лежащий в этих руинах (у гробницы — оружие покойного).
+static func _lost_here(world: World, r: Ruin) -> Artifact:
+	for a in world.artifacts:
+		if a.is_lost() and a.cell >= 0 and world.region_of[a.cell] == world.region_of[r.cell]:
+			return a
+	return null
+
+
+## Вид находки по весам data/artifacts.
+static func _find_kind(world: World) -> StringName:
+	var total := 0.0
+	for res in LoreDB.artifacts():
+		total += (res as ArtifactDef).weight
+	var roll := world.rng.randf() * total
+	for res in LoreDB.artifacts():
+		roll -= (res as ArtifactDef).weight
+		if roll <= 0.0:
+			return res.id
+	return &"ancient_weapon"
 
 
 ## Раскопки государством руин на своей земле.

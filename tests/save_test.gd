@@ -7,10 +7,11 @@ extends SceneTree
 var _failures := 0
 ## Разделы, появившиеся после формата v1 (этапы 7+): сравниваются после продолжения
 ## истории и вырезаются при имитации старого сохранения.
-const NEW_KEYS: Array[String] = ["religions", "cultures", "societies", "orgs", "legacies", "roads", "climate", "counters", "caves", "ruins", "crisis"]
+const NEW_KEYS: Array[String] = ["religions", "cultures", "societies", "orgs", "legacies", "roads", "climate", "counters", "caves", "ruins", "crisis", "lore"]
 const NEW_NATION_KEYS: Array[String] = ["religion", "unity", "effects", "techs", "researching", "research", "tech_seen",
 	"culture", "culture_level", "intel", "legacy", "home", "tdirty"]
 const NEW_REGION_KEYS: Array[String] = ["faith", "culture", "assim"]
+const NEW_HERO_KEYS: Array[String] = ["parents", "children", "lineage", "artifact_id", "order", "god", "chosen", "awits"]
 
 
 static func _as_v1(d: Dictionary) -> Dictionary:
@@ -23,6 +24,9 @@ static func _as_v1(d: Dictionary) -> Dictionary:
 	for r in d.regions:
 		for k in NEW_REGION_KEYS:
 			r.erase(k)
+	for h in d.heroes:
+		for k in NEW_HERO_KEYS:
+			h.erase(k)
 	return d
 
 

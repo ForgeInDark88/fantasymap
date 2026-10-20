@@ -168,15 +168,19 @@ func _show_card(world: World) -> void:
 	]
 	if not h.artifact.is_empty():
 		lines.append("Оружие: " + h.artifact)
+	var god := LoreDB.god(h.patron_god) if h.patron_god != &"" else null
+	if god != null:
+		lines.append("[color=#%s]%s Покровитель: %s, %s%s[/color]" % [god.color.to_html(false), god.symbol, god.display_name,
+			god.title.to_lower(), " — избранник бога: Судьба может вернуть его на раз больше; проклятие заточит душу в «%s»" % god.curse_weapon if h.chosen else ""])
 	if h.returns > 0:
 		lines.append("[color=#ffd080]Судьба уже возвращала его %d раз(а)%s[/color]" % [h.returns,
-			" — больше нельзя" if h.returns >= Fate.MAX_RETURNS else ""])
+			" — больше нельзя" if h.returns >= Fate.max_returns(h) else ""])
 	lines.append("")
 	lines.append("[b]Деяния:[/b]")
 	for d in h.deeds:
 		lines.append("• " + d)
 	_card.text = "\n".join(lines)
-	(_buttons.get_child(0) as Button).disabled = h.returns >= Fate.MAX_RETURNS
+	(_buttons.get_child(0) as Button).disabled = h.returns >= Fate.max_returns(h)
 
 
 func _show_thrones(world: World) -> void:

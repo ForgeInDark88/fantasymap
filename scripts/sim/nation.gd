@@ -128,6 +128,9 @@ var faith_unity := 1.0
 # --- Эффекты (религия, технологии, организации, кризисы) ---
 ## Источник → {ключ: значение}. Ключи *_mult перемножаются, остальные
 ## (stability) складываются; итог — в effects (см. set_effects / effect).
+## Милость бога (GodSystem): чей дар и до какого года (эффекты — в effect_sources[&"god"]).
+var god_boon: StringName = &""
+var god_boon_until := 0
 var effect_sources: Dictionary[StringName, Dictionary] = {}
 var effects: Dictionary[StringName, float] = {}
 

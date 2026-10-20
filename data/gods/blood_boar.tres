@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"blood_boar"
+display_name = "Кровавый Вепрь"
+genitive = "Кровавого Вепря"
+title = "Тотем войны"
+description = "Ярость, кровь и право сильного."
+sphere = &"war"
+karma = -0.4
+religions = Array[StringName]([&"blood_totem"])
+color = Color(0.75, 0.15, 0.15, 1)
+symbol = "ᚦ"
+boon = Dictionary[StringName, float]({&"army_mult": 1.1})
+boon_text = "пробуждает ярость битвы"
+curse_weapon = "Секира Вепря"

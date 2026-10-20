@@ -34,14 +34,28 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 	var rng := world.rng
 	var people := world.region_majority_race(region, nation.id)
 	var race := RaceDB.by_index(people) if people != World.NO_RACE else nation.race
+	var cls := PoliticsDB.random_hero_class(race, rng)
+	var hero := make_hero(world, race, cls, region.cells[rng.randi_range(0, region.cells.size() - 1)])
+	world.ensure_region_name(region)
+	hero.add_deed(world, "объявился в регионе %s" % region.name)
+	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
+		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
+		hero.hero_class.display_name.to_lower(), hero.alignment_name()], PackedInt32Array([nation.id]))
+	return hero
+
+
+## Новый герой в клетке (имя — сгенерированное или name): возраст, карма, ум
+## по расе и классу; добавляется в мир странником.
+static func make_hero(world: World, race: RaceDef, cls: HeroClassDef, cell: int, name: String = "") -> Hero:
+	var rng := world.rng
 	var hero := Hero.new()
 	hero.id = world.heroes.size()
 	hero.race = race
 	hero.race_id = race.id
-	hero.hero_class = PoliticsDB.random_hero_class(race, rng)
-	hero.name = NameGenerator.unique(world.used_names, NameGenerator.person_name.bind(race, rng))
+	hero.hero_class = cls
+	hero.name = name if not name.is_empty() else NameGenerator.unique(world.used_names, NameGenerator.person_name.bind(race, rng))
 	hero.born_year = world.year
-	hero.karma = clampf(hero.hero_class.karma + rng.randf_range(-0.45, 0.45) - (0.5 if race.has_trait(&"demonic") else 0.0), -1.0, 1.0)
+	hero.karma = clampf(cls.karma + rng.randf_range(-0.45, 0.45) - (0.5 if race.has_trait(&"demonic") else 0.0), -1.0, 1.0)
 	if race.lifespan <= 0:
 		hero.age = rng.randi_range(30, 300)
 		hero.max_age = hero.age + rng.randi_range(200, 600)
@@ -49,16 +63,11 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 		hero.age = int(race.lifespan * rng.randf_range(0.22, 0.4))
 		hero.max_age = int(race.lifespan * rng.randf_range(0.8, 1.1))
 	hero.level = rng.randi_range(1, 3)
-	hero.intellect = clampf(hero.hero_class.intellect + rng.randf_range(-0.25, 0.25), 0.0, 1.0)
-	hero.cell = region.cells[rng.randi_range(0, region.cells.size() - 1)]
+	hero.intellect = clampf(cls.intellect + rng.randf_range(-0.25, 0.25), 0.0, 1.0)
+	hero.cell = cell
 	hero.move_in = rng.randi_range(1, 4)
 	world.heroes.append(hero)
 	world.add_wandering(hero)
-	world.ensure_region_name(region)
-	hero.add_deed(world, "объявился в регионе %s" % region.name)
-	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
-		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
-		hero.hero_class.display_name.to_lower(), hero.alignment_name()], PackedInt32Array([nation.id]))
 	return hero
 
 
@@ -82,9 +91,10 @@ func tick_day(world: World) -> void:
 		hero.move_in -= 1
 		if hero.move_in <= 0:
 			_move(world, hero)
-		# Дошёл до цели (пустого трона) — бой со стражем сразу.
+		# Дошёл до цели: потерянный предмет — подобрать, пустой трон — бой со стражем сразу.
 		if hero.goal_cell >= 0 and world.region_of[hero.cell] == world.region_of[hero.goal_cell]:
-			_throne_attempt(world, hero)
+			if hero.artifact_id >= 0 or not ArtifactSystem.try_pick_up(world, hero):
+				_throne_attempt(world, hero)
 	# Встречи: действующий герой встречает любого героя в своём регионе.
 	var wandering := world.wandering_heroes()
 	var region_of := world.region_of
@@ -150,6 +160,12 @@ func _yearly(world: World, hero: Hero) -> void:
 	if not hero.alive:
 		return
 	RuinSystem.hero_explore(world, hero)
+	if not hero.alive:
+		return
+	ArtifactSystem.hero_yearly(world, hero)
+	LineageSystem.hero_yearly(world, hero)
+	OrderSystem.hero_yearly(world, hero)
+	GodSystem.hero_yearly(world, hero)
 	if not hero.alive:
 		return
 	if hero.level >= MIN_GREAT_LEVEL and rng.randf() < GREAT_DEED_CHANCE * (2.0 if hero.level >= 12 else 1.0):
@@ -354,8 +370,7 @@ func _great_deed(world: World, hero: Hero) -> void:
 		&"wonder":
 			_wonder(world, hero)
 		_:
-			hero.artifact = "%s «%s»" % [hero.hero_class.weapon, NameGenerator.place_name(hero.race, rng)]
-			hero.artifact_mult = 1.8
+			ArtifactSystem.create(world, &"legendary_weapon", hero, "", "выкован героем %s" % hero.name)
 			hero.add_deed(world, "выковал легендарное оружие: " + hero.artifact)
 			world.log_event(&"great", "Великое деяние: %s выковал легендарное оружие — %s." % [hero.display_name(), hero.artifact],
 					PackedInt32Array([hero.nation_id]) if hero.nation_id >= 0 else PackedInt32Array())
@@ -525,8 +540,7 @@ func _throne_attempt(world: World, hero: Hero) -> void:
 		hero.die(world)
 		return
 	throne.active = false
-	hero.artifact = throne.artifact
-	hero.artifact_mult = 1.6
+	ArtifactSystem.create(world, &"cursed_weapon", hero, throne.artifact, "добыт у стража трона «%s»" % throne.name)
 	hero.karma = maxf(-1.0, hero.karma - 0.4)
 	hero.epithet = "Проклятый"
 	hero.add_xp(world, 5.0)
@@ -602,8 +616,10 @@ func _move(world: World, hero: Hero) -> void:
 
 func _duel_chance(world: World, a: Hero, b: Hero) -> float:
 	var mod := HeroRelations.duel_modifier(a, b)
-	if mod < 0.0:
+	var brothers := OrderSystem.duel_modifier(world, a, b)
+	if mod < 0.0 or brothers < 0.0 or a.parents.has(b.id) or b.parents.has(a.id):
 		return 0.0
+	mod += brothers
 	if a.nation_id >= 0 and b.nation_id >= 0:
 		if a.nation_id == b.nation_id:
 			return 0.0
