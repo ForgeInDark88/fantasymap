@@ -96,6 +96,7 @@ static func finish(world: World, def: CrisisDef) -> void:
 		n.set_effects(&"crisis", {})
 	world.count(&"crises_survived")
 	if def != null:
+		world.count(StringName("survived_" + String(def.id)))
 		world.log_event(&"crisis", def.end_text)
 
 

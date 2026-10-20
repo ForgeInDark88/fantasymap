@@ -61,3 +61,10 @@ signal my_hero_requested(open_my_hero: bool)
 
 ## Открыть окно «Хроники» (связные истории летописца).
 signal chronicles_window_requested
+
+## Событие мира для достижений: what — &"log" ({kind, text}) или &"count" ({key, value}).
+signal world_event(what: StringName, data: Dictionary)
+## Получено достижение.
+signal achievement_unlocked(def: AchievementDef)
+## Открыть окно «Достижения».
+signal achievements_window_requested

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/achievement_def.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"first_schism"
+title = "Первая ересь"
+description = "В мире родилась первая ересь."
+hidden = false
+cond = &"count"
+key = &"heresies"
+target = 1.0

@@ -55,6 +55,7 @@ static func take_control(world: World, hero_id: int) -> bool:
 	if not h.alive or h.is_ruler:
 		return false
 	world.player = hero_id
+	world.count(&"player_heroes")
 	world.player_cmd = {}
 	world.player_choice = {}
 	world.player_idle = 0
@@ -113,6 +114,7 @@ static func successors(world: World, hero: Hero) -> Array[Hero]:
 
 ## Герой игрока погиб: «Чертоги Судьбы» с выбором продолжения (вызывает Hero.die).
 static func on_death(world: World, hero: Hero) -> void:
+	world.count(&"player_deaths")
 	note(world, "%s пал. Душа уходит в Чертоги Судьбы." % hero.display_name())
 	var options: Array = []
 	for s in successors(world, hero).slice(0, 2):

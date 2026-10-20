@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 EventBus="*res://scripts/autoload/event_bus.gd"
 WorldState="*res://scripts/autoload/world_state.gd"
+Achievements="*res://scripts/autoload/achievements.gd"
 
 [display]
 

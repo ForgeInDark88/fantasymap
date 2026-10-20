@@ -265,4 +265,6 @@ func _export_story() -> void:
 	if world == null or not (_view is int):
 		return
 	var path := Chronicler.export_markdown(world, _shown[int(_view)])
+	if not path.is_empty():
+		Achievements.ui_event(&"chronicle_export")
 	_status.text = ("Сохранено: " + ProjectSettings.globalize_path(path)) if not path.is_empty() else "Не удалось записать файл"

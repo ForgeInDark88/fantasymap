@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/achievement_def.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"quarter_empire"
+title = "Империя на четверть мира"
+description = "Одна держава владеет четвертью всех занятых земель."
+hidden = false
+cond = &"nation_share"
+share = 0.25

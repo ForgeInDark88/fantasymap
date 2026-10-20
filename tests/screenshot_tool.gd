@@ -190,6 +190,16 @@ func _run() -> void:
 			_shot(out_dir, "chronicles_war.png")
 			c.visible = false
 
+	# Достижения: окно и уведомление.
+	bus.achievement_unlocked.emit(load("res://data/achievements/portal_closed.tres"))
+	bus.achievements_window_requested.emit()
+	await _frames(4)
+	_shot(out_dir, "achievements.png")
+	bus.achievements_window_requested.emit()
+	for c in hud.get_node("Root").get_children():
+		if c.get("_toasts") != null:
+			(c.get("_window") as Control).visible = false
+
 	# Сохранение и загрузка через интерфейс.
 	cam.call("fit_to", renderer.call("get_map_rect"))
 	ws.call("save_game", "Скриншот")

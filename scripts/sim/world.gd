@@ -97,6 +97,9 @@ var orders: Array[HeroOrder] = []
 ## текущая команда, выбор, ждущий решения, журнал приключений, репутация
 ## ("n<id>" — у державы, "r<id>" — у веры, "o<id>" — у ордена), месяцы без команд.
 var player := -1
+## Наблюдатель за событиями мира (не сохраняется): интерфейс передаёт через него
+## записи летописи и счётчики в EventBus — логика мира об EventBus не знает.
+var observer: Callable
 ## Закладки на события летописи (панель «Хроники»): {year, month, day, kind, text}.
 var bookmarks: Array[Dictionary] = []
 var player_cmd: Dictionary = {}
@@ -540,6 +543,8 @@ func convert_cell_race(cell: int, new_race: int) -> void:
 
 func count(key: StringName, amount: int = 1) -> void:
 	counters[key] = counters.get(key, 0) + amount
+	if observer.is_valid():
+		observer.call(&"count", {"key": key, "value": counters[key]})
 
 
 ## Смена биома суши (дрейф климата): добыча и ёмкость земли владельца пересчитываются.
@@ -956,6 +961,8 @@ func _compute_cell_yields() -> void:
 func log_event(kind: StringName, text: String, nation_ids: PackedInt32Array = PackedInt32Array()) -> void:
 	chronicle.append({"year": year, "month": month, "day": day, "kind": kind, "text": text, "nations": nation_ids})
 	chronicle_total += 1
+	if observer.is_valid():
+		observer.call(&"log", {"kind": kind, "text": text})
 	if chronicle.size() > CHRONICLE_LIMIT:
 		chronicle = chronicle.slice(chronicle.size() - CHRONICLE_LIMIT)
 
