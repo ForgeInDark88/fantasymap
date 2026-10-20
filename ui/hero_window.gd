@@ -29,6 +29,7 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+	UiAnim.attach(self, Vector2.ZERO)
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.02, 0.05, 0.7)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -161,7 +162,7 @@ func open_window(hero_id: int) -> void:
 
 
 func close_window() -> void:
-	visible = false
+	UiAnim.hide(self)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -171,8 +172,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if visible:
 		close_window()
 		get_viewport().set_input_as_handled()
-	else:
+	elif _follow_id >= 0:
 		_follow_id = -1
+		EventBus.follow_hero_requested.emit(-1)
 
 
 func _process(_delta: float) -> void:
@@ -182,17 +184,6 @@ func _process(_delta: float) -> void:
 	_last_refresh_ms = now
 	if visible:
 		refresh()
-	elif _follow_id >= 0:
-		var world := WorldState.world
-		if world == null or _follow_id >= world.heroes.size():
-			_follow_id = -1
-			return
-		var h := world.heroes[_follow_id]
-		if not h.alive or h.is_ruler:
-			_follow_id = -1
-		elif h.cell != _follow_cell:
-			_follow_cell = h.cell
-			EventBus.focus_cell.emit(h.cell)
 
 
 func refresh() -> void:
@@ -435,3 +426,4 @@ func _follow() -> void:
 	_follow_id = _hero_id
 	_follow_cell = -1
 	close_window()
+	EventBus.follow_hero_requested.emit(_hero_id)

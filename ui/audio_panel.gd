@@ -1,7 +1,8 @@
 class_name AudioPanel
 extends PanelContainer
-## Настройки звука: общая громкость, музыка и эффекты (с отключением).
-## Сохраняются в user://settings.cfg (AudioManager).
+## Настройки звука (общая громкость, музыка, эффекты) и плавности (камера,
+## анимации интерфейса, переходы границ и значков, эффекты событий; пресеты).
+## Сохраняются в user://settings.cfg (AudioManager, SmoothSettings).
 
 
 func _init() -> void:
@@ -17,10 +18,72 @@ func _init() -> void:
 		var l := Label.new()
 		l.text = "Звук недоступен (нет аудиоустройства)."
 		box.add_child(l)
-		return
-	_slider(box, "Общая громкость", "master", "")
-	_slider(box, "Музыка", "music", "music_on")
-	_slider(box, "Эффекты", "sfx", "sfx_on")
+	else:
+		_slider(box, "Общая громкость", "master", "")
+		_slider(box, "Музыка", "music", "music_on")
+		_slider(box, "Эффекты", "sfx", "sfx_on")
+	_smooth_section(box)
+
+
+var _camera: OptionButton
+var _checks: Dictionary[String, CheckBox] = {}
+var _preset: OptionButton
+
+
+func _smooth_section(box: Control) -> void:
+	var title := Label.new()
+	title.text = "Плавность"
+	title.add_theme_font_size_override("font_size", 16)
+	box.add_child(title)
+	_preset = OptionButton.new()
+	for k in SmoothSettings.PRESETS:
+		_preset.add_item(SmoothSettings.PRESET_NAMES[k])
+	_preset.tooltip_text = "Пресет плавности: всё сразу"
+	_preset.item_selected.connect(func(i: int) -> void:
+		SmoothSettings.apply_preset(SmoothSettings.PRESETS.keys()[i])
+		SmoothSettings.save_settings()
+		_sync())
+	box.add_child(_preset)
+	var row := HBoxContainer.new()
+	var l := Label.new()
+	l.text = "Камера"
+	l.custom_minimum_size = Vector2(120, 0)
+	row.add_child(l)
+	_camera = OptionButton.new()
+	for t in ["мгновенно", "мягко", "сильно"]:
+		_camera.add_item(t)
+	_camera.item_selected.connect(func(i: int) -> void:
+		SmoothSettings.camera = i
+		_custom())
+	row.add_child(_camera)
+	box.add_child(row)
+	for item in [["ui_anim", "Анимации интерфейса"], ["border_anim", "Анимации границ и значков"], ["event_fx", "Эффекты событий (оттенок эпох, вспышки)"]]:
+		var c := CheckBox.new()
+		c.text = item[1]
+		c.focus_mode = Control.FOCUS_NONE
+		var key: String = item[0]
+		c.toggled.connect(func(on: bool) -> void:
+			SmoothSettings.set_flag(key, on)
+			_custom())
+		box.add_child(c)
+		_checks[key] = c
+	_sync()
+
+
+## Ручная правка — пресет «свой», сохранить.
+func _custom() -> void:
+	SmoothSettings.preset = "custom"
+	SmoothSettings.save_settings()
+
+
+func _sync() -> void:
+	var keys := SmoothSettings.PRESETS.keys()
+	var i := keys.find(SmoothSettings.preset)
+	if i >= 0:
+		_preset.select(i)
+	_camera.select(SmoothSettings.camera)
+	for key in _checks:
+		_checks[key].set_pressed_no_signal(SmoothSettings.flag(key))
 
 
 func _slider(box: Control, label: String, key: String, toggle: String) -> void:

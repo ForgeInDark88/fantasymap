@@ -63,8 +63,8 @@ func refresh(world: World) -> void:
 		"[b]Правитель:[/b] %s (%d лет)%s" % [nation.ruler_display(), nation.ruler_age, trait_text],
 		"[b]Столица:[/b] %s (%s жит.)" % [capital.name, fmt(capital.population)] if capital != null else "[b]Столица:[/b] —",
 		"[b]Территория:[/b] %d клеток · [b]городов:[/b] %d" % [nation.cell_count, nation.city_ids.size()],
-		"[b]Население:[/b] %s из %s возможных" % [fmt(nation.population), fmt(nation.total_capacity())],
-		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(nation.army), nation.tech],
+		"[b]Население:[/b] %s из %s возможных" % [fmt(UiAnim.roll("n%d.pop" % nation.id, nation.population)), fmt(nation.total_capacity())],
+		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(UiAnim.roll("n%d.army" % nation.id, nation.army)), nation.tech],
 		"[b]Стабильность:[/b] %s" % _stability_text(nation.stability),
 	])
 	var researching := TechDB.find(nation.researching) if nation.researching != &"" else null

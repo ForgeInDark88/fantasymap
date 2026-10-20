@@ -21,6 +21,7 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+	UiAnim.attach(self, Vector2.ZERO)
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.02, 0.05, 0.7)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -53,7 +54,7 @@ func _init() -> void:
 	var close := Button.new()
 	close.text = "Закрыть"
 	close.focus_mode = Control.FOCUS_NONE
-	close.pressed.connect(func() -> void: visible = false)
+	close.pressed.connect(func() -> void: UiAnim.hide(self))
 	header.add_child(close)
 	box.add_child(header)
 	var body := HBoxContainer.new()

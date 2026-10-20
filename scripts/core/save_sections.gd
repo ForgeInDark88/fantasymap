@@ -217,6 +217,7 @@ static func _lore_dict(world: World) -> Dictionary:
 		"player": {"hero": world.player, "cmd": world.player_cmd, "choice": world.player_choice,
 			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle},
 		"bookmarks": world.bookmarks,
+		"staged": world.staged_effects,
 		"quests": world.player_quests, "offers": world.player_offers,
 	}
 
@@ -280,6 +281,9 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		world.player_quests.append(PlayerQuests.restore(q))
 	for q in lore.get("offers", []):
 		world.player_offers.append(PlayerQuests.restore(q))
+	for e in lore.get("staged", []):
+		world.staged_effects.append({"nation": int(e.nation), "months": int(e.months), "step": int(e.step), "pop": float(e.pop),
+			"army": float(e.army), "stab": float(e.stab), "gold": float(e.gold), "food": float(e.food), "id": str(e.id)})
 	for b in lore.get("bookmarks", []):
 		world.bookmarks.append({"year": int(b.year), "month": int(b.month), "day": int(b.day), "kind": str(b.kind), "text": str(b.text)})
 	var pl: Dictionary = lore.get("player", {})

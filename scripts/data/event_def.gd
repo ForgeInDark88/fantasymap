@@ -18,6 +18,10 @@ extends Resource
 ## Нужна река в регионе.
 @export var requires_river: bool = false
 
+## Сколько месяцев длится удар (0 — в один день): потери населения, армии,
+## казны, запасов и стабильности распределяются по кривой — быстрый подъём,
+## долгий спад (StageSystem). Итог тот же, но без скачка.
+@export var stage_months: int = 0
 @export_group("Мгновенные эффекты")
 ## Доля населения, которая гибнет.
 @export_range(0.0, 1.0) var population_loss: float = 0.0

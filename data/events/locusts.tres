@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_evt")
 id = &"locusts"
+stage_months = 3
 display_name = "Нашествие саранчи"
 chronicle_kind = &"famine"
 chance = 0.003

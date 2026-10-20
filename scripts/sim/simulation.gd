@@ -68,6 +68,7 @@ func step_day(world: World) -> void:
 			world.month = 0
 			world.year += 1
 			_t("new_year", _new_year.bind(world))
+		StageSystem.tick_month(world)
 	# День года государства однозначно задаётся его id: id = месяц + 12·день + 360·k.
 	var id := world.month + MONTHS * world.day
 	while id < world.nations.size():

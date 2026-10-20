@@ -4,7 +4,7 @@ extends PanelContainer
 ## миникарта с путём, команды, журнал приключений. Логика — PlayerSystem;
 ## путь выбирается кликом по карте (инструмент &"player_travel").
 
-const REFRESH_MS := 500
+const REFRESH_MS := 200
 
 var _title: Label
 var _stats: RichTextLabel
@@ -99,7 +99,7 @@ func _init() -> void:
 		var h := PlayerSystem.hero_of(WorldState.world) if WorldState.world != null else null
 		if h != null and h.alive:
 			EventBus.hero_selected.emit(h.id)
-			EventBus.focus_cell.emit(h.cell))
+			EventBus.follow_hero_requested.emit(h.id))
 	row.add_child(follow)
 	var card := Button.new()
 	card.text = "Окно героя"
@@ -168,14 +168,14 @@ func refresh() -> void:
 		_title.text = "Мой герой"
 		return
 	_title.text = "Мой герой: " + h.display_name()
-	_hp.value = 1.0 - h.wounds
+	_hp.value = UiAnim.roll("hero.hp", 1.0 - h.wounds)
 	_hp.modulate = Color(0.5, 1.0, 0.5) if h.wounds < 0.3 else (Color(1.0, 0.85, 0.3) if h.wounds < 0.6 else Color(1.0, 0.4, 0.35))
 	_perks.visible = h.perk_points > 0
 	for stat in _perk_buttons:
 		_perk_buttons[stat].text = "+ %s (%d)" % [String(PlayerSystem.PERKS[stat]).get_slice(" ", 0), int(h.get(stat))]
 	_fill_quests(world)
 	var lines: Array[String] = [
-		"Здоровье %d%% · кошель %d зол. · снаряжение %d/%d%s%s" % [roundi((1.0 - h.wounds) * 100.0), int(h.gold), h.gear, PlayerQuests.GEAR_MAX,
+		"Здоровье %d%% · кошель %d зол. · снаряжение %d/%d%s%s" % [roundi(UiAnim.roll("hero.hp%", (1.0 - h.wounds) * 100.0)), int(UiAnim.roll("hero.gold", h.gold)), h.gear, PlayerQuests.GEAR_MAX,
 			(" · охрана %d (до %d г.)" % [h.guards, h.guards_until]) if h.guards > 0 else "",
 			(" · [color=#ffd24a]очков развития: %d[/color]" % h.perk_points) if h.perk_points > 0 else ""],
 		"Развитие: сила %d · ум %d · обаяние %d" % [h.strength, h.wit, h.charm],

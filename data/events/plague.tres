@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_evt")
 id = &"plague"
+stage_months = 6
 display_name = "Чума"
 chronicle_kind = &"plague"
 chance = 0.004

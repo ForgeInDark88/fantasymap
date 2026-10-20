@@ -21,6 +21,7 @@ func _init() -> void:
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(560, 0)
 	_panel.visible = false
+	UiAnim.attach(_panel, Vector2(0, 12))
 	center.add_child(_panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)

@@ -51,6 +51,7 @@ const CHRONICLE_COLORS := {
 @onready var _chronicle_text: RichTextLabel = %ChronicleText
 
 var _mode := MapMode.POLITICAL
+var _feed_tween: Tween
 var _race_checks: Dictionary[StringName, CheckBox] = {}
 var _mode_button_list: Array[Button] = []
 var _speed_buttons: Array[Button] = []
@@ -192,6 +193,7 @@ func _build_left_panels() -> void:
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggled.connect(_on_left_panel_toggled.bind(d[0]))
+		UiAnim.attach(panel, Vector2(-14, 0))
 		_panel_buttons.add_child(b)
 		_left_panels[d[0]] = [b, panel]
 	_left_panels["Мир"][0].button_pressed = true
@@ -204,6 +206,11 @@ func _build_left_panels() -> void:
 	root.add_child(ChroniclesWindow.new())
 	root.add_child(HeroChoicePopup.new())
 	root.add_child(AchievementsWindow.new())
+	# Мягкие подсветки всех кнопок интерфейса (и тех, что появятся позже).
+	_hover_all(self)
+	get_tree().node_added.connect(func(n: Node) -> void:
+		if n is BaseButton:
+			UiAnim.hover(n as BaseButton))
 	EventBus.my_hero_requested.connect(func(mine: bool) -> void:
 		_left_panels["Мой герой" if mine else "Герои"][0].button_pressed = true)
 	_fate_button = Button.new()
@@ -230,9 +237,14 @@ func _build_left_panels() -> void:
 	root.add_child(audio)
 	var sound := Button.new()
 	sound.text = "🔊"
-	sound.tooltip_text = "Звук и музыка"
+	sound.tooltip_text = "Звук, музыка и плавность"
 	sound.focus_mode = Control.FOCUS_NONE
-	sound.pressed.connect(func() -> void: audio.visible = not audio.visible)
+	UiAnim.attach(audio, Vector2(0, -8))
+	sound.pressed.connect(func() -> void:
+		if audio.visible:
+			UiAnim.hide(audio)
+		else:
+			audio.visible = true)
 	_panel_buttons.add_child(sound)
 
 
@@ -240,13 +252,19 @@ func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
 	for key in _left_panels:
 		var entry: Array = _left_panels[key]
 		if key == panel_name:
-			entry[1].visible = on
+			# Открытие — плавно (UiAnim.attach), закрытие — плавно гаснет.
+			if on:
+				entry[1].visible = true
+			else:
+				UiAnim.hide(entry[1])
 		elif on:
+			# Другая панель заменяет эту — сразу, без наложения двух анимаций.
 			entry[0].set_pressed_no_signal(false)
 			entry[1].visible = false
-	# Полная летопись заменяет ленту.
-	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible \
-			and not (_left_panels["Мой герой"][1] as Control).visible
+	# Полная летопись и «Мой герой» заменяют ленту.
+	var open_full := (on and (panel_name == "Летопись" or panel_name == "Мой герой")) \
+			or (_left_panels["Летопись"][0] as Button).button_pressed or (_left_panels["Мой герой"][0] as Button).button_pressed
+	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not open_full
 
 
 func _on_speed_changed(index: int) -> void:
@@ -285,14 +303,29 @@ func _refresh_chronicle() -> void:
 	var world := WorldState.world
 	if world == null or world.chronicle_total == _chronicle_shown:
 		return
+	var fresh := mini(world.chronicle_total - _chronicle_shown, FEED_LINES) if _chronicle_shown > 0 else 0
 	_chronicle_shown = world.chronicle_total
-	var lines: Array[String] = []
 	var entries := world.chronicle.slice(maxi(0, world.chronicle.size() - FEED_LINES))
 	entries.reverse()
-	for e in entries:
-		var color: String = CHRONICLE_COLORS.get(e.kind, "#dddddd")
-		lines.append("[color=#8a90a0]%d[/color]  [color=%s]%s[/color]" % [e.year, color, e.text])
-	_chronicle_text.text = "\n".join(lines)
+	# Новые записи проявляются плавно (остальные на месте).
+	if _feed_tween != null and _feed_tween.is_valid():
+		_feed_tween.kill()
+	if fresh > 0 and SmoothSettings.ui_anim:
+		_feed_tween = create_tween()
+		_feed_tween.tween_method(func(a: float) -> void: _chronicle_text.text = _feed_text(entries, fresh, a), 0.15, 1.0, 0.35)
+	else:
+		_chronicle_text.text = _feed_text(entries, 0, 1.0)
+
+
+func _feed_text(entries: Array, fresh: int, alpha: float) -> String:
+	var lines: Array[String] = []
+	for i in entries.size():
+		var e: Dictionary = entries[i]
+		var a := alpha if i < fresh else 1.0
+		var color := Color(String(CHRONICLE_COLORS.get(e.kind, "#dddddd")))
+		color.a = a
+		lines.append("[color=#%s]%d[/color]  [color=#%s]%s[/color]" % [Color(0.54, 0.56, 0.63, a).to_html(), e.year, color.to_html(), e.text])
+	return "\n".join(lines)
 
 
 func _build_race_checks() -> void:
@@ -612,3 +645,10 @@ func _on_cell_hovered(cell: int) -> void:
 		parts.append(["", "ручей", "река", "великая река"][map.river[cell]])
 	parts.append("(%d, %d)" % [p.x, p.y])
 	_cell_info.text = "  ·  ".join(parts)
+
+
+func _hover_all(node: Node) -> void:
+	if node is BaseButton:
+		UiAnim.hover(node as BaseButton)
+	for c in node.get_children():
+		_hover_all(c)

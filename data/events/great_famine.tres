@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_evt")
 id = &"great_famine"
+stage_months = 6
 display_name = "Великий голод"
 chronicle_kind = &"famine"
 chance = 0.004

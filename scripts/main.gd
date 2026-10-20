@@ -5,6 +5,9 @@ extends Node2D
 
 @onready var _renderer: MapRenderer = $MapRenderer
 @onready var _camera: MapCamera = $MapCamera
+@onready var _overlay: MapOverlay = $MapOverlay
+## За каким героем следит камера (-1 — ни за каким).
+var _follow_hero := -1
 
 var _hovered_cell := -1
 var _last_map_size := Vector2i.ZERO
@@ -21,6 +24,11 @@ func _ready() -> void:
 		_tool = tool
 		_tool_params = params)
 	EventBus.focus_cell.connect(_focus)
+	EventBus.follow_hero_requested.connect(func(id: int) -> void:
+		_follow_hero = id
+		if id >= 0 and WorldState.world != null and id < WorldState.world.heroes.size() and WorldState.world.heroes[id].cell >= 0:
+			_camera.fly_to(_overlay.hero_visual_pos(WorldState.world.heroes[id]), maxf(_camera.target_zoom, 2.0)))
+	_camera.user_moved.connect(func() -> void: _follow_hero = -1)
 	_camera.map_clicked.connect(_on_map_clicked)
 
 	var settings := MapSettings.new()
@@ -29,6 +37,14 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Слежение за героем: камера едет за его плавно движущимся значком.
+	var world := WorldState.world
+	if _follow_hero >= 0 and world != null and _follow_hero < world.heroes.size():
+		var h := world.heroes[_follow_hero]
+		if not h.alive or h.is_ruler or h.cell < 0:
+			_follow_hero = -1
+		else:
+			_camera.follow(_overlay.hero_visual_pos(h))
 	var cell := _renderer.cell_at(get_global_mouse_position())
 	if cell != _hovered_cell:
 		_hovered_cell = cell
@@ -160,8 +176,8 @@ func _apply_tool(world: World, cell: int) -> void:
 func _focus(cell: int) -> void:
 	if cell < 0:
 		return
-	_camera.position = _renderer.cell_center(cell)
-	_camera.zoom = Vector2.ONE * maxf(_camera.zoom.x, 2.0)
+	_follow_hero = -1
+	_camera.fly_to(_renderer.cell_center(cell), maxf(_camera.target_zoom, 2.0))
 
 
 func _on_world_generated(world: World, _elapsed_ms: int) -> void:
