@@ -105,6 +105,8 @@ var tech_seen := 0.0
 # --- Разведка и наследие (SpySystem, LegacySystem) ---
 ## Очки разведки: копятся от золота, тайных канцелярий и шпионов-героев.
 var intel := 0.0
+## Соседи по подземным ходам (кэш UndergroundSystem, не сохраняется).
+var tunnel_neighbors: Dictionary = {}
 ## Организации, где государство состоит (кэш OrgSystem, id в World.orgs).
 var org_ids := PackedInt32Array()
 ## Наследие империи, осколком которой государство является (-1 — нет).

@@ -28,6 +28,8 @@ uniform float region_min_px = 2.5;
 uniform bool region_fill = false;
 uniform sampler2D region_palette_tex : filter_nearest, repeat_disable;
 uniform float region_fill_alpha = 0.65;
+// Затемнение поверхности (режим «Подземелья»: поверх рисуется граф пещер).
+uniform float darken = 0.0;
 
 int owner_at(ivec2 c, ivec2 size) {
 	c = clamp(c, ivec2(0), size - ivec2(1));
@@ -113,5 +115,5 @@ void fragment() {
 			}
 		}
 	}
-	COLOR = vec4(col, base.a);
+	COLOR = vec4(col * (1.0 - darken), base.a);
 }

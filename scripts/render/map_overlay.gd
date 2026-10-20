@@ -76,6 +76,9 @@ func _draw() -> void:
 		_draw_nation_labels(world, zoom)
 	var map_like := political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES \
 			or MapMode.is_region_mode(_mode) or _mode == MapMode.TRADE
+	if _mode == MapMode.UNDERGROUND:
+		_draw_caves(world, zoom)
+		_draw_cities(world, zoom)
 	if map_like:
 		_draw_scars(world, zoom)
 		_draw_roads(world, zoom)
@@ -203,6 +206,43 @@ func _draw_scars(world: World, zoom: float) -> void:
 		draw_colored_polygon(pts, Color(0.45, 0.2, 0.15) if not hot else Color(0.9, 0.3, 0.1))
 		draw_polyline(pts + PackedVector2Array([pts[0]]), Color(0.08, 0.06, 0.06), 1.5)
 		draw_circle(Vector2(0, -6), 1.8, Color(1.0, 0.55, 0.2))
+	draw_set_transform(Vector2.ZERO)
+
+
+const CAVE_COLORS := {&"cavern": Color(0.6, 0.55, 0.5), &"mithril": Color(0.75, 0.9, 1.0), &"gems": Color(0.85, 0.4, 0.9),
+	&"lair": Color(0.85, 0.25, 0.2), &"ruins": Color(0.85, 0.75, 0.45)}
+
+
+## Подземный мир: ходы (чем глубже — тем темнее), узлы по виду и хозяину, входы.
+func _draw_caves(world: World, zoom: float) -> void:
+	draw_set_transform(Vector2.ZERO)
+	for c in world.caves:
+		var pa := renderer.cell_center(c.cell)
+		for nb in c.neighbors:
+			if nb < c.id:
+				continue
+			var o := world.caves[nb]
+			var shade := 0.85 - 0.12 * maxf(c.depth, o.depth)
+			draw_line(pa, renderer.cell_center(o.cell), Color(shade, shade * 0.85, shade * 0.6, 0.8), 2.0 / zoom, true)
+	var inv := Vector2.ONE / zoom
+	for c in world.caves:
+		draw_set_transform(renderer.cell_center(c.cell), 0.0, inv)
+		var r := 4.0 + 2.0 * c.depth
+		var fill: Color = CAVE_COLORS.get(c.kind, Color.GRAY)
+		draw_circle(Vector2.ZERO, r + 2.0, Color(0.05, 0.04, 0.04))
+		draw_circle(Vector2.ZERO, r, fill)
+		if c.owner >= 0:
+			draw_arc(Vector2.ZERO, r + 3.0, 0.0, TAU, 20, world.nations[c.owner].color.lightened(0.2), 2.5)
+		if c.city:
+			draw_rect(Rect2(-r * 0.45, -r * 0.45, r * 0.9, r * 0.9), Color(1, 0.95, 0.8))
+		if c.entrance:
+			draw_arc(Vector2(0, -r - 5.0), 4.0, PI, TAU, 10, Color(0.95, 0.9, 0.8), 2.0)
+		if zoom >= 1.5:
+			var text := c.name
+			var size := 11
+			var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			draw_string_outline(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.8))
+			draw_string(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.95, 0.92, 0.85))
 	draw_set_transform(Vector2.ZERO)
 
 

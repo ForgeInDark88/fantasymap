@@ -52,3 +52,6 @@ signal hero_window_requested(hero_id: int)
 ## Открыть окно технологий государства.
 @warning_ignore("unused_signal")
 signal tech_window_requested(nation_id: int)
+## Открыть окно подземного мира.
+@warning_ignore("unused_signal")
+signal underworld_window_requested

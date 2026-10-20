@@ -31,7 +31,9 @@ func _initialize() -> void:
 		_expect(traffic > 0.0, "торговли по дорогам нет")
 		_expect(not world.volcanoes.is_empty(), "нет вулканов")
 		_check_accounting(world)
+		_check_caves(world)
 	_scripted_roads()
+	_scripted_underground()
 	_scripted_climate()
 	_expect(_digest(17) == _digest(17), "этап 9 недетерминирован")
 	if _failures > 0:
@@ -101,6 +103,58 @@ func _scripted_climate() -> void:
 		w.year += 1
 	_expect(before != w.map.biome, "биомы не сдвинулись при сильном сдвиге климата")
 	_check_accounting(w)
+
+
+func _scripted_underground() -> void:
+	var s := MapSettings.new()
+	s.world_seed = 29
+	var a := World.create(s)
+	var b := World.create(s)
+	_expect(a.caves.size() >= 8, "мало пещер")
+	_expect(a.caves.map(func(c: Cave) -> String: return "%d:%d:%s" % [c.cell, c.depth, c.kind]) ==
+			b.caves.map(func(c: Cave) -> String: return "%d:%d:%s" % [c.cell, c.depth, c.kind]), "пещеры недетерминированы")
+	var sim := Simulation.new()
+	for y in 60:
+		sim.step(a)
+	_check_caves(a)
+	var armies := 0.0
+	for n in a.nations:
+		armies += n.army
+	if UndergroundSystem.invasion(a):
+		var after := 0.0
+		for n in a.nations:
+			after += n.army
+		_expect(after < armies and a.counters.get(&"invasions", 0) >= 1, "нашествие из глубин ничего не сделало")
+	var owned: Cave = null
+	for c in a.caves:
+		if c.owner >= 0 and a.region_of[c.cell] >= 0:
+			owned = c
+	if owned != null:
+		_expect(UndergroundSystem.sapping(a, PackedInt32Array([owned.owner]), a.region_of[owned.cell]), "подкоп не найден")
+
+
+func _check_caves(world: World) -> void:
+	if world.caves.is_empty():
+		return
+	var seen := {0: true}
+	var queue: Array = [0]
+	while not queue.is_empty():
+		var id: int = queue.pop_back()
+		for nb in world.caves[id].neighbors:
+			if not world.caves[nb].neighbors.has(id):
+				_expect(false, "несимметричный ход %d—%d" % [id, nb])
+				return
+			if not seen.has(nb):
+				seen[nb] = true
+				queue.append(nb)
+	_expect(seen.size() == world.caves.size(), "подземный мир несвязен")
+	for c in world.caves:
+		if c.owner >= 0 and (c.owner >= world.nations.size() or not world.nations[c.owner].alive):
+			_expect(false, "пещерой владеет павшее государство")
+			return
+		if c.entrance and c.depth != 1:
+			_expect(false, "вход не на первой глубине")
+			return
 
 
 ## Добыча и ёмкость земли государств совпадают с их клетками (дрейф биомов не ломает учёт).

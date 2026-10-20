@@ -104,6 +104,9 @@ func _advance_siege(world: World, war: War, winner: int, margin: float) -> void:
 	# Осадное дело ускоряет осады, мореходство — десанты (верфи — ещё сильнее).
 	var attacker := world.nations[war.leader(winner)]
 	var speed := (0.35 + 0.5 * margin) * attacker.effect(&"siege_mult")
+	# Подкоп: у наступающих есть пещера под осаждённым регионом.
+	if UndergroundSystem.sapping(world, war.members(winner), war.siege_region):
+		speed *= UndergroundSystem.SAP_SIEGE
 	# Дорога к осаждаемому городу от города наступающих — подвоз и переброска войск.
 	var target_city := _region_city(world, war.siege_region, war.members(-winner))
 	if target_city != null:

@@ -17,7 +17,7 @@ const CHRONICLE_COLORS := {
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -198,6 +198,7 @@ func _build_left_panels() -> void:
 	root.add_child(_fate_panel)
 	root.add_child(HeroWindow.new())
 	root.add_child(TechWindow.new())
+	root.add_child(UnderworldWindow.new())
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
@@ -232,7 +233,7 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
 
@@ -374,6 +375,27 @@ func _rebuild_legend() -> void:
 				_legend_row(Color(0.5, 0.8, 1.0), null, "морские пути — %d" % sea, "Между портами (гаванями)")
 				_legend_row(Color(0.9, 0.35, 0.3), null, "опасные пути — %d" % unsafe, "Разбойники и пираты снижают доход")
 				_legend_row(Color(0.8, 0.8, 0.8), null, "оборот: %s золота в год" % NationPanel.fmt(traffic), "")
+		MapMode.UNDERGROUND:
+			_legend_title.text = "Подземный мир"
+			if world != null:
+				var kinds := {}
+				var owned := 0
+				var cities := 0
+				for c in world.caves:
+					kinds[c.kind] = kinds.get(c.kind, 0) + 1
+					if c.owner >= 0:
+						owned += 1
+					if c.city:
+						cities += 1
+				for kind in kinds:
+					_legend_row(MapOverlay.CAVE_COLORS.get(kind, Color.GRAY), null, "%s — %d" % [Cave.KIND_NAMES.get(kind, str(kind)), kinds[kind]], "")
+				_legend_row(Color(0.9, 0.9, 0.9), null, "освоено пещер: %d, подземных городов: %d" % [owned, cities],
+					"Кольцо — цвет хозяина; дуга сверху — вход с поверхности")
+				var b := Button.new()
+				b.text = "Окно подземного мира…"
+				b.focus_mode = Control.FOCUS_NONE
+				b.pressed.connect(func() -> void: EventBus.underworld_window_requested.emit())
+				_legend_box.add_child(b)
 		MapMode.BIOMES:
 			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():

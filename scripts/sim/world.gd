@@ -78,6 +78,8 @@ var zone_harvest := PackedFloat32Array([1.0, 1.0, 1.0])
 ## Климатические беды поясов: пояс → {kind, until}; пепельная зима — до года ash_until.
 var zone_events: Dictionary[int, Dictionary] = {}
 var ash_until := -1
+## Подземный мир: граф пещер (UndergroundSystem).
+var caves: Array[Cave] = []
 ## Дороги и морские пути (граф между городами) и дороги каждого города.
 var roads: Array[Road] = []
 var city_roads: Dictionary[int, PackedInt32Array] = {}
@@ -119,6 +121,7 @@ static func create(s: MapSettings) -> World:
 	var world := World.new(MapGenerator.new().generate(s))
 	WorldSeeder.new().seed_world(world)
 	ClimateSystem.place_volcanoes(world)
+	UndergroundSystem.generate(world)
 	return world
 
 
@@ -594,6 +597,10 @@ func cleanup_dead() -> void:
 			diplomacy.forget_nation(self, nation.id)
 			for hid in nation.hero_ids.duplicate():
 				heroes[hid].leave_service(self)
+			for c in caves:
+				if c.owner == nation.id:
+					c.owner = -1
+					c.city = false
 			log_event(&"fall", "Государство %s пало." % nation.name, PackedInt32Array([nation.id]))
 
 

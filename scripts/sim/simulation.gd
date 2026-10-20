@@ -31,6 +31,7 @@ var culture := CultureSystem.new()
 var spies := SpySystem.new()
 var roads := RoadSystem.new()
 var climate := ClimateSystem.new()
+var underground := UndergroundSystem.new()
 var societies := SocietySystem.new()
 var orgs := OrgSystem.new()
 var legacies := LegacySystem.new()
@@ -94,6 +95,7 @@ func _new_year(world: World) -> void:
 	societies.tick_year(world)
 	orgs.tick_year(world)
 	legacies.tick_year(world)
+	underground.tick_year(world)
 	_portals(world)
 	world.record_history()
 
@@ -122,7 +124,7 @@ func _init() -> void:
 		["economy", economy.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
 		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
 		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
-		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick],
+		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick],
 	]
 
 

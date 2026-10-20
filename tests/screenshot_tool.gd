@@ -115,6 +115,14 @@ func _run() -> void:
 		world.year, world.nations.filter(func(n: RefCounted) -> bool: return n.alive).size(),
 		world.heroes.size(), ws.get("avg_tick_ms")])
 
+	# Окно подземного мира.
+	bus.underworld_window_requested.emit()
+	await _frames(6)
+	_shot(out_dir, "underworld.png")
+	for c in hud.get_node("Root").get_children():
+		if c.has_method("refresh") and c.get("_map_view") != null:
+			c.visible = false
+
 	# Окно технологий крупнейшего государства и новые графики статистики.
 	bus.tech_window_requested.emit(biggest.id)
 	await _frames(6)

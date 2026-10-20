@@ -82,6 +82,10 @@ func refresh(world: World) -> void:
 	if not roads.is_empty():
 		var sea := roads.values().filter(func(r: Road) -> bool: return r.sea).size()
 		lines.append("[b]Пути:[/b] дорог %d, морских %d · торговля по ним: %s золота в год" % [roads.size() - sea, sea, fmt(trade)])
+	var caves := UndergroundSystem.owned_by(world, nation.id)
+	if not caves.is_empty():
+		lines.append("[b]Под землёй:[/b] пещер %d, подземных городов %d%s" % [caves.size(), caves.filter(func(c: Cave) -> bool: return c.city).size(),
+			(" · жилы: " + ", ".join(caves.filter(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems").map(func(c: Cave) -> String: return c.kind_name()))) if caves.any(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems") else ""])
 	var spies := SpySystem.spies_of(world, nation).size()
 	lines.append("[b]Разведка:[/b] %d очков%s" % [roundi(nation.intel), (" · шпионов на службе: %d" % spies) if spies > 0 else ""])
 	var orgs := OrgSystem.orgs_of(world, nation.id)

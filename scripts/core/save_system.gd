@@ -116,6 +116,8 @@ static func to_dict(world: World) -> Dictionary:
 		"heroes": heroes,
 		"landmarks": landmarks,
 		"religions": world.religions.map(_religion_dict),
+		"caves": world.caves.map(func(c: Cave) -> Array: return [c.name, str(c.kind), c.cell, c.depth, c.entrance,
+			Array(c.neighbors), c.owner, c.monsters, c.city, c.explored]),
 		"counters": _str_dict(world.counters),
 		"climate": {"volcanoes": Array(world.volcanoes), "scars": world.scars, "temp_shift": world.temp_shift,
 			"moist_shift": world.moist_shift, "zone_harvest": Array(world.zone_harvest), "zone_events": _int_dict(world.zone_events),
@@ -565,6 +567,24 @@ static func from_dict(data: Dictionary) -> World:
 	_load_religions(world, data)
 	_load_techs_and_cultures(world, data)
 	_load_intrigue(world, data)
+	if not data.has("caves"):
+		UndergroundSystem.generate(world)
+	for cd in data.get("caves", []):
+		var c := Cave.new()
+		c.id = world.caves.size()
+		c.name = cd[0]
+		c.kind = StringName(cd[1])
+		c.cell = int(cd[2])
+		c.depth = int(cd[3])
+		c.entrance = cd[4]
+		c.neighbors = PackedInt32Array(cd[5])
+		c.owner = int(cd[6])
+		c.monsters = cd[7]
+		c.city = cd[8]
+		c.explored = cd[9]
+		world.caves.append(c)
+	for n in world.nations:
+		n.tunnel_neighbors = UndergroundSystem.tunnel_neighbors(world, n.id)
 	var cnt: Dictionary = data.get("counters", {})
 	for k in cnt:
 		world.counters[StringName(k)] = int(cnt[k])

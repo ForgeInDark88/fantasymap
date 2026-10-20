@@ -98,6 +98,9 @@ func opinion(world: World, a: int, b: int) -> float:
 	# Гегемона боятся все.
 	if b == hegemon:
 		o -= 0.15
+	# Соседство под землёй без торговли — трения за пещеры и жилы.
+	if na.tunnel_neighbors.has(b) and not na.trade_partners.has(b):
+		o -= 0.05
 	# Общие организации и общее имперское наследие сближают.
 	o += OrgSystem.opinion_bonus(world, a, b)
 	if na.legacy >= 0 and na.legacy == nb.legacy:

@@ -12,16 +12,17 @@ const MOISTURE := 7
 const RELIGION := 8
 const CULTURE := 9
 const TRADE := 10
+const UNDERGROUND := 11
 
 const NAMES: Array[String] = ["Политика", "Расы", "Население", "Ресурсы", "Биомы", "Высоты", "Темп.", "Влажн.",
-	"Религии", "Культура", "Торговля"]
+	"Религии", "Культура", "Торговля", "Подземелья"]
 ## Клавиши режимов по порядку: 1–9, 0, −, =.
 const HOTKEYS: Array[Key] = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUAL]
 
 
 ## Какой «базовый» рисунок нужен режиму (политика и расы рисуются поверх биомов).
 static func base_mode(mode: int) -> int:
-	return BIOMES if mode == POLITICAL or mode == RACES or is_region_mode(mode) or mode == TRADE else mode
+	return BIOMES if mode == POLITICAL or mode == RACES or is_region_mode(mode) or mode == TRADE or mode == UNDERGROUND else mode
 
 
 ## Режимы с заливкой по регионам (цвет региона — из палитры регионов).

@@ -102,6 +102,8 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.eruption(world, cell)
 		&"drought":
 			GodTools.drought(world, cell)
+		&"invasion":
+			UndergroundSystem.invasion(world, cell)
 		&"road":
 			GodTools.road_from(world, cell)
 		&"collector":
