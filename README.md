@@ -4,6 +4,26 @@
 разных рас растут, торгуют, воюют и распадаются, а игрок наблюдает и вмешивается.
 Главная особенность — расы реально влияют на симуляцию (биомы, рост, война, дипломатия).
 
+## О проекте
+
+Песочница-наблюдатель о фэнтезийном мире: карта генерируется по seed, расы
+основывают государства, торгуют, воюют, молятся, открывают технологии, а
+игрок наблюдает, вмешивается как Бог или играет за одного героя. Всё —
+на GDScript, без плагинов и внешних ассетов (иконки — SVG, звук — синтез).
+
+Темы: `godot`, `godot4`, `gdscript`, `procedural-generation`, `simulation`,
+`fantasy-map`, `strategy`, `sandbox`.
+
+| Политическая карта | Расы | Религии |
+|---|---|---|
+| ![политика](docs/screenshots/mode0.png) | ![расы](docs/screenshots/mode1.png) | ![религии](docs/screenshots/mode8.png) |
+| **Торговля** | **Карточка государства** | **Мой герой** |
+| ![торговля](docs/screenshots/mode10.png) | ![карточка](docs/screenshots/nation_card.png) | ![герой](docs/screenshots/my_hero.png) |
+
+Скриншоты обновляются скриптом `tests/screenshot_tool.gd` (см. «Тесты»).
+Лицензия — `LICENSE` (пока MIT-заглушка, выбор за владельцем), история
+изменений — `CHANGELOG.md`.
+
 ## Запуск
 
 Откройте папку в Godot **4.7+** и нажмите F5 — главная сцена `scenes/main.tscn`.
@@ -43,6 +63,7 @@ Seed может быть числом или любым словом («Арда
 | 8 | Шпионаж и тайные общества, международные организации, наследие империй | ✅ готово |
 | 9 | Дороги и торговля, климат, подземный слой, руины, мировые кризисы и эпохи | ✅ готово |
 | 10 | Родословные героев, артефакты, ордена, боги; режим «Сыграй за героя»; хроники; достижения; процедурный звук | ✅ готово |
+| 11 | «Живой мир» и плавность: G — инфраструктура и рефакторинг; A — плавность; B — армии и флоты; C — дикие земли; D — экономика и общество; E — дипломатия и ИИ; H — герой в новом мире; F — удобство | 🚧 G ✅ |
 
 ## Архитектура
 
@@ -51,12 +72,13 @@ scenes/            главная сцена
 scripts/
   autoload/        EventBus (сигналы), WorldState (текущий мир, фоновое создание),
                    Achievements (достижения), AudioManager (процедурный звук)
-  core/            MinHeap (очередь с приоритетом), SaveSystem, AchievementTracker, Synth (синтез звука)
+  core/            MinHeap (очередь с приоритетом), SaveSystem (← SaveSections ← SaveUtil),
+                   AchievementTracker, Synth (синтез звука)
   data/            BiomeDef/BiomeDB, RaceDef/RaceDB, TraitDef, ReligionDef/ReligionDB, TechDef/TechDB, OrgDef/SpyOpDef/OrgDB, CrisisDef/CrisisDB,
                    ArtifactDef/GodDef/HeroEventDef/LoreDB, ChronicleTemplateDef, AchievementDef — описания данных
                    и реестры; Registry — общий загрузчик «папка → список + поиск по id»
   map/             MapSettings, WorldMap (данные карты), MapGenerator, Biome (индексы)
-  sim/             World (модель мира), Nation, City, Region + RegionGenerator, War, Diplomacy,
+  sim/             World (модель мира: World ← WorldTerritory ← WorldGeo ← WorldData), Nation, City, Region + RegionGenerator, War, Diplomacy,
                    Hero, Religion, Culture, Society, Organization, Legacy, Road, Cave, Ruin, Artifact, HeroOrder, Chronicler (летописец), WorldSeeder (стартовые государства), NameGenerator, GodTools,
                    Simulation (движок: месяц = тик)
   sim/systems/     EconomySystem, PopulationSystem, ExpansionSystem, CitySystem, RulerSystem,
@@ -839,6 +861,24 @@ tests/             headless-тесты и скрипт скриншотов
 Скорость генерации (GDScript): ~0.25 с для 256×160, ~0.6 с для 384×240,
 ~2.3 с для 768×480; интерфейс при этом не зависает.
 
+## Сборка и CI
+
+* **CI** — `.github/workflows/tests.yml`: на каждый push и PR скачивает
+  Godot 4.7.2 (кэшируется), импортирует проект, прогоняет все
+  `tests/*_test.gd` (тест падает и при `SCRIPT ERROR` в логе), дым-прогон
+  `all_systems_smoke.gd` на 300 лет и выкладывает логи артефактом. Отдельная
+  задача профилирует огромную карту (`profile_systems.gd -- 150 3 40 5 8.0`)
+  и падает, если средний месяц дольше бюджета (8 мс с запасом на медленные
+  раннеры; локально — ~2 мс).
+* **Экспорт** — `export_presets.cfg`: Windows, Linux, Web. Нужны шаблоны
+  экспорта Godot 4.7.2 (редактор → «Управление шаблонами экспорта»), затем
+  `godot --headless --export-release "Linux" build/linux/FantasyMapSimulator.x86_64`
+  (или "Windows Desktop", "Web"). Ограничения Web: проект использует рендер
+  Forward+ — для Web переключите рендер на Compatibility; создание мира и
+  музыка идут в фоновых потоках, поэтому нужен экспорт с поддержкой потоков
+  и сервер с заголовками COOP/COEP (SharedArrayBuffer); `user://` в браузере —
+  IndexedDB.
+
 ## Сохранения
 
 `SaveSystem` пишет мир в `user://saves/<имя>.json` (≈3–4 МБ для карты
@@ -900,6 +940,8 @@ godot --headless --path . -s res://tests/all_systems_smoke.gd -- [годы] [р�
 # Время каждой системы симуляции по отдельности (среднее и худший вызов):
 godot --headless --path . -s res://tests/profile_systems.gd -- [годы] [размер] [государств] [seed]
 
+# Хэш мира: один seed → одна история (и сверка рефакторинга с ожидаемым хэшем):
+godot --headless --path . -s res://tests/world_hash_test.gd -- 80 4242 0 [ожидаемый_хэш]
 # Скриншоты всех режимов карты (нужен рендер, например Xvfb):
 xvfb-run godot --path . --rendering-driver opengl3 -s res://tests/screenshot_tool.gd -- /tmp/out [seed] [государств] [лет]
 ```
