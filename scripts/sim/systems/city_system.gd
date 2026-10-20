@@ -49,6 +49,8 @@ func _city_weight(world: World, city: City) -> float:
 		w *= 1.25
 	if city.is_capital:
 		w *= 3.0
+	# Перекрёстки торговых путей процветают.
+	w *= 1.0 + 0.08 * RoadSystem.road_count(world, city.id)
 	# Молодые города ещё не успели вырасти.
 	w *= clampf((world.year - city.founded_year + 10) / 80.0, 0.15, 1.0)
 	return w

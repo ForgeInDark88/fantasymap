@@ -74,7 +74,11 @@ func _draw() -> void:
 	var political := _mode == MapMode.POLITICAL or _mode == MapMode.RACES
 	if political:
 		_draw_nation_labels(world, zoom)
-	if political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES:
+	var map_like := political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES \
+			or MapMode.is_region_mode(_mode) or _mode == MapMode.TRADE
+	if map_like:
+		_draw_roads(world, zoom)
+	if map_like:
 		_draw_region_labels(world, zoom)
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
@@ -170,6 +174,49 @@ func _draw_cities(world: World, zoom: float) -> void:
 			var text_color := Color(1, 1, 0.95) if tier >= 2 else Color(0.88, 0.88, 0.84)
 			draw_string_outline(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.05, 0.05, 0.08, 0.85))
 			draw_string(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
+
+
+## Дороги и морские пути — линии между городами. Подробность по зуму: на
+## общем плане — только пути между крупными городами; в режиме «Торговля» —
+## все, толщина по обороту.
+func _draw_roads(world: World, zoom: float) -> void:
+	var trade := _mode == MapMode.TRADE
+	if not trade and zoom < 0.7:
+		return
+	var view := _visible_rect().grow(60.0 / zoom)
+	var max_traffic := 1.0
+	if trade:
+		for r in world.roads:
+			if r.alive:
+				max_traffic = maxf(max_traffic, r.traffic)
+	draw_set_transform(Vector2.ZERO)
+	for r in world.roads:
+		if not r.alive:
+			continue
+		var ca := world.cities[r.a]
+		var cb := world.cities[r.b]
+		if not ca.alive or not cb.alive:
+			continue
+		if not trade and zoom < 1.4 and (ca.tier() < 2 or cb.tier() < 2):
+			continue
+		var pa := renderer.cell_center(ca.cell)
+		var pb := renderer.cell_center(cb.cell)
+		if not view.has_point(pa) and not view.has_point(pb):
+			continue
+		var px := 1.2
+		var col := Color(0.82, 0.72, 0.5, 0.75)
+		if r.sea:
+			col = Color(0.55, 0.78, 0.95, 0.7)
+		if trade:
+			var k := sqrt(r.traffic / max_traffic)
+			px = 1.0 + 4.0 * k
+			col = Color(0.95, 0.75, 0.3, 0.45 + 0.5 * k) if not r.sea else Color(0.5, 0.8, 1.0, 0.45 + 0.5 * k)
+			if r.safety < 0.6:
+				col = col.lerp(Color(0.9, 0.3, 0.25, col.a), 0.6)  # разбой и пираты
+		if r.sea:
+			draw_dashed_line(pa, pb, col, px / zoom, 6.0 / zoom)
+		else:
+			draw_line(pa, pb, col, px / zoom, true)
 
 
 ## Названия регионов — курсивом под городами, только при приближении.

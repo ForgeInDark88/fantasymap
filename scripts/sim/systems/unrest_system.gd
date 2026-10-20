@@ -24,9 +24,14 @@ func tick(world: World, nation: Nation) -> void:
 		capital_region = world.region_of[world.cities[nation.capital_city].cell]
 	var cap_pos := world.map.cell_pos(world.cities[nation.capital_city].cell) if nation.capital_city >= 0 else Vector2i(nation.centroid())
 	var rebels: Region = null
+	# Регионы, чьи города связаны дорогами со столицей.
+	var linked := {}
+	var to_capital := RoadSystem.linked_to_capital(world, nation)
+	for id in to_capital:
+		linked[world.region_of[world.cities[id].cell]] = true
 	for rid in regions:
 		var region := world.regions[rid]
-		region.loyalty = _loyalty(world, nation, region, rid == capital_region, cap_pos)
+		region.loyalty = _loyalty(world, nation, region, rid == capital_region, cap_pos, linked.has(rid))
 		if region.pacified_until > world.year:
 			region.unrest = 0.0
 			continue
@@ -50,7 +55,7 @@ func _controlled_regions(world: World, nation: Nation) -> PackedInt32Array:
 	return result
 
 
-func _loyalty(world: World, nation: Nation, region: Region, is_capital: bool, cap_pos: Vector2i) -> float:
+func _loyalty(world: World, nation: Nation, region: Region, is_capital: bool, cap_pos: Vector2i, road: bool = false) -> float:
 	var loyalty := 0.35 + nation.stability * 0.55
 	if is_capital:
 		loyalty += 0.3
@@ -59,7 +64,8 @@ func _loyalty(world: World, nation: Nation, region: Region, is_capital: bool, ca
 		var relation := nation.race.relation_to(RaceDB.by_index(people))
 		loyalty -= 0.3 - relation * 0.2
 	var dist := Vector2(world.map.cell_pos(region.center) - cap_pos).length()
-	loyalty -= minf(0.25, dist / (world.map.width * 0.3) * 0.15)
+	# Удалённость; дорога к столице сокращает её вдвое.
+	loyalty -= minf(0.25, dist / (world.map.width * 0.3) * 0.15) * (0.5 if road else 1.0)
 	var since := world.year - region.conquered_year
 	if since < 40:
 		loyalty -= 0.25 * (1.0 - since / 40.0)

@@ -212,3 +212,29 @@ static func assimilate(world: World, cell: int) -> bool:
 		return false
 	CultureSystem.assimilate(world, world.nations[o], region)
 	return true
+
+
+## Дорога от ближайшего к клетке города к ближайшему другому городу (даром).
+static func road_from(world: World, cell: int) -> Road:
+	var pos := Vector2(world.map.cell_pos(cell))
+	var from: City = null
+	for c in world.cities:
+		if c.alive and (from == null or pos.distance_squared_to(Vector2(world.map.cell_pos(c.cell))) < pos.distance_squared_to(Vector2(world.map.cell_pos(from.cell)))):
+			from = c
+	if from == null:
+		return null
+	var fp := Vector2(world.map.cell_pos(from.cell))
+	var to: City = null
+	for c in world.cities:
+		if c.alive and c != from and not RoadSystem._connected(world, from.id, c.id) \
+				and (to == null or fp.distance_squared_to(Vector2(world.map.cell_pos(c.cell))) < fp.distance_squared_to(Vector2(world.map.cell_pos(to.cell)))):
+			to = c
+	if to == null:
+		return null
+	var path := RoadSystem.measure(world, from.cell, to.cell)
+	var sea := path.x < 0.0
+	var length := fp.distance_to(Vector2(world.map.cell_pos(to.cell))) * 1.2 if sea else path.x
+	var road := RoadSystem.build(world, from, to, sea, length, 0 if sea else int(path.y))
+	world.log_event(&"trade", "По воле богов %s связала %s и %s." % ["морская тропа" if sea else "дорога", from.name, to.name],
+			PackedInt32Array([from.nation_id, to.nation_id]))
+	return road

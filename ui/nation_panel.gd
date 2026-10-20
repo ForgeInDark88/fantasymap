@@ -71,6 +71,17 @@ func refresh(world: World) -> void:
 	lines.append("[b]Знания:[/b] %d из %d технологий%s · [url=techs][color=#a8e0ff]окно технологий[/color][/url]" % [
 		nation.techs.size(), TechDB.all().size(),
 		(" · изучается: %s (%d%%)" % [researching.display_name, roundi(minf(1.0, nation.research / researching.cost) * 100.0)]) if researching != null else ""])
+	var roads := {}
+	var trade := 0.0
+	for id in nation.city_ids:
+		for rid in world.city_roads.get(id, PackedInt32Array()):
+			var r := world.roads[rid]
+			if r.alive and not roads.has(rid):
+				roads[rid] = r
+				trade += r.traffic * (0.5 if world.cities[r.other(id)].nation_id != nation.id else 1.0)
+	if not roads.is_empty():
+		var sea := roads.values().filter(func(r: Road) -> bool: return r.sea).size()
+		lines.append("[b]Пути:[/b] дорог %d, морских %d · торговля по ним: %s золота в год" % [roads.size() - sea, sea, fmt(trade)])
 	var spies := SpySystem.spies_of(world, nation).size()
 	lines.append("[b]Разведка:[/b] %d очков%s" % [roundi(nation.intel), (" · шпионов на службе: %d" % spies) if spies > 0 else ""])
 	var orgs := OrgSystem.orgs_of(world, nation.id)
@@ -170,6 +181,9 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			(" · столица" if city.is_capital else "")])
 		if not built.is_empty():
 			lines.append("Постройки: " + ", ".join(built))
+		var rc := RoadSystem.road_count(world, city.id)
+		if rc > 0:
+			lines.append("Путей: %d%s" % [rc, " — торговый перекрёсток" if rc >= 3 else ""])
 	if region != null:
 		var people := world.region_majority_race(region, nation.id)
 		var people_name := RaceDB.by_index(people).display_name.to_lower() if people != World.NO_RACE else "—"

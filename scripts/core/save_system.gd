@@ -116,6 +116,8 @@ static func to_dict(world: World) -> Dictionary:
 		"heroes": heroes,
 		"landmarks": landmarks,
 		"religions": world.religions.map(_religion_dict),
+		"roads": world.roads.map(func(r: Road) -> Array: return [r.a, r.b, r.sea, r.length, r.bridges, r.built_year,
+			r.safety, r.traffic, r.alive]),
 		"societies": world.societies.map(func(s: Society) -> Dictionary: return {"id": s.id, "name": s.name, "kind": str(s.kind),
 			"religion": s.religion, "home": s.home, "leader": s.leader, "founded": s.founded_year,
 			"influence": _int_dict(s.influence), "seized": s.seized, "alive": s.alive}),
@@ -559,6 +561,12 @@ static func from_dict(data: Dictionary) -> World:
 	_load_religions(world, data)
 	_load_techs_and_cultures(world, data)
 	_load_intrigue(world, data)
+	for rd in data.get("roads", []):
+		var road := RoadSystem.build(world, world.cities[int(rd[0])], world.cities[int(rd[1])], rd[2], rd[3], int(rd[4]))
+		road.built_year = int(rd[5])
+		road.safety = rd[6]
+		road.traffic = rd[7]
+		road.alive = rd[8]
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])

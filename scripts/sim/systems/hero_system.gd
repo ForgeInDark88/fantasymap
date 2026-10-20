@@ -279,6 +279,10 @@ func _evil_deed(world: World, hero: Hero) -> void:
 	if roll < 0.35:
 		var loot := maxf(0.0, nation.stock[Goods.GOLD]) * 0.05
 		nation.stock[Goods.GOLD] -= loot
+		# Разбой на дорогах: торговые пути у городов региона становятся опасны.
+		for id in nation.city_ids:
+			if world.region_of[world.cities[id].cell] == world.region_of[hero.cell]:
+				RoadSystem.rob_roads(world, id, 0.3)
 		hero.add_xp(world, 1.0)
 		hero.add_deed(world, "ограбил караван в регионе %s (%d золота)" % [where, roundi(loot)])
 		if rng.randf() < 0.15:

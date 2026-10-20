@@ -29,6 +29,7 @@ var religion := ReligionSystem.new()
 var techs := TechSystem.new()
 var culture := CultureSystem.new()
 var spies := SpySystem.new()
+var roads := RoadSystem.new()
 var societies := SocietySystem.new()
 var orgs := OrgSystem.new()
 var legacies := LegacySystem.new()
@@ -66,21 +67,20 @@ func step_day(world: World) -> void:
 		id += MONTHS * DAYS
 		if not nation.alive:
 			continue
-		_t("economy", economy.tick.bind(world, nation))
-		_t("techs", techs.tick.bind(world, nation))
-		_t("population", population.tick.bind(world, nation))
-		_t("expansion", expansion.tick.bind(world, nation))
-		_t("cities", cities.tick.bind(world, nation))
-		_t("rulers", rulers.tick.bind(world, nation))
-		_t("unrest", unrest.tick.bind(world, nation))
-		_t("events", events.tick.bind(world, nation))
-		_t("religion", religion.tick.bind(world, nation))
-		_t("culture", culture.tick.bind(world, nation))
-		_t("diplomacy", diplomacy.tick_nation.bind(world, nation))
-		_t("spies", spies.tick.bind(world, nation))
-		_t("enclaves", enclaves.tick.bind(world, nation))
-	_t("wars", wars.tick_day.bind(world))
-	_t("heroes", heroes.tick_day.bind(world))
+		if profile:
+			for s in _nation_systems:
+				var t0 := Time.get_ticks_usec()
+				(s[1] as Callable).call(world, nation)
+				_record(s[0], Time.get_ticks_usec() - t0)
+		else:
+			for s in _nation_systems:
+				(s[1] as Callable).call(world, nation)
+	if profile:
+		_t("wars", wars.tick_day.bind(world))
+		_t("heroes", heroes.tick_day.bind(world))
+	else:
+		wars.tick_day(world)
+		heroes.tick_day(world)
 	world.cleanup_dead()
 
 
@@ -109,6 +109,26 @@ func _portals(world: World) -> void:
 			var who := world.nations[holder].short_name if holder >= 0 else "свет"
 			world.log_event(&"great", "Врата бездны в регионе %s закрыты — их запечатал %s." % [
 				region.name if region != null else "?", who], PackedInt32Array([holder]) if holder >= 0 else PackedInt32Array())
+
+
+## Годовые системы государства — по порядку (вызов без bind: без лишних выделений памяти).
+var _nation_systems: Array = []
+
+
+func _init() -> void:
+	_nation_systems = [
+		["economy", economy.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
+		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
+		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
+		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick],
+	]
+
+
+func _record(system: String, dt: int) -> void:
+	var entry: Array = timings.get(system, [0, 0])
+	entry[0] += dt
+	entry[1] = maxi(entry[1], dt)
+	timings[system] = entry
 
 
 func _t(system: String, call: Callable) -> void:

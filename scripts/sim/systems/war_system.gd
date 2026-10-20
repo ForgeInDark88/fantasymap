@@ -104,6 +104,14 @@ func _advance_siege(world: World, war: War, winner: int, margin: float) -> void:
 	# Осадное дело ускоряет осады, мореходство — десанты (верфи — ещё сильнее).
 	var attacker := world.nations[war.leader(winner)]
 	var speed := (0.35 + 0.5 * margin) * attacker.effect(&"siege_mult")
+	# Дорога к осаждаемому городу от города наступающих — подвоз и переброска войск.
+	var target_city := _region_city(world, war.siege_region, war.members(-winner))
+	if target_city != null:
+		for rid in world.city_roads.get(target_city.id, PackedInt32Array()):
+			var road := world.roads[rid]
+			if road.alive and not road.sea and war.members(winner).has(world.cities[road.other(target_city.id)].nation_id):
+				speed *= 1.25
+				break
 	if war.siege_landing:
 		speed *= 0.6 * attacker.effect(&"naval_mult") * (1.25 if _has_building(world, war.members(winner), &"shipyard") else 1.0)
 	war.siege_progress += speed / (1.0 + defense)
@@ -333,7 +341,7 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 				old, capital_lost.name, capital_lost.ruler_display()], PackedInt32Array([capital_lost.id]))
 	# Отрезанные клочки проигравших внутри земель победителя присоединяются сразу.
 	for loser in losers_hit:
-		EnclaveSystem.absorb(world, world.nations[loser])
+		EnclaveSystem.absorb_if_split(world, world.nations[loser])
 	world.cleanup_dead()
 
 

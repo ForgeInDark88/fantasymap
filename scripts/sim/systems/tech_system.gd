@@ -19,12 +19,19 @@ const CAPTURE_CHANCE := 0.35
 const SCHOLARS: Array[StringName] = [&"mage", &"runesmith", &"cleric"]
 
 
+## Раз в сколько лет пересчитывать исследования (со сдвигом по id): очки копятся
+## в Nation.tech и не теряются.
+const PERIOD := 2
+
+
 func tick(world: World, nation: Nation) -> void:
+	if (world.year + nation.id + 1) % PERIOD != 0:
+		return
 	var gain := maxf(0.0, nation.tech - nation.tech_seen)
 	nation.tech_seen = nation.tech
 	for hid in nation.hero_ids:
 		if SCHOLARS.has(world.heroes[hid].hero_class.id):
-			gain += SCHOLAR_RESEARCH
+			gain += SCHOLAR_RESEARCH * PERIOD
 	nation.research += gain
 	if nation.researching == &"" or nation.techs.has(nation.researching):
 		_choose(world, nation)
@@ -156,7 +163,7 @@ func _diffuse(world: World, nation: Nation) -> void:
 	if nation.overlord >= 0:
 		partners.append(nation.overlord)
 	for p in partners:
-		if rng.randf() > SPREAD_CHANCE:
+		if rng.randf() > SPREAD_CHANCE * PERIOD:
 			continue
 		var other := world.nations[p]
 		var t := _copyable(nation, other, rng)

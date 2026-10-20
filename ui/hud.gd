@@ -17,7 +17,7 @@ const CHRONICLE_COLORS := {
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -232,7 +232,7 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if (_mode == MapMode.POLITICAL or _mode == MapMode.RACES) and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
 
@@ -346,6 +346,26 @@ func _rebuild_legend() -> void:
 					var race := RaceDB.by_index(c.race)
 					_legend_row(c.color, race.icon, "%s — регионов %d" % [c.name, regions[id]],
 						"Культура %s (%s), с %d г.\nОбычаи: %s" % [c.name, race.display_name.to_lower(), c.founded_year, ", ".join(c.customs)])
+		MapMode.TRADE:
+			_legend_title.text = "Торговые пути"
+			if world != null:
+				var land := 0
+				var sea := 0
+				var traffic := 0.0
+				var unsafe := 0
+				for r in world.roads:
+					if r.alive:
+						if r.sea:
+							sea += 1
+						else:
+							land += 1
+						traffic += r.traffic
+						if r.safety < 0.6:
+							unsafe += 1
+				_legend_row(Color(0.95, 0.75, 0.3), null, "дороги — %d" % land, "Толщина — торговый оборот за год")
+				_legend_row(Color(0.5, 0.8, 1.0), null, "морские пути — %d" % sea, "Между портами (гаванями)")
+				_legend_row(Color(0.9, 0.35, 0.3), null, "опасные пути — %d" % unsafe, "Разбойники и пираты снижают доход")
+				_legend_row(Color(0.8, 0.8, 0.8), null, "оборот: %s золота в год" % NationPanel.fmt(traffic), "")
 		MapMode.BIOMES:
 			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():

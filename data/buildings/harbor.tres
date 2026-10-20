@@ -9,6 +9,6 @@ display_name = "Гавань"
 description = "Морская торговля; на этапе 4 — колонизация за море."
 notable = true
 cost = Dictionary[StringName, float]({&"wood": 50.0, &"gold": 40.0})
-min_population = 2000.0
+min_population = 900.0
 requires_coast = true
 production = Dictionary[StringName, float]({&"gold": 8.0})

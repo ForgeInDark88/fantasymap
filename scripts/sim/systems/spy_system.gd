@@ -21,7 +21,13 @@ const TEMPERAMENT := {&"tyrant": 2.0, &"mad": 2.2, &"greedy": 1.5, &"warlike": 1
 	&"wise": 0.9, &"charismatic": 0.8}
 
 
+## Раз в сколько лет пересчитывать разведку государства (со сдвигом по id).
+const PERIOD := 2
+
+
 func tick(world: World, nation: Nation) -> void:
+	if (world.year + nation.id) % PERIOD != 0:
+		return
 	var rng := world.rng
 	var offices := 0
 	for id in nation.city_ids:
@@ -29,12 +35,12 @@ func tick(world: World, nation: Nation) -> void:
 			offices += 1
 	var spies := spies_of(world, nation)
 	nation.intel = minf(MAX_INTEL, nation.intel + (INTEL_BASE + maxf(0.0, nation.income[Goods.GOLD]) * INTEL_PER_GOLD
-			+ offices * OFFICE_INTEL + spies.size() * SPY_HERO_INTEL) * nation.effect(&"spy_mult"))
+			+ offices * OFFICE_INTEL + spies.size() * SPY_HERO_INTEL) * nation.effect(&"spy_mult") * PERIOD)
 	if nation.race.has_trait(&"demonic"):
 		return
 	var temper: float = TEMPERAMENT.get(nation.ruler_trait.id if nation.ruler_trait != null else &"", 1.0)
 	var at_war := not world.diplomacy.wars_of(nation.id).is_empty()
-	if rng.randf() > OP_CHANCE * temper * (1.5 if at_war else 1.0):
+	if rng.randf() > OP_CHANCE * PERIOD * temper * (1.5 if at_war else 1.0):
 		return
 	var target := _pick_target(world, nation)
 	if target == null:

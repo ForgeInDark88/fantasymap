@@ -62,6 +62,9 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Дороги и морские пути (граф между городами) и дороги каждого города.
+var roads: Array[Road] = []
+var city_roads: Dictionary[int, PackedInt32Array] = {}
 ## Тайные общества и культы, международные организации, наследия империй (этап 8).
 var societies: Array[Society] = []
 var orgs: Array[Organization] = []
@@ -212,24 +215,39 @@ func set_owner(cell: int, nation_id: int) -> void:
 
 ## Длина общих границ: число пар соседних клеток разных владельцев.
 func _update_borders(cell: int, old: int, new: int) -> void:
-	for nb in map.neighbors4(cell):
-		var o := owner[nb]
-		if o < 0:
-			continue
-		if old >= 0 and o != old:
-			_add_border(old, o, -1)
-		if new >= 0 and o != new:
-			_add_border(new, o, 1)
+	# Соседи без выделения массива (горячий путь: каждая смена владельца клетки).
+	var w := map.width
+	var x := cell % w
+	if x > 0:
+		_border_pair(owner[cell - 1], old, new)
+	if x < w - 1:
+		_border_pair(owner[cell + 1], old, new)
+	if cell >= w:
+		_border_pair(owner[cell - w], old, new)
+	if cell < owner.size() - w:
+		_border_pair(owner[cell + w], old, new)
+
+
+func _border_pair(o: int, old: int, new: int) -> void:
+	if o < 0:
+		return
+	if old >= 0 and o != old:
+		_add_border(old, o, -1)
+	if new >= 0 and o != new:
+		_add_border(new, o, 1)
 
 
 func _add_border(a: int, b: int, delta: int) -> void:
-	for pair in [[a, b], [b, a]]:
-		var borders := nations[pair[0]].borders
-		var v: int = borders.get(pair[1], 0) + delta
-		if v <= 0:
-			borders.erase(pair[1])
-		else:
-			borders[pair[1]] = v
+	_add_border_one(nations[a].borders, b, delta)
+	_add_border_one(nations[b].borders, a, delta)
+
+
+static func _add_border_one(borders: Dictionary, key: int, delta: int) -> void:
+	var v: int = borders.get(key, 0) + delta
+	if v <= 0:
+		borders.erase(key)
+	else:
+		borders[key] = v
 
 
 func _update_region(cell: int, old: int, new: int) -> void:

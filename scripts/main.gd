@@ -98,6 +98,8 @@ func _apply_tool(world: World, cell: int) -> void:
 				if OrgSystem.try_form(world, _tool_params.org, world.nations[world.owner[cell]]) == null:
 					world.log_event(&"org", "Призыв %s собрать организацию «%s» остался без ответа." % [
 						world.nations[world.owner[cell]].name, _tool_params.org.display_name])
+		&"road":
+			GodTools.road_from(world, cell)
 		&"collector":
 			var o := world.owner[cell]
 			if o >= 0 and world.nations[o].legacy >= 0:
