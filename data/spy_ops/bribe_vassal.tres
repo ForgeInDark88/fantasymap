@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SpyOpDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/spy_op_def.gd" id="1_op"]
+
+[resource]
+script = ExtResource("1_op")
+id = &"bribe_vassal"
+display_name = "Подкуп вассала"
+description = "Золото склоняет вассала соперника к отпадению."
+kind = "bribe_vassal"
+cost = 18.0
+success = 0.4
+exposure = 0.3
+scandal_grudge = 0.25
+scandal_war = 0.1
+weight = 0.6

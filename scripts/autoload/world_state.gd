@@ -39,6 +39,7 @@ func _ready() -> void:
 	PoliticsDB.ensure_loaded()
 	ReligionDB.ensure_loaded()
 	TechDB.ensure_loaded()
+	OrgDB.ensure_loaded()
 	EventBus.generate_requested.connect(generate)
 
 

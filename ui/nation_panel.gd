@@ -71,6 +71,28 @@ func refresh(world: World) -> void:
 	lines.append("[b]Знания:[/b] %d из %d технологий%s · [url=techs][color=#a8e0ff]окно технологий[/color][/url]" % [
 		nation.techs.size(), TechDB.all().size(),
 		(" · изучается: %s (%d%%)" % [researching.display_name, roundi(minf(1.0, nation.research / researching.cost) * 100.0)]) if researching != null else ""])
+	var spies := SpySystem.spies_of(world, nation).size()
+	lines.append("[b]Разведка:[/b] %d очков%s" % [roundi(nation.intel), (" · шпионов на службе: %d" % spies) if spies > 0 else ""])
+	var orgs := OrgSystem.orgs_of(world, nation.id)
+	if not orgs.is_empty():
+		lines.append("[b]Организации:[/b] " + ", ".join(orgs.map(func(o: Organization) -> String:
+			return "[color=#%s]%s[/color]%s" % [o.def.color.to_html(false), o.name, " (основатель)" if o.founder == nation.id else ""])))
+	if nation.legacy >= 0:
+		var lg := world.legacies[nation.legacy]
+		lines.append("[b]Наследие:[/b] осколок державы %s (память — до %d г.)%s" % [lg.name, lg.until_year,
+			" · [color=#ffd24a]собиратель земель[/color]" if lg.collector == nation.id else ""])
+	var secret: Array[String] = []
+	for s in world.societies:
+		if not s.alive:
+			continue
+		var inf := 0.0
+		for rid in s.influence:
+			if world.regions[rid].controller() == nation.id:
+				inf = maxf(inf, s.influence[rid])
+		if inf > 0.0:
+			secret.append("%s «%s» (до %d%%)" % [s.kind_name(), s.name, roundi(inf * 100.0)])
+	if not secret.is_empty():
+		lines.append("[b]Тайные общества:[/b] [color=#c8a0e0]%s[/color]" % ", ".join(secret))
 	if nation.culture >= 0:
 		var culture := world.cultures[nation.culture]
 		lines.append("[b]Культура:[/b] [color=#%s]%s[/color] (престиж %d) · обычаи: %s" % [culture.color.to_html(false), culture.name,
@@ -157,6 +179,9 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			roundi(region.loyalty * 100.0), roundi(minf(region.unrest, 1.0) * 100.0)])
 		if not region.faith.is_empty():
 			lines.append("Вера: " + faith_text(world, region.faith, 3))
+		for s in world.societies:
+			if s.alive and s.influence.has(region.id):
+				lines.append("[color=#c8a0e0]%s «%s»: влияние %d%%[/color]" % [s.kind_name().capitalize(), s.name, roundi(s.influence[region.id] * 100.0)])
 		if region.culture >= 0:
 			var rc := world.cultures[region.culture]
 			lines.append("Культура: [color=#%s]%s[/color]%s" % [rc.color.to_html(false), rc.name,

@@ -62,6 +62,10 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Тайные общества и культы, международные организации, наследия империй (этап 8).
+var societies: Array[Society] = []
+var orgs: Array[Organization] = []
+var legacies: Array[Legacy] = []
 ## Культуры народов (CultureSystem).
 var cultures: Array[Culture] = []
 ## Веры мира: стартовые (по data/religions) и рождённые в истории (ереси, новые веры).
@@ -317,6 +321,8 @@ func destroy_city(city: City) -> void:
 func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nation:
 	var old_pop := old.population
 	var nation := found_nation(race, false)
+	# Осколок великой державы наследует её память (до раздела — пока она цела).
+	LegacySystem.on_split(self, old, nation)
 	nation.tech = old.tech
 	# Отколовшиеся исповедуют веру большинства своих земель и хранят их культуру.
 	nation.state_religion = ReligionSystem.majority_faith(self, region_ids, old.state_religion)

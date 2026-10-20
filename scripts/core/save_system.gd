@@ -116,6 +116,14 @@ static func to_dict(world: World) -> Dictionary:
 		"heroes": heroes,
 		"landmarks": landmarks,
 		"religions": world.religions.map(_religion_dict),
+		"societies": world.societies.map(func(s: Society) -> Dictionary: return {"id": s.id, "name": s.name, "kind": str(s.kind),
+			"religion": s.religion, "home": s.home, "leader": s.leader, "founded": s.founded_year,
+			"influence": _int_dict(s.influence), "seized": s.seized, "alive": s.alive}),
+		"orgs": world.orgs.map(func(o: Organization) -> Dictionary: return {"id": o.id, "def": str(o.def.id), "name": o.name,
+			"members": Array(o.members), "founder": o.founder, "founded": o.founded_year, "faith": o.faith,
+			"alive": o.alive, "banned": _int_dict(o.banned)}),
+		"legacies": world.legacies.map(func(l: Legacy) -> Dictionary: return {"id": l.id, "name": l.name, "origin": l.origin,
+			"regions": Array(l.regions), "founded": l.founded_year, "until": l.until_year, "collector": l.collector, "alive": l.alive}),
 		"cultures": world.cultures.map(func(c: Culture) -> Dictionary: return {"id": c.id, "name": c.name, "race": c.race,
 			"color": _col(c.color), "customs": Array(c.customs), "origin": c.origin_nation, "founded": c.founded_year}),
 		"fate_queue": Array(world.fate_queue),
@@ -152,6 +160,7 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"religion": n.state_religion, "unity": n.faith_unity, "effects": _effects_dict(n),
 		"techs": n.techs.keys().map(func(t: StringName) -> String: return str(t)), "researching": str(n.researching),
 		"research": n.research, "tech_seen": n.tech_seen, "culture": n.culture, "culture_level": n.culture_level,
+		"intel": n.intel, "legacy": n.legacy,
 		"modifiers": n.modifiers.map(func(m: Dictionary) -> Dictionary:
 			var c := m.duplicate()
 			c.id = str(m.id)
@@ -267,6 +276,56 @@ static func _load_techs_and_cultures(world: World, data: Dictionary) -> void:
 		else:
 			var c := region.controller()
 			region.culture = world.nations[c].culture if c >= 0 else -1
+
+
+## Разведка, тайные общества, организации, наследия (этап 8; в v1 их нет — пусто).
+static func _load_intrigue(world: World, data: Dictionary) -> void:
+	for k in data.nations.size():
+		var nd: Dictionary = data.nations[k]
+		world.nations[k].intel = nd.get("intel", 0.0)
+		world.nations[k].legacy = int(nd.get("legacy", -1))
+	for sd in data.get("societies", []):
+		var s := Society.new()
+		s.id = int(sd.id)
+		s.name = sd.name
+		s.kind = StringName(sd.kind)
+		s.religion = int(sd.religion)
+		s.home = int(sd.home)
+		s.leader = sd.leader
+		s.founded_year = int(sd.founded)
+		for r in sd.influence:
+			s.influence[int(r)] = float(sd.influence[r])
+		s.seized = int(sd.seized)
+		s.alive = sd.alive
+		world.societies.append(s)
+	for od in data.get("orgs", []):
+		var o := Organization.new()
+		o.id = int(od.id)
+		o.def = OrgDB.find_org(StringName(od.def))
+		if o.def == null:
+			continue
+		o.name = od.name
+		o.members = PackedInt32Array(od.members)
+		o.founder = int(od.founder)
+		o.founded_year = int(od.founded)
+		o.faith = int(od.faith)
+		o.alive = od.alive
+		for m in od.get("banned", {}):
+			o.banned[int(m)] = int(od.banned[m])
+		world.orgs.append(o)
+	for ld in data.get("legacies", []):
+		var l := Legacy.new()
+		l.id = int(ld.id)
+		l.name = ld.name
+		l.origin = int(ld.origin)
+		l.regions = PackedInt32Array(ld.regions)
+		l.founded_year = int(ld.founded)
+		l.until_year = int(ld.until)
+		l.collector = int(ld.collector)
+		l.alive = ld.alive
+		world.legacies.append(l)
+	# Кэш членства (Nation.org_ids) — из списков организаций.
+	OrgSystem._apply_membership(world)
 
 
 static func _hero_dict(h: Hero) -> Dictionary:
@@ -499,6 +558,7 @@ static func from_dict(data: Dictionary) -> World:
 	world.terrain_version = int(data.get("terrain_version", 0))
 	_load_religions(world, data)
 	_load_techs_and_cultures(world, data)
+	_load_intrigue(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])

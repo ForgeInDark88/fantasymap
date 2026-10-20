@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="OrgDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/org_def.gd" id="1_org"]
+
+[resource]
+script = ExtResource("1_org")
+id = &"abyss_council"
+display_name = "Совет рас"
+description = "Пока открыты Врата бездны, народы забывают распри."
+name_template = "Совет рас против бездны"
+color = Color(0.75, 0.2, 0.2, 1)
+basis = "abyss"
+requires_tech = &""
+min_trade_partners = 0
+min_members = 2
+max_count = 1
+excluded_traits = Array[StringName]([&"demonic"])
+no_war = true
+mutual_defense = true
+dues = 0.02
+effects = Dictionary[StringName, float]({&"army_mult": 1.05})
+opinion_bonus = 0.2

@@ -174,10 +174,13 @@ static func _join_war(world: World, hero: Hero) -> void:
 	if choice < 0 and hero.karma < 0.3 and rng.randf() < 0.25:
 		# Наёмник: идёт к богатому воюющему государству.
 		var best := -1
-		for n in world.nations:
-			if n.alive and n.stock[Goods.GOLD] >= 400.0 and not world.diplomacy.wars_of(n.id).is_empty() \
-					and (best < 0 or n.stock[Goods.GOLD] > world.nations[best].stock[Goods.GOLD]):
-				best = n.id
+		for war in world.diplomacy.wars:
+			if not war.active:
+				continue
+			for m in war.attackers + war.defenders:
+				var n := world.nations[m]
+				if n.alive and n.stock[Goods.GOLD] >= 400.0 and (best < 0 or n.stock[Goods.GOLD] > world.nations[best].stock[Goods.GOLD]):
+					best = n.id
 		if best >= 0:
 			world.nations[best].stock[Goods.GOLD] -= 250.0
 			choice = best

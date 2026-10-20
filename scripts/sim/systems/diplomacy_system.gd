@@ -85,6 +85,8 @@ func _consider_war(world: World, nation: Nation, target: Nation, op: float) -> v
 	var d := world.diplomacy
 	if nation.allies.has(target.id) or d.has_truce(nation.id, target.id, world.year):
 		return
+	if OrgSystem.war_forbidden(world, nation.id, target.id):
+		return
 	if nation.overlord == target.id or target.overlord == nation.id:
 		return
 	if nation.overlord >= 0 and nation.overlord == target.overlord:
@@ -98,6 +100,9 @@ func _consider_war(world: World, nation: Nation, target: Nation, op: float) -> v
 		&"revenge": d.grudge(nation.id, target.id) * 0.8,
 		&"reconquest": 0.25 if d.has_claims_against(world, nation.id, target.id) else 0.0,
 	}
+	# Собиратель земель воюет за коренные земли империи.
+	if LegacySystem.reunification_target(world, nation, target):
+		causes[&"reunification"] = 0.35
 	# Вера: священная война против иноверцев, крестовый поход — против нежити и демонов.
 	if nation.state_religion >= 0 and target.state_religion >= 0 and nation.state_religion != target.state_religion:
 		var ours := world.religions[nation.state_religion]

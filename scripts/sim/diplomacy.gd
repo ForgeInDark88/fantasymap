@@ -7,6 +7,7 @@ extends RefCounted
 const CAUSE_NAMES := {
 	&"territory": "за земли", &"resources": "за богатства", &"racial": "расовая",
 	&"holy": "священная", &"crusade": "крестовый поход", &"schism": "раскол", &"religious": "за веру",
+	&"espionage": "возмездия", &"reunification": "за воссоединение",
 	&"revenge": "мести", &"independence": "за независимость", &"civil": "гражданская",
 	&"expansion": "завоевательная", &"reconquest": "за возвращение земель", &"coalition": "коалиции",
 }
@@ -97,6 +98,10 @@ func opinion(world: World, a: int, b: int) -> float:
 	# Гегемона боятся все.
 	if b == hegemon:
 		o -= 0.15
+	# Общие организации и общее имперское наследие сближают.
+	o += OrgSystem.opinion_bonus(world, a, b)
+	if na.legacy >= 0 and na.legacy == nb.legacy:
+		o += LegacySystem.OPINION_BONUS
 	# Мягкая сила: блестящая культура b располагает к ней.
 	if nb.culture_level > na.culture_level:
 		o += minf(0.15, (nb.culture_level - na.culture_level) / (na.culture_level + nb.culture_level + 10.0) * 0.3)
@@ -175,6 +180,8 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 	# Защитника поддерживают союзники, сюзерен и вассалы (если не связаны с нападающим).
 	var helpers := PackedInt32Array(nd.allies.keys())
 	helpers.append_array(vassals_of(world, defender))
+	# Общая оборона организаций (пакты, священные союзы, совет рас).
+	helpers.append_array(OrgSystem.defenders_for(world, defender, attacker, cause))
 	if nd.overlord >= 0 and cause != &"independence":
 		helpers.append(nd.overlord)
 	for h in helpers:
@@ -210,6 +217,10 @@ static func _cause_title(cause: StringName) -> String:
 			return "Война раскола:"
 		&"religious":
 			return "Восстание за веру:"
+		&"espionage":
+			return "Война возмездия:"
+		&"reunification":
+			return "Война за воссоединение:"
 		&"independence":
 			return "Освободительная война:"
 		&"civil":

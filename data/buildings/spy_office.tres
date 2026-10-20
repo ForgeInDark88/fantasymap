@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"spy_office"
+display_name = "Тайная канцелярия"
+description = "Осведомители и шифровальщики: разведка государства."
+notable = true
+cost = Dictionary[StringName, float]({&"gold": 100.0, &"stone": 20.0})
+min_population = 5000.0
+requires_tech = &"espionage"

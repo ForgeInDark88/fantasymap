@@ -15,6 +15,8 @@ const PER_NATIONS := 2
 ## Великие деяния: шанс в год попытаться (для героя от MIN_GREAT_LEVEL уровня).
 const GREAT_DEED_CHANCE := 0.012
 const MIN_GREAT_LEVEL := 7
+## Сколько встреч с другими героями в месяц успевает герой.
+const MAX_MEETINGS := 2
 
 
 ## Появление героя в регионе государства. Возвращает героя или null (лимит;
@@ -84,15 +86,32 @@ func tick_day(world: World) -> void:
 	# Встречи: действующий герой встречает любого героя в своём регионе.
 	var wandering := world.wandering_heroes()
 	var region_of := world.region_of
+	var met: Array[Hero] = []
 	for hero: Hero in acting:
 		if not hero.alive or hero.is_ruler or hero.cell < 0:
 			continue
 		var rid := region_of[hero.cell]
+		met.clear()
 		for other in wandering:
 			if other.cell < 0 or region_of[other.cell] != rid or other == hero or not other.alive or other.is_ruler:
 				continue
 			if other.id % Simulation.DAYS == world.day and other.id < hero.id:
 				continue  # пара уже рассмотрена
+			# Супруги и спутники по отряду и так вместе — просто крепнет связь.
+			if hero.spouse == other.id or hero.party_leader == other.id or other.party_leader == hero.id:
+				hero.add_bond(other, 0.02)
+				continue
+			met.append(other)
+		# В людном краю за месяц успеваешь толком поговорить лишь с немногими.
+		# Кровника из виду не упускают.
+		while met.size() > MAX_MEETINGS:
+			var i := world.rng.randi_range(0, met.size() - 1)
+			if met[i].id == hero.vendetta or met[i].vendetta == hero.id:
+				i = (i + 1) % met.size()
+			met.remove_at(i)
+		for other in met:
+			if not hero.alive or not other.alive:
+				continue
 			var where := world.region_label(hero.cell, "диких землях")
 			if world.rng.randf() < _duel_chance(world, hero, other):
 				duel(world, hero, other, where)

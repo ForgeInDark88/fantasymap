@@ -102,6 +102,14 @@ var researching: StringName = &""
 var research := 0.0
 var tech_seen := 0.0
 
+# --- Разведка и наследие (SpySystem, LegacySystem) ---
+## Очки разведки: копятся от золота, тайных канцелярий и шпионов-героев.
+var intel := 0.0
+## Организации, где государство состоит (кэш OrgSystem, id в World.orgs).
+var org_ids := PackedInt32Array()
+## Наследие империи, осколком которой государство является (-1 — нет).
+var legacy := -1
+
 # --- Культура (CultureSystem) ---
 ## Культура государства (id в World.cultures) и её «вес» — престиж, мягкая сила.
 var culture := -1
