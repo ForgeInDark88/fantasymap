@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"era"
+topic = &"era"
+titles = PackedStringArray("{era}", "Хроника: {era}")
+parts = Dictionary[String, PackedStringArray]({"intro": PackedStringArray("Время, которое потомки назвали «{era}», длилось с {start} по {end} год.", "С {start} по {end} год длилось время, известное как «{era}»; [people] запомнили его надолго."), "intro_dark": PackedStringArray("«{era}» ({start}—{end}) — время бедствий и тревог: мир стонал, а [people] гибли и рождались вновь.", "Мрачные годы «{era}»: с {start} по {end} год, [chronicler], тьма не раз подступала к порогу мира."), "intro_bright": PackedStringArray("«{era}» ({start}—{end}) запомнилась как пора расцвета: [people] строили, учились и торговали.", "Светлые годы «{era}»: с {start} по {end} год мир, [chronicler], знал больше пиров, чем тризн."), "stats": PackedStringArray("За эти годы вспыхнуло войн: {wars}, пало держав: {falls}, родилось новых: {born}.", "Летописи насчитывают за эпоху {wars} войн, гибель {falls} и рождение {born} государств."), "event": PackedStringArray("В {year} году: {text}", "{year} год. {text}", "[then], в {year} году, {lower}"), "outro": PackedStringArray("Так завершилось время «{era}».", "На этом время «{era}» подошло к концу, уступив место новому.", "Но всякой эпохе приходит конец — пришёл он и этой.")})
+words = Dictionary[String, PackedStringArray]({})

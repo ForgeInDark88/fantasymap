@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"org"
+topic = &"org"
+titles = PackedStringArray("{org}", "История организации «{org}»")
+parts = Dictionary[String, PackedStringArray]({"intro": PackedStringArray("Организацию «{org}» ({kind}) основало государство {founder} в {start} году.", "В {start} году государство {founder} созвало «{org}» — {kind}."), "members": PackedStringArray("Ныне в неё входят: {members}.", "Её члены: {members}."), "dead": PackedStringArray("Организация распалась.", "Ныне её больше нет.")})
+words = Dictionary[String, PackedStringArray]({})

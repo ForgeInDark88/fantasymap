@@ -58,3 +58,6 @@ signal underworld_window_requested
 
 ## Режим «Сыграй за героя»: открыть панель «Мой герой» (true) или «Герои» (false — выбрать героя).
 signal my_hero_requested(open_my_hero: bool)
+
+## Открыть окно «Хроники» (связные истории летописца).
+signal chronicles_window_requested

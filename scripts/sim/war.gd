@@ -24,6 +24,9 @@ var day := 0
 var battles := 0
 var casualties := 0.0
 var active := true
+## Кто начал войну и на кого напали (стороны могут покинуть войну, а летописи — помнить).
+var first_attacker := -1
+var first_defender := -1
 
 
 func side_of(nation_id: int) -> int:

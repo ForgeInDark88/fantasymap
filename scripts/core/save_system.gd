@@ -370,6 +370,7 @@ static func _lore_dict(world: World) -> Dictionary:
 		"boons": world.nations.map(func(n: Nation) -> Array: return [str(n.god_boon), n.god_boon_until]),
 		"player": {"hero": world.player, "cmd": world.player_cmd, "choice": world.player_choice,
 			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle},
+		"bookmarks": world.bookmarks,
 	}
 
 
@@ -428,6 +429,8 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		o.alive = od.alive
 		o.total = int(od.total)
 		world.orders.append(o)
+	for b in lore.get("bookmarks", []):
+		world.bookmarks.append({"year": int(b.year), "month": int(b.month), "day": int(b.day), "kind": str(b.kind), "text": str(b.text)})
 	var pl: Dictionary = lore.get("player", {})
 	if not pl.is_empty():
 		world.player = int(pl.hero)
@@ -449,7 +452,7 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 
 static func _war_dict(w: War) -> Dictionary:
 	return {"id": w.id, "name": w.name, "cause": str(w.cause), "start": w.start_year, "end": w.end_year,
-		"att": Array(w.attackers), "def": Array(w.defenders), "score": w.score, "siege": w.siege_region,
+		"first": [w.first_attacker, w.first_defender], "att": Array(w.attackers), "def": Array(w.defenders), "score": w.score, "siege": w.siege_region,
 		"siege_side": w.siege_side, "progress": w.siege_progress, "landing": w.siege_landing,
 		"month": w.month, "day": w.day, "battles": w.battles, "casualties": w.casualties, "active": w.active}
 
@@ -850,6 +853,9 @@ static func _restore_war(wd: Dictionary) -> War:
 	w.end_year = int(wd.end)
 	w.attackers = PackedInt32Array(wd.att)
 	w.defenders = PackedInt32Array(wd.def)
+	var first: Array = wd.get("first", [w.attackers[0] if not w.attackers.is_empty() else -1, w.defenders[0] if not w.defenders.is_empty() else -1])
+	w.first_attacker = int(first[0])
+	w.first_defender = int(first[1])
 	w.score = wd.score
 	w.siege_region = int(wd.siege)
 	w.siege_side = int(wd.siege_side)

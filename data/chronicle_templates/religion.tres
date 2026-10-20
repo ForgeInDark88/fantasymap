@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"religion"
+topic = &"religion"
+titles = PackedStringArray("Вера «{religion}»", "Сказание о вере «{religion}»")
+parts = Dictionary[String, PackedStringArray]({"intro": PackedStringArray("Вера «{religion}» известна с {start} года.", "С {start} года [people] знают веру «{religion}»."), "heresy": PackedStringArray("Она откололась от веры «{parent}» в государстве {origin}.", "Её породила ересь внутри веры «{parent}» — в землях государства {origin}."), "dogmas": PackedStringArray("Её догматы: {dogmas}.", "Учение её гласит: {dogmas}."), "followers": PackedStringArray("Ныне её исповедуют державы: {nations}.", "Государственной её признали {nations}."), "dead": PackedStringArray("Ныне у неё не осталось последователей.", "Вера угасла, и лишь руины храмов помнят её.")})
+words = Dictionary[String, PackedStringArray]({})

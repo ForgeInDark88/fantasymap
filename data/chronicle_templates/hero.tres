@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"hero"
+topic = &"hero"
+titles = PackedStringArray("Жизнь героя {hero}", "Сказание о герое {hero}", "{hero}: [great] путь")
+parts = Dictionary[String, PackedStringArray]({"intro": PackedStringArray("{hero} — {race}, {cls}, появился на свет в {born} году.", "В {born} году родился {hero}: {race} по крови, {cls} по призванию."), "intro_light": PackedStringArray("{hero}, {race} и {cls}, с юных лет слыл защитником слабых. Родился он в {born} году.", "Светлая душа {hero} пришла в мир в {born} году: {race}, {cls}, надежда простого люда."), "intro_dark": PackedStringArray("{hero}, {race} и {cls}, с ранних лет внушал страх. Он родился в {born} году.", "В {born} году на свет явился {hero} — {race}, {cls}, тень, о которой шептались у очагов."), "intro_demons": PackedStringArray("Из бездны вышел {hero} — {cls} демонов, рождённый в {born} году."), "intro_undead": PackedStringArray("{hero}, восставший из праха {cls}, впервые упомянут в {born} году."), "family": PackedStringArray("Он принадлежал к роду «{lineage}».", "Кровь рода «{lineage}» текла в его жилах."), "deed": PackedStringArray("[then] {deed}.", "{Deed}.", "Говорят, что он {deed}."), "outro_dead": PackedStringArray("Его путь оборвался на {age}-м году жизни.", "Он пал, прожив {age} лет, и о нём сложены песни."), "outro_ruler": PackedStringArray("Под конец он взошёл на трон.", "Путь странника он окончил правителем."), "outro_alive": PackedStringArray("Его история ещё не окончена.", "Он и поныне странствует по миру.")})
+words = Dictionary[String, PackedStringArray]({})

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"war"
+topic = &"war"
+titles = PackedStringArray("{war}", "Сказание о войне: {war}")
+parts = Dictionary[String, PackedStringArray]({"intro": PackedStringArray("В {start} году государство {attacker} начало войну против государства {defender}. Поводом стали {cause}.", "«{war}» — так назвали войну, что вспыхнула в {start} году: государство {attacker} выступило против государства {defender}, ибо причиной были {cause}."), "allies": PackedStringArray("На стороне нападавших сражались также: {att_allies}.", "К нападавшим примкнули {att_allies}."), "def_allies": PackedStringArray("Защитникам помогали {def_allies}.", "За оборонявшихся встали {def_allies}."), "battles": PackedStringArray("Война длилась {years} и знала {battles} сражений; полегло около {casualties} воинов.", "За {years} войны случилось {battles} битв, и {casualties} воинов не вернулись домой."), "victory": PackedStringArray("Победу одержало государство {attacker}: государству {defender} пришлось уступить.", "В конце концов государство {attacker} сломило сопротивление государства {defender}."), "defeat": PackedStringArray("Но удача отвернулась от нападавших: государство {defender} выстояло и отбросило врага.", "Нападение обернулось позором: верх одержало государство {defender}."), "draw": PackedStringArray("Ни одна из сторон не добилась своего, и мир был заключён без победителей.", "Война закончилась ничем: истощённые стороны разошлись."), "ongoing": PackedStringArray("Эта война всё ещё идёт.", "Пламя этой войны не угасло и поныне."), "outro": PackedStringArray("Такой была «{war}», [chronicler].", "Так закончилась «{war}», и [people] долго помнили её.")})
+words = Dictionary[String, PackedStringArray]({})

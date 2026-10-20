@@ -174,6 +174,22 @@ func _run() -> void:
 		PlayerSystem.release(world)
 		_panel(hud, "Мой герой", false)
 
+	# Хроники: ключевые события и история войны.
+	bus.chronicles_window_requested.emit()
+	await _frames(4)
+	_shot(out_dir, "chronicles.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_stories") != null:
+			var list: ItemList = c.get("_list")
+			for i in list.item_count:
+				if list.get_item_text(i).begins_with("Войны"):
+					list.select(i)
+					c.call("_on_item", i)
+					break
+			await _frames(4)
+			_shot(out_dir, "chronicles_war.png")
+			c.visible = false
+
 	# Сохранение и загрузка через интерфейс.
 	cam.call("fit_to", renderer.call("get_map_rect"))
 	ws.call("save_game", "Скриншот")

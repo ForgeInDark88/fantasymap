@@ -201,6 +201,7 @@ func _build_left_panels() -> void:
 	root.add_child(HeroWindow.new())
 	root.add_child(TechWindow.new())
 	root.add_child(UnderworldWindow.new())
+	root.add_child(ChroniclesWindow.new())
 	root.add_child(HeroChoicePopup.new())
 	EventBus.my_hero_requested.connect(func(mine: bool) -> void:
 		_left_panels["Мой герой" if mine else "Герои"][0].button_pressed = true)
@@ -210,6 +211,12 @@ func _build_left_panels() -> void:
 	_fate_button.focus_mode = Control.FOCUS_NONE
 	_fate_button.pressed.connect(_fate_panel.open_panel)
 	_panel_buttons.add_child(_fate_button)
+	var chronicles := Button.new()
+	chronicles.text = "Хроники"
+	chronicles.tooltip_text = "Связные истории мира: эпохи, войны, герои, державы, веры"
+	chronicles.focus_mode = Control.FOCUS_NONE
+	chronicles.pressed.connect(func() -> void: EventBus.chronicles_window_requested.emit())
+	_panel_buttons.add_child(chronicles)
 
 
 func _on_left_panel_toggled(on: bool, panel_name: String) -> void:

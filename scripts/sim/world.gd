@@ -97,6 +97,8 @@ var orders: Array[HeroOrder] = []
 ## текущая команда, выбор, ждущий решения, журнал приключений, репутация
 ## ("n<id>" — у державы, "r<id>" — у веры, "o<id>" — у ордена), месяцы без команд.
 var player := -1
+## Закладки на события летописи (панель «Хроники»): {year, month, day, kind, text}.
+var bookmarks: Array[Dictionary] = []
 var player_cmd: Dictionary = {}
 var player_choice: Dictionary = {}
 var player_journal: Array[Dictionary] = []

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"nation"
+topic = &"nation"
+titles = PackedStringArray("История державы {nation}", "Летопись: {nation}")
+parts = Dictionary[String, PackedStringArray]({"intro": PackedStringArray("{nation} — держава народа «{race}», основанная в {start} году.", "Государство {nation} основал народ «{race}» в {start} году."), "intro_monarchy": PackedStringArray("Королевский род правил державой {nation} с её основания в {start} году."), "intro_republic": PackedStringArray("Государство {nation} с {start} года жило по воле выборных советов — редкость среди народа «{race}»."), "dynasty": PackedStringArray("Ныне державой правит династия {dynasty}; на троне — {ruler}.", "Трон держит династия {dynasty}, правитель — {ruler}."), "peak": PackedStringArray("В лучшие годы держава владела {cells} землями и кормила {pop} жителей.", "На пике могущества ей принадлежало {cells} земель с населением {pop}."), "wars": PackedStringArray("Она вела войн: {wars}; самой памятной стала «{main_war}».", "Из {wars} войн державы самой тяжкой была «{main_war}»."), "event": PackedStringArray("В {year} году: {text}", "[then], в {year} году, {lower}"), "fell": PackedStringArray("В {end} году держава пала.", "Её история оборвалась в {end} году."), "alive": PackedStringArray("Держава стоит и поныне.", "Её история продолжается.")})
+words = Dictionary[String, PackedStringArray]({})
