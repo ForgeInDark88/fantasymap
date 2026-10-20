@@ -197,6 +197,12 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			roundi(region.loyalty * 100.0), roundi(minf(region.unrest, 1.0) * 100.0)])
 		if not region.faith.is_empty():
 			lines.append("Вера: " + faith_text(world, region.faith, 3))
+		var here: Array[String] = []
+		for r in world.ruins:
+			if r.cell >= 0 and not r.revived and world.region_of[r.cell] == region.id:
+				here.append("%s (%s%s)" % [r.name, r.kind_name(), ", исчерпаны" if r.depleted() else ""])
+		if not here.is_empty():
+			lines.append("[color=#b8a8a0]Руины: %s[/color]" % ", ".join(here))
 		for s in world.societies:
 			if s.alive and s.influence.has(region.id):
 				lines.append("[color=#c8a0e0]%s «%s»: влияние %d%%[/color]" % [s.kind_name().capitalize(), s.name, roundi(s.influence[region.id] * 100.0)])

@@ -148,6 +148,9 @@ func _yearly(world: World, hero: Hero) -> void:
 		_deed(world, hero)
 	if not hero.alive:
 		return
+	RuinSystem.hero_explore(world, hero)
+	if not hero.alive:
+		return
 	if hero.level >= MIN_GREAT_LEVEL and rng.randf() < GREAT_DEED_CHANCE * (2.0 if hero.level >= 12 else 1.0):
 		_great_deed(world, hero)
 		return

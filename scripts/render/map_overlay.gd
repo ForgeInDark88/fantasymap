@@ -82,6 +82,7 @@ func _draw() -> void:
 	if map_like:
 		_draw_scars(world, zoom)
 		_draw_roads(world, zoom)
+		_draw_ruins(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
 		_draw_cities(world, zoom)
@@ -243,6 +244,34 @@ func _draw_caves(world: World, zoom: float) -> void:
 			var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 			draw_string_outline(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.8))
 			draw_string(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.95, 0.92, 0.85))
+	draw_set_transform(Vector2.ZERO)
+
+
+## Руины: обломок колонны (исчерпанные — бледнее, проклятые — с лиловым ореолом).
+func _draw_ruins(world: World, zoom: float) -> void:
+	if zoom < 0.9:
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for r in world.ruins:
+		if r.cell < 0 or r.revived:
+			continue
+		var pos := renderer.cell_center(r.cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var a := 0.45 if r.depleted() else 0.95
+		if r.cursed:
+			draw_circle(Vector2.ZERO, 8.0, Color(0.6, 0.3, 0.8, 0.35))
+		var stone := Color(0.78, 0.74, 0.68, a)
+		var dark := Color(0.08, 0.07, 0.06, a)
+		draw_rect(Rect2(-5.5, 3.0, 11.0, 3.0), dark)
+		draw_rect(Rect2(-4.5, 3.5, 9.0, 2.0), stone)
+		draw_rect(Rect2(-4.0, -5.0, 3.0, 8.0), stone)
+		draw_rect(Rect2(1.0, -2.0, 3.0, 5.0), stone)
+		if r.kind == &"tomb":
+			draw_rect(Rect2(-1.0, -9.0, 2.0, 5.0), stone)
+			draw_rect(Rect2(-3.0, -7.5, 6.0, 1.6), stone)
 	draw_set_transform(Vector2.ZERO)
 
 

@@ -55,7 +55,9 @@ static func ignore(world: World, hero: Hero) -> void:
 
 ## Заточить душу героя в оружие и воздвигнуть пустой трон в глухом месте.
 static func curse(world: World, hero: Hero) -> Landmark:
-	var cell := _remote_cell(world)
+	# Пустой трон встаёт в глухих руинах, если такие есть.
+	var ruin := RuinSystem.remote_ruin(world)
+	var cell := ruin.cell if ruin != null else _remote_cell(world)
 	if cell < 0:
 		return null
 	_take(world, hero)
@@ -63,7 +65,7 @@ static func curse(world: World, hero: Hero) -> Landmark:
 	var artifact := "%s %s" % [hero.hero_class.weapon, _genitive(hero.name)]
 	var region := world.region_at(cell)
 	world.ensure_region_name(region)
-	var lm := world.add_landmark(&"throne", "Трон %s" % _genitive(hero.name), cell, hero.id)
+	var lm := world.add_landmark(&"throne", "Трон %s%s" % [_genitive(hero.name), (" в руинах %s" % ruin.name.trim_prefix("Руины ")) if ruin != null else ""], cell, hero.id)
 	lm.artifact = artifact + " (проклятый)"
 	lm.guardian = hero.power() * 1.6 + 1500.0
 	world.log_event(&"fate", "Судьба прокляла героя %s: его душа заточена в оружие «%s». В регионе %s возник пустой трон, его стережёт чудовище." % [

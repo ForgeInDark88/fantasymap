@@ -55,6 +55,15 @@ func _maybe_spawn(world: World) -> void:
 			total += 1.0 - n.stability
 	if total <= 0.0:
 		return
+	# Храм забытых богов пробуждает культ.
+	var temple := RuinSystem.temple_for_cult(world)
+	if temple != null:
+		var host := world.nations[world.owner[temple.cell]]
+		temple.revived = true
+		var s := found(world, host, world.region_of[temple.cell], &"cult")
+		if s != null:
+			world.log_event(&"ruins", "В руинах «%s» снова горят огни: там собирается %s." % [temple.name, s.name], PackedInt32Array([host.id]))
+		return
 	var roll := rng.randf() * total
 	for n in world.nations:
 		if not n.alive or n.capital_city < 0 or n.race.has_trait(&"demonic"):

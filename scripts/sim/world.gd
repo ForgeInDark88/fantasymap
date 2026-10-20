@@ -78,6 +78,8 @@ var zone_harvest := PackedFloat32Array([1.0, 1.0, 1.0])
 ## Климатические беды поясов: пояс → {kind, until}; пепельная зима — до года ash_until.
 var zone_events: Dictionary[int, Dictionary] = {}
 var ash_until := -1
+## Руины (RuinSystem).
+var ruins: Array[Ruin] = []
 ## Подземный мир: граф пещер (UndergroundSystem).
 var caves: Array[Cave] = []
 ## Дороги и морские пути (граф между городами) и дороги каждого города.
@@ -318,6 +320,7 @@ func _transfer_city(city: City, new_owner: int) -> void:
 		if nn.capital_city < 0:
 			city.is_capital = true
 			nn.capital_city = city.id
+			nn.home_cell = city.cell
 	else:
 		destroy_city(city)
 
@@ -333,12 +336,14 @@ func choose_capital(nation: Nation) -> void:
 	if best != null:
 		best.is_capital = true
 		nation.capital_city = best.id
+		nation.home_cell = best.cell
 
 
 ## Город разрушен: исчезает с карты, освобождает место для новых городов.
 func destroy_city(city: City) -> void:
 	if not city.alive:
 		return
+	RuinSystem.on_city_destroyed(self, city)
 	city.alive = false
 	city_cell[city.cell] = -1
 	_mark_city_area(city.cell, -1)
@@ -591,6 +596,7 @@ func cleanup_dead() -> void:
 	for nation in nations:
 		if nation.alive and nation.cell_count == 0:
 			nation.alive = false
+			RuinSystem.on_nation_fell(self, nation, nation.home_cell)
 			nation.army = 0.0
 			for id in nation.city_ids.duplicate():
 				destroy_city(cities[id])
@@ -807,6 +813,7 @@ func add_city(nation: Nation, cell: int, race: RaceDef, is_capital: bool) -> Cit
 	nation.city_ids.append(city.id)
 	if is_capital:
 		nation.capital_city = city.id
+		nation.home_cell = city.cell
 	return city
 
 

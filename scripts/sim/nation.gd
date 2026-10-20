@@ -129,6 +129,9 @@ var faith_unity := 1.0
 var effect_sources: Dictionary[StringName, Dictionary] = {}
 var effects: Dictionary[StringName, float] = {}
 
+## Клетка последней столицы (для руин храма, когда государство падёт).
+var home_cell := -1
+
 var founded_year := 0
 var alive := true
 ## Клетка для подписи названия.

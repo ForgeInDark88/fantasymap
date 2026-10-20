@@ -145,6 +145,7 @@ func leave_service(world: World) -> void:
 
 ## Смерть: герой уходит со службы и встаёт в очередь на суд Судьбы.
 func die(world: World, killer: Hero = null) -> void:
+	RuinSystem.on_hero_died(world, self)
 	leave_service(world)
 	alive = false
 	ally_nation = -1

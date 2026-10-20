@@ -34,6 +34,7 @@ func _initialize() -> void:
 		_check_caves(world)
 	_scripted_roads()
 	_scripted_underground()
+	_scripted_ruins()
 	_scripted_climate()
 	_expect(_digest(17) == _digest(17), "этап 9 недетерминирован")
 	if _failures > 0:
@@ -131,6 +132,53 @@ func _scripted_underground() -> void:
 			owned = c
 	if owned != null:
 		_expect(UndergroundSystem.sapping(a, PackedInt32Array([owned.owner]), a.region_of[owned.cell]), "подкоп не найден")
+
+
+func _scripted_ruins() -> void:
+	var s := MapSettings.new()
+	s.world_seed = 31
+	var w := World.create(s)
+	var sim := Simulation.new()
+	for y in 40:
+		sim.step(w)
+	# Разрушенный город оставляет руины (крупный — всегда).
+	var city: City = null
+	for c in w.cities:
+		if c.alive and not c.is_capital and c.tier() >= 1:
+			city = c
+	var before := w.ruins.size()
+	if city != null:
+		w.destroy_city(city)
+		_expect(w.ruins.size() == before + 1 and w.ruins[w.ruins.size() - 1].cell == city.cell, "город не оставил руин")
+	# Древние руины по воле Бога; герой исследует их.
+	var cell: int = w.cities.filter(func(c: City) -> bool: return c.alive)[0].cell
+	var ruin := GodTools.ancient_ruin(w, cell)
+	_expect(ruin != null and ruin.kind == &"temple", "руины не открылись")
+	if ruin != null:
+		var nation := w.nations[w.owner[cell]] if w.owner[cell] >= 0 else w.nations[0]
+		var hero := HeroSystem.spawn(w, nation, w.region_at(cell), true)
+		hero.level = 20
+		hero.intellect = 1.0
+		hero.cell = cell
+		var wealth := ruin.wealth
+		for i in 60:
+			if ruin.wealth < wealth or not hero.alive:
+				break
+			RuinSystem.hero_explore(w, hero)
+		_expect(ruin.wealth < wealth or not hero.alive, "герой так и не исследовал руины")
+	# Проклятый герой получает трон в глухих руинах, если они есть.
+	var remote := RuinSystem.remote_ruin(w)
+	var h2 := HeroSystem.spawn(w, w.nations[0], w.regions[0], true)
+	h2.die(w)
+	var throne := Fate.curse(w, h2)
+	if remote != null and throne != null:
+		_expect(throne.cell == remote.cell, "трон не в руинах")
+	for y in 20:
+		sim.step(w)
+	for r in w.ruins:
+		if r.cell >= 0 and not w.map.is_land(r.cell):
+			_expect(false, "руины в воде")
+			break
 
 
 func _check_caves(world: World) -> void:

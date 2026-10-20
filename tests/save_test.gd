@@ -7,9 +7,9 @@ extends SceneTree
 var _failures := 0
 ## Разделы, появившиеся после формата v1 (этапы 7+): сравниваются после продолжения
 ## истории и вырезаются при имитации старого сохранения.
-const NEW_KEYS: Array[String] = ["religions", "cultures", "societies", "orgs", "legacies", "roads", "climate", "counters", "caves"]
+const NEW_KEYS: Array[String] = ["religions", "cultures", "societies", "orgs", "legacies", "roads", "climate", "counters", "caves", "ruins"]
 const NEW_NATION_KEYS: Array[String] = ["religion", "unity", "effects", "techs", "researching", "research", "tech_seen",
-	"culture", "culture_level", "intel", "legacy"]
+	"culture", "culture_level", "intel", "legacy", "home"]
 const NEW_REGION_KEYS: Array[String] = ["faith", "culture", "assim"]
 
 

@@ -104,6 +104,8 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.drought(world, cell)
 		&"invasion":
 			UndergroundSystem.invasion(world, cell)
+		&"ruin":
+			GodTools.ancient_ruin(world, cell)
 		&"road":
 			GodTools.road_from(world, cell)
 		&"collector":

@@ -116,6 +116,8 @@ static func to_dict(world: World) -> Dictionary:
 		"heroes": heroes,
 		"landmarks": landmarks,
 		"religions": world.religions.map(_religion_dict),
+		"ruins": world.ruins.map(func(r: Ruin) -> Array: return [r.name, str(r.kind), r.cell, r.origin, r.created_year,
+			r.wealth, r.danger, r.cursed, r.hero_id, r.revived]),
 		"caves": world.caves.map(func(c: Cave) -> Array: return [c.name, str(c.kind), c.cell, c.depth, c.entrance,
 			Array(c.neighbors), c.owner, c.monsters, c.city, c.explored]),
 		"counters": _str_dict(world.counters),
@@ -168,7 +170,7 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"religion": n.state_religion, "unity": n.faith_unity, "effects": _effects_dict(n),
 		"techs": n.techs.keys().map(func(t: StringName) -> String: return str(t)), "researching": str(n.researching),
 		"research": n.research, "tech_seen": n.tech_seen, "culture": n.culture, "culture_level": n.culture_level,
-		"intel": n.intel, "legacy": n.legacy,
+		"intel": n.intel, "legacy": n.legacy, "home": n.home_cell,
 		"modifiers": n.modifiers.map(func(m: Dictionary) -> Dictionary:
 			var c := m.duplicate()
 			c.id = str(m.id)
@@ -292,6 +294,7 @@ static func _load_intrigue(world: World, data: Dictionary) -> void:
 		var nd: Dictionary = data.nations[k]
 		world.nations[k].intel = nd.get("intel", 0.0)
 		world.nations[k].legacy = int(nd.get("legacy", -1))
+		world.nations[k].home_cell = int(nd.get("home", -1))
 	for sd in data.get("societies", []):
 		var s := Society.new()
 		s.id = int(sd.id)
@@ -567,6 +570,20 @@ static func from_dict(data: Dictionary) -> World:
 	_load_religions(world, data)
 	_load_techs_and_cultures(world, data)
 	_load_intrigue(world, data)
+	for rd in data.get("ruins", []):
+		var r := Ruin.new()
+		r.id = world.ruins.size()
+		r.name = rd[0]
+		r.kind = StringName(rd[1])
+		r.cell = int(rd[2])
+		r.origin = rd[3]
+		r.created_year = int(rd[4])
+		r.wealth = rd[5]
+		r.danger = rd[6]
+		r.cursed = rd[7]
+		r.hero_id = int(rd[8])
+		r.revived = rd[9]
+		world.ruins.append(r)
 	if not data.has("caves"):
 		UndergroundSystem.generate(world)
 	for cd in data.get("caves", []):

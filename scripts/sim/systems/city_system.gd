@@ -64,13 +64,18 @@ func _maybe_found_city(world: World, nation: Nation) -> void:
 		return
 	if world.rng.randf() > 0.3:
 		return
-	var site := find_city_site(world, nation, 40)
+	# Руины на своей земле — готовое место: город возрождается.
+	var ruin := RuinSystem.revive_site(world, nation)
+	var site := ruin.cell if ruin != null else find_city_site(world, nation, 40)
 	if site < 0:
 		return
 	nation.stock[Goods.WOOD] -= FOUND_COST_WOOD
 	nation.stock[Goods.GOLD] -= FOUND_COST_GOLD
 	var settlers_race := RaceDB.by_index(world.cell_race[site]) if world.cell_race[site] != World.NO_RACE else race
 	var city := world.add_city(nation, site, settlers_race, false)
+	if ruin != null:
+		ruin.revived = true
+		world.log_event(&"ruins", "«%s»: %s возрождает здесь город — %s." % [ruin.name, nation.name, city.name], PackedInt32Array([nation.id]))
 	city.population = world.rng.randf_range(200.0, 600.0)
 	world.log_event(&"city", "%s основывает город %s." % [nation.name, city.name], PackedInt32Array([nation.id]))
 

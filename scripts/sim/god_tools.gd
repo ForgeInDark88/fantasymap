@@ -141,6 +141,9 @@ static func set_elevation(world: World, i: int, e: float) -> bool:
 	else:
 		map.biome[i] = Biome.SEA
 		map.river[i] = 0
+		for r in world.ruins:
+			if r.cell == i:
+				r.cell = -1  # руины ушли под воду
 		world.cell_race[i] = World.NO_RACE
 		world.deposit[i] = 0
 		if was_land:
@@ -263,3 +266,13 @@ static func drought(world: World, cell: int) -> void:
 	world.zone_harvest[z] = ClimateSystem.DROUGHT_HARVEST
 	world.scars.append({"cell": cell, "radius": 8.0, "kind": "drought", "until": world.year + 3})
 	world.log_event(&"climate", "По воле богов %s пришла великая сушь." % ClimateSystem.ZONE_NAMES[z])
+
+
+## Древние руины по воле Бога: храм забытых богов в клетке.
+static func ancient_ruin(world: World, cell: int) -> Ruin:
+	var name := "Руины %s" % NameGenerator.place_name(RaceDB.all()[world.rng.randi_range(0, RaceDB.count() - 1)], world.rng)
+	var r := RuinSystem.add(world, &"temple", cell, name, "древнее святилище, поднятое из небытия (%d г.)" % world.year)
+	if r != null:
+		r.wealth *= 2.0
+		world.log_event(&"ruins", "Земля разверзлась в регионе %s: открылись древние руины — %s." % [world.region_label(cell, "диких землях"), name])
+	return r

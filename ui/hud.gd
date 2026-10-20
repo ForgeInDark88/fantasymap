@@ -17,7 +17,7 @@ const CHRONICLE_COLORS := {
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -174,6 +174,7 @@ func _build_left_panels() -> void:
 		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
 		["Статистика", "Графики по эпохам", StatsPanel.new()],
 		["Герои", "Герои мира", HeroesPanel.new()],
+		["Руины", "Руины и древности мира", RuinsPanel.new()],
 		["Сохранения", "Сохранить или загрузить мир (F5 / F9)", _saves_panel],
 	]
 	var root: Control = _gen_panel.get_parent()
