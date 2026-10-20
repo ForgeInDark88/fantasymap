@@ -101,7 +101,11 @@ func _advance_siege(world: World, war: War, winner: int, margin: float) -> void:
 	var region := world.regions[war.siege_region]
 	var defense := _region_defense(world, region, war.members(-winner))
 	# Десант медленнее: снабжение через море.
-	var speed := (0.35 + 0.5 * margin) * (0.6 if war.siege_landing else 1.0)
+	# Осадное дело ускоряет осады, мореходство — десанты (верфи — ещё сильнее).
+	var attacker := world.nations[war.leader(winner)]
+	var speed := (0.35 + 0.5 * margin) * attacker.effect(&"siege_mult")
+	if war.siege_landing:
+		speed *= 0.6 * attacker.effect(&"naval_mult") * (1.25 if _has_building(world, war.members(winner), &"shipyard") else 1.0)
 	war.siege_progress += speed / (1.0 + defense)
 	if war.siege_progress >= 1.0:
 		_capture(world, war, region, winner)
@@ -198,6 +202,14 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 		war.siege_landing = true
 
 
+func _has_building(world: World, members: PackedInt32Array, building: StringName) -> bool:
+	for m in members:
+		for id in world.nations[m].city_ids:
+			if world.cities[id].buildings.has(building):
+				return true
+	return false
+
+
 func _has_port(world: World, members: PackedInt32Array) -> bool:
 	for m in members:
 		for id in world.nations[m].city_ids:
@@ -237,6 +249,8 @@ func _region_defense(world: World, region: Region, owners: PackedInt32Array) -> 
 			if def != null:
 				defense += def.defense
 	var center_owner := world.owner[region.center]
+	if center_owner >= 0:
+		defense += world.nations[center_owner].effect(&"defense")
 	if center_owner >= 0 and world.nations[center_owner].race.has_trait(&"forest_bond"):
 		var biome := world.map.biome[region.center]
 		if biome == Biome.FOREST or biome == Biome.JUNGLE:
@@ -250,6 +264,8 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 	var losers := war.members(-winner)
 	var winners := war.members(winner)
 	var city := _region_city(world, region.id, losers)
+	if city != null:
+		TechSystem.on_city_captured(world, world.nations[war.leader(winner)], world.nations[city.nation_id])
 	var capital_lost: Nation = null
 	if city != null and city.is_capital:
 		capital_lost = world.nations[city.nation_id]

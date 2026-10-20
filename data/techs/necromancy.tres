@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"necromancy"
+display_name = "Некромантия"
+description = "Мёртвые встают в строй."
+branch = "magic"
+cost = 1.28
+requires = Array[StringName]([&"arcane_lore"])
+effects = Dictionary[StringName, float]({&"army_mult": 1.1, &"growth_mult": 0.97})
+race_weights = Dictionary[StringName, float]({&"undead": 3.0, &"humans": 0.0, &"elves": 0.0, &"dwarves": 0.0, &"halflings": 0.0, &"orcs": 0.0, &"goblins": 0.15, &"nagas": 0.0, &"demons": 0.0})
+notable = true

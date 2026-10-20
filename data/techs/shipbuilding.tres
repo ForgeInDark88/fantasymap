@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"shipbuilding"
+display_name = "Кораблестроение"
+description = "Корабли с килем выдерживают бурю."
+branch = "navy"
+cost = 1.04
+requires = Array[StringName]([&"sailing"])
+effects = Dictionary[StringName, float]({&"naval_mult": 1.2, &"trade_mult": 1.03})
+race_weights = Dictionary[StringName, float]({&"nagas": 1.8, &"humans": 1.2, &"dwarves": 0.5})
+notable = false

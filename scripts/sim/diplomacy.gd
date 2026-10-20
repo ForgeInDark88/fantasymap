@@ -97,6 +97,9 @@ func opinion(world: World, a: int, b: int) -> float:
 	# Гегемона боятся все.
 	if b == hegemon:
 		o -= 0.15
+	# Мягкая сила: блестящая культура b располагает к ней.
+	if nb.culture_level > na.culture_level:
+		o += minf(0.15, (nb.culture_level - na.culture_level) / (na.culture_level + nb.culture_level + 10.0) * 0.3)
 	# Единоверцы ближе, иноверцы — тем дальше, чем нетерпимее вера a.
 	if na.state_religion >= 0 and nb.state_religion >= 0:
 		if na.state_religion == nb.state_religion:

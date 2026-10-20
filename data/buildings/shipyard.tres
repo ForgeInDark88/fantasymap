@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"shipyard"
+display_name = "Верфь"
+description = "Корабли для торговли и десантов."
+notable = false
+cost = Dictionary[StringName, float]({&"wood": 80.0, &"gold": 50.0})
+min_population = 2500.0
+requires_tech = &"shipbuilding"
+requires_coast = true

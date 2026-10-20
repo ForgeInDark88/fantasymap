@@ -20,11 +20,12 @@ func tick(world: World, nation: Nation) -> void:
 	var rng := world.rng
 	var pop_k := nation.population / 1000.0
 	var tech_mult := 1.0 + nation.tech * 0.05
+	var production_mult := nation.effect(&"production_mult")
 	nation.sources = world.sources_of(nation.id)
 
 	# Добыча: клетки территории + постройки.
 	for g in [Goods.WOOD, Goods.STONE, Goods.METAL, Goods.GOLD]:
-		var amount: float = nation.yields[g] * tech_mult + nation.building_production[g]
+		var amount: float = nation.yields[g] * tech_mult * production_mult + nation.building_production[g]
 		if race.has_trait(&"miners") and (g == Goods.STONE or g == Goods.METAL):
 			amount *= 1.5
 		nation.income[g] = amount

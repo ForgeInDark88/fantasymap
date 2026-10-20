@@ -24,6 +24,9 @@ func _ready() -> void:
 	_body.meta_underlined = false
 	_body.fit_content = false
 	_body.meta_clicked.connect(func(meta: Variant) -> void:
+		if str(meta) == "techs":
+			EventBus.tech_window_requested.emit(_nation_id)
+			return
 		var id := int(str(meta))
 		if id >= 0:
 			EventBus.nation_selected.emit(id))
@@ -64,6 +67,14 @@ func refresh(world: World) -> void:
 		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(nation.army), nation.tech],
 		"[b]Стабильность:[/b] %s" % _stability_text(nation.stability),
 	])
+	var researching := TechDB.find(nation.researching) if nation.researching != &"" else null
+	lines.append("[b]Знания:[/b] %d из %d технологий%s · [url=techs][color=#a8e0ff]окно технологий[/color][/url]" % [
+		nation.techs.size(), TechDB.all().size(),
+		(" · изучается: %s (%d%%)" % [researching.display_name, roundi(minf(1.0, nation.research / researching.cost) * 100.0)]) if researching != null else ""])
+	if nation.culture >= 0:
+		var culture := world.cultures[nation.culture]
+		lines.append("[b]Культура:[/b] [color=#%s]%s[/color] (престиж %d) · обычаи: %s" % [culture.color.to_html(false), culture.name,
+			roundi(nation.culture_level), ", ".join(culture.customs)])
 	if not nation.hero_ids.is_empty():
 		var heroes := Array(nation.hero_ids).map(func(id: int) -> String:
 			var h := world.heroes[id]
@@ -146,6 +157,10 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			roundi(region.loyalty * 100.0), roundi(minf(region.unrest, 1.0) * 100.0)])
 		if not region.faith.is_empty():
 			lines.append("Вера: " + faith_text(world, region.faith, 3))
+		if region.culture >= 0:
+			var rc := world.cultures[region.culture]
+			lines.append("Культура: [color=#%s]%s[/color]%s" % [rc.color.to_html(false), rc.name,
+				(" · ассимиляция %d%%" % roundi(region.assim * 100.0)) if region.culture != nation.culture else ""])
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")

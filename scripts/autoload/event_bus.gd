@@ -49,3 +49,6 @@ signal hero_selected(hero_id: int)
 ## Открыть окно героя с подробностями.
 @warning_ignore("unused_signal")
 signal hero_window_requested(hero_id: int)
+## Открыть окно технологий государства.
+@warning_ignore("unused_signal")
+signal tech_window_requested(nation_id: int)

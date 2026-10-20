@@ -62,6 +62,8 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Культуры народов (CultureSystem).
+var cultures: Array[Culture] = []
 ## Веры мира: стартовые (по data/religions) и рождённые в истории (ереси, новые веры).
 var religions: Array[Religion] = []
 ## Странствующие (живые и не на троне) герои — чтобы не перебирать ежедневно всех павших.
@@ -240,8 +242,10 @@ func _update_region(cell: int, old: int, new: int) -> void:
 		if region.name.is_empty():
 			# Регион называет тот, кто первым его заселил, — на своём языке.
 			region.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(nations[new].race, rng))
-		# Первые поселенцы приносят свою веру.
+		# Первые поселенцы приносят свою веру и культуру.
 		ReligionSystem.ensure_faith(region, nations[new].state_religion)
+		if region.culture < 0:
+			region.culture = nations[new].culture
 		if old >= 0:
 			region.conquered_year = year
 
@@ -312,10 +316,18 @@ func destroy_city(city: City) -> void:
 ## казны уходят вместе с землёй.
 func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nation:
 	var old_pop := old.population
-	var nation := found_nation(race)
+	var nation := found_nation(race, false)
 	nation.tech = old.tech
-	# Отколовшиеся исповедуют веру большинства своих земель.
+	# Отколовшиеся исповедуют веру большинства своих земель и хранят их культуру.
 	nation.state_religion = ReligionSystem.majority_faith(self, region_ids, old.state_religion)
+	nation.culture = CultureSystem.majority_culture(self, region_ids, old.culture)
+	nation.tech_seen = old.tech
+	# Знания наследуются — кроме недоступных расе отколовшихся.
+	for t in old.techs:
+		var def := TechDB.find(t)
+		if def != null and def.race_weight(race) > 0.0:
+			nation.techs[t] = true
+	TechSystem.apply_effects(nation)
 	for rid in region_ids:
 		var region := regions[rid]
 		region.unrest = 0.0
@@ -418,6 +430,30 @@ func sources_of(nation_id: int) -> int:
 	return count
 
 
+## Народ клетки сменился (ассимиляция): ёмкость и часть жителей переходят
+## к новому народу того же государства.
+func convert_cell_race(cell: int, new_race: int) -> void:
+	var old_race := cell_race[cell]
+	if old_race == new_race:
+		return
+	var o := owner[cell]
+	if o < 0 or old_race == NO_RACE:
+		cell_race[cell] = new_race
+		return
+	var nation := nations[o]
+	var old_cap := cell_capacity(RaceDB.by_index(old_race), cell)
+	var moved := 0.0
+	if nation.capacity[old_race] > 0.0:
+		moved = nation.pop[old_race] * clampf(old_cap / nation.capacity[old_race], 0.0, 1.0)
+	nation.capacity[old_race] = maxf(0.0, nation.capacity[old_race] - old_cap)
+	nation.pop[old_race] = maxf(0.0, nation.pop[old_race] - moved)
+	cell_race[cell] = new_race
+	var cap := cell_capacity(RaceDB.by_index(new_race), cell)
+	cell_cap[cell] = cap
+	nation.capacity[new_race] += cap
+	nation.pop[new_race] += moved
+
+
 ## Новая «метка» для обхода (см. mark).
 func next_stamp() -> int:
 	_stamp += 1
@@ -431,13 +467,29 @@ func record_history() -> void:
 	var races := PackedFloat32Array()
 	races.resize(RaceDB.count())
 	var snapshot := {}
+	# Открытия по расам: среднее число технологий у государств расы.
+	var techs := PackedFloat32Array()
+	techs.resize(RaceDB.count())
+	var counts := PackedFloat32Array()
+	counts.resize(RaceDB.count())
 	for n in nations:
 		if not n.alive:
 			continue
 		for r in n.pop.size():
 			races[r] += n.pop[r]
 		snapshot[n.id] = PackedFloat32Array([n.population, n.cell_count])
-	history.append({"year": year, "races": races, "nations": snapshot})
+		techs[n.race.index] += n.techs.size()
+		counts[n.race.index] += 1.0
+	for r in techs.size():
+		if counts[r] > 0.0:
+			techs[r] /= counts[r]
+	# Распространение религий: в скольких регионах вера — вера большинства.
+	var faiths := {}
+	for region in regions:
+		var f := region.main_faith()
+		if f >= 0:
+			faiths[f] = faiths.get(f, 0) + 1
+	history.append({"year": year, "races": races, "nations": snapshot, "techs": techs, "faiths": faiths})
 
 
 ## Дата для интерфейса и летописи.
@@ -574,7 +626,7 @@ func add_nation(race: RaceDef) -> Nation:
 
 ## Создаёт государство расы race с именем, формой правления, правителем и цветом
 ## (без территории — её назначают через set_owner).
-func found_nation(race: RaceDef) -> Nation:
+func found_nation(race: RaceDef, own_culture: bool = true) -> Nation:
 	var nation := add_nation(race)
 	nation.short_name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(race, rng))
 	var title := NameGenerator.state_title(race, nation.short_name, rng)
@@ -585,6 +637,8 @@ func found_nation(race: RaceDef) -> Nation:
 	nation.color = nation_color(nation.id)
 	if not religions.is_empty():
 		nation.state_religion = ReligionSystem.pick_for_race(self, race)
+	if own_culture:
+		nation.culture = CultureSystem.new_culture(self, nation).id
 	return nation
 
 

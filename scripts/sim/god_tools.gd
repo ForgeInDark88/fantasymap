@@ -186,3 +186,29 @@ static func _detach_from_region(world: World, i: int) -> void:
 	world.region_of[i] = -1
 	world.region_texels[i * 4] = 0
 	world.region_texels[i * 4 + 1] = 0
+
+
+## Озарение: текущее исследование завершается мгновенно (или открывается доступная технология).
+static func insight(world: World, nation: Nation) -> TechDef:
+	var t := TechDB.find(nation.researching) if nation.researching != &"" else null
+	if t == null:
+		for res in TechDB.all():
+			if TechSystem.is_available(nation, res as TechDef):
+				t = res
+				break
+	if t == null:
+		return null
+	TechSystem.unlock(world, nation, t, "")
+	world.log_event(&"tech", "Озарение свыше: учёные государства %s постигли %s." % [nation.name, t.display_name.to_lower()],
+			PackedInt32Array([nation.id]))
+	return t
+
+
+## Слияние культур: регион клетки перенимает культуру своего владельца.
+static func assimilate(world: World, cell: int) -> bool:
+	var region := world.region_at(cell)
+	var o := world.owner[cell]
+	if region == null or o < 0 or world.nations[o].culture < 0 or region.culture == world.nations[o].culture:
+		return false
+	CultureSystem.assimilate(world, world.nations[o], region)
+	return true

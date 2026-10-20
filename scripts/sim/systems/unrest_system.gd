@@ -65,6 +65,9 @@ func _loyalty(world: World, nation: Nation, region: Region, is_capital: bool, ca
 		loyalty -= 0.25 * (1.0 - since / 40.0)
 	if nation.overlord >= 0:
 		loyalty -= 0.05
+	# Своя культура скрепляет, чужая — отталкивает (ассимиляция — мирный путь).
+	if region.culture >= 0 and nation.culture >= 0:
+		loyalty += 0.06 if region.culture == nation.culture else -0.05
 	# Иноверцы: тем недовольнее, чем нетерпимее государственная вера.
 	if nation.state_religion >= 0 and not region.faith.is_empty():
 		var faith := world.religions[nation.state_religion]

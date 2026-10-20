@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"deep_mining"
+display_name = "Глубокие копи"
+description = "Штольни уходят в сердце гор."
+branch = "economy"
+cost = 1.04
+requires = Array[StringName]([&"mining", &"masonry"])
+effects = Dictionary[StringName, float]({&"production_mult": 1.06})
+race_weights = Dictionary[StringName, float]({&"dwarves": 2.0, &"goblins": 1.2, &"elves": 0.3})
+notable = false

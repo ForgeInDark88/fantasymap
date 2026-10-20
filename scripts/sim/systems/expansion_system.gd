@@ -26,7 +26,7 @@ func tick(world: World, nation: Nation) -> void:
 	var rng := world.rng
 	var cap := nation.total_capacity()
 	var pressure := clampf(nation.population / cap, 0.0, 1.2) if cap > 0.0 else 1.0
-	var rate := RATE * sqrt(n) * race.expansion * (0.2 + pressure) * (0.4 + nation.stability * 0.6)
+	var rate := RATE * sqrt(n) * race.expansion * nation.effect(&"expansion_mult") * (0.2 + pressure) * (0.4 + nation.stability * 0.6)
 	nation.expansion_points = minf(nation.expansion_points + rate, rate * 3.0 + 4.0)
 
 	var claimed := 0
@@ -75,7 +75,7 @@ func _try_colonize(world: World, nation: Nation) -> void:
 	if ports.is_empty() or nation.stock[Goods.WOOD] < 40.0 or nation.stock[Goods.GOLD] < 60.0:
 		return
 	var map := world.map
-	var max_range := map.width * 0.4
+	var max_range := map.width * 0.4 * nation.effect(&"naval_mult")
 	var best: Region = null
 	var best_score := -INF
 	for s in 40:

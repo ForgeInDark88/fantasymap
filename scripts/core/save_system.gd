@@ -63,7 +63,7 @@ static func to_dict(world: World) -> Dictionary:
 		regions.append({"name": r.name, "center": r.center, "loyalty": r.loyalty, "unrest": r.unrest,
 			"conquered": r.conquered_year, "pacified": r.pacified_until, "claims": _int_dict(r.claims),
 			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal,
-			"faith": _int_dict(r.faith)})
+			"faith": _int_dict(r.faith), "culture": r.culture, "assim": r.assim})
 	var nations := []
 	for n in world.nations:
 		nations.append(_nation_dict(n))
@@ -89,7 +89,8 @@ static func to_dict(world: World) -> Dictionary:
 		var ns := {}
 		for id in snap.nations:
 			ns[str(id)] = Array(snap.nations[id])
-		history.append({"year": snap.year, "races": Array(snap.races), "nations": ns})
+		history.append({"year": snap.year, "races": Array(snap.races), "nations": ns,
+			"techs": Array(snap.get("techs", PackedFloat32Array())), "faiths": _int_dict(snap.get("faiths", {}))})
 	var chronicle := []
 	for e in world.chronicle:
 		chronicle.append({"y": e.year, "m": e.get("month", 0), "d": e.get("day", 0), "k": str(e.kind),
@@ -115,6 +116,8 @@ static func to_dict(world: World) -> Dictionary:
 		"heroes": heroes,
 		"landmarks": landmarks,
 		"religions": world.religions.map(_religion_dict),
+		"cultures": world.cultures.map(func(c: Culture) -> Dictionary: return {"id": c.id, "name": c.name, "race": c.race,
+			"color": _col(c.color), "customs": Array(c.customs), "origin": c.origin_nation, "founded": c.founded_year}),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -147,6 +150,8 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"overlord": n.overlord, "vassal_since": n.vassal_since, "allies": n.allies.keys(), "trade": n.trade_partners.keys(),
 		"stalled": n.stalled_years, "collapse": n.collapse_years,
 		"religion": n.state_religion, "unity": n.faith_unity, "effects": _effects_dict(n),
+		"techs": n.techs.keys().map(func(t: StringName) -> String: return str(t)), "researching": str(n.researching),
+		"research": n.research, "tech_seen": n.tech_seen, "culture": n.culture, "culture_level": n.culture_level,
 		"modifiers": n.modifiers.map(func(m: Dictionary) -> Dictionary:
 			var c := m.duplicate()
 			c.id = str(m.id)
@@ -169,7 +174,7 @@ static func _str_dict(d: Dictionary) -> Dictionary:
 
 
 static func _religion_dict(r: Religion) -> Dictionary:
-	return {"id": r.id, "name": r.name, "symbol": r.symbol, "color": r.color.to_html(), "def": str(r.def.id) if r.def != null else "",
+	return {"id": r.id, "name": r.name, "symbol": r.symbol, "color": _col(r.color), "def": str(r.def.id) if r.def != null else "",
 		"parent": r.parent, "root": r.root, "founded": r.founded_year, "origin": r.origin_nation, "dogmas": Array(r.dogmas),
 		"effects": _str_dict(r.effects), "missionary": r.missionary, "tolerance": r.tolerance, "zeal": r.zeal,
 		"magic": r.magic, "undead": r.undead, "demons": r.demons, "alive": r.alive}
@@ -191,7 +196,7 @@ static func _load_religions(world: World, data: Dictionary) -> void:
 		r.id = int(rd.id)
 		r.name = rd.name
 		r.symbol = rd.symbol
-		r.color = Color.html(rd.color)
+		r.color = _to_col(rd.color)
 		r.def = ReligionDB.find(StringName(rd.def)) if not rd.def.is_empty() else null
 		r.parent = int(rd.parent)
 		r.root = int(rd.root)
@@ -222,6 +227,46 @@ static func _load_religions(world: World, data: Dictionary) -> void:
 		var eff: Dictionary = nd.get("effects", {})
 		for src in eff:
 			n.set_effects(StringName(src), eff[src])
+
+
+## Технологии и культура (v2). Из сохранений v1 — культура по государству,
+## технологий нет (очки исследований начнут копиться с текущего уровня науки).
+static func _load_techs_and_cultures(world: World, data: Dictionary) -> void:
+	if data.has("cultures"):
+		for cd in data.cultures:
+			var c := Culture.new()
+			c.id = int(cd.id)
+			c.name = cd.name
+			c.race = int(cd.race)
+			c.color = _to_col(cd.color)
+			c.customs = PackedStringArray(cd.customs)
+			c.origin_nation = int(cd.origin)
+			c.founded_year = int(cd.founded)
+			world.cultures.append(c)
+	for k in data.nations.size():
+		var nd: Dictionary = data.nations[k]
+		var n := world.nations[k]
+		if not data.has("cultures"):
+			n.culture = CultureSystem.new_culture(world, n).id
+			n.tech_seen = n.tech
+			continue
+		for t in nd.get("techs", []):
+			if TechDB.find(StringName(t)) != null:
+				n.techs[StringName(t)] = true
+		n.researching = StringName(nd.get("researching", ""))
+		n.research = nd.get("research", 0.0)
+		n.tech_seen = nd.get("tech_seen", n.tech)
+		n.culture = int(nd.get("culture", -1))
+		n.culture_level = nd.get("culture_level", 0.0)
+	for i in data.regions.size():
+		var region := world.regions[i]
+		var rd: Dictionary = data.regions[i]
+		if rd.has("culture"):
+			region.culture = int(rd.culture)
+			region.assim = rd.get("assim", 0.0)
+		else:
+			var c := region.controller()
+			region.culture = world.nations[c].culture if c >= 0 else -1
 
 
 static func _hero_dict(h: Hero) -> Dictionary:
@@ -446,9 +491,14 @@ static func from_dict(data: Dictionary) -> World:
 		var ns := {}
 		for k in snap.nations:
 			ns[int(k)] = PackedFloat32Array(snap.nations[k])
-		world.history.append({"year": int(snap.year), "races": PackedFloat32Array(snap.races), "nations": ns})
+		var faiths := {}
+		for k in snap.get("faiths", {}):
+			faiths[int(k)] = int(snap.faiths[k])
+		world.history.append({"year": int(snap.year), "races": PackedFloat32Array(snap.races), "nations": ns,
+			"techs": PackedFloat32Array(snap.get("techs", [])), "faiths": faiths})
 	world.terrain_version = int(data.get("terrain_version", 0))
 	_load_religions(world, data)
+	_load_techs_and_cultures(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])
@@ -579,6 +629,17 @@ static func _reorder(d: Dictionary, order: Array) -> void:
 			copy.erase(int(k))
 	for k in copy:
 		d[k] = copy[k]
+
+
+## Цвет без потерь (to_html округляет до 8 бит на канал).
+static func _col(c: Color) -> Array:
+	return [c.r, c.g, c.b, c.a]
+
+
+static func _to_col(v: Variant) -> Color:
+	if typeof(v) == TYPE_STRING:
+		return Color.html(v)
+	return Color(v[0], v[1], v[2], v[3])
 
 
 static func _raw(text: String) -> PackedByteArray:

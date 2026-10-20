@@ -94,6 +94,19 @@ var collapse_years := 0
 ## Временные эффекты событий: {id, until, army_mult, growth_mult, science_mult}.
 var modifiers: Array[Dictionary] = []
 
+# --- Технологии (TechSystem) ---
+## Открытые технологии (id → true, в порядке открытия), изучаемая сейчас и
+## накопленные на неё очки; tech_seen — значение tech на прошлом пересчёте.
+var techs: Dictionary[StringName, bool] = {}
+var researching: StringName = &""
+var research := 0.0
+var tech_seen := 0.0
+
+# --- Культура (CultureSystem) ---
+## Культура государства (id в World.cultures) и её «вес» — престиж, мягкая сила.
+var culture := -1
+var culture_level := 0.0
+
 # --- Вера (ReligionSystem) ---
 ## Государственная религия (id в World.religions, -1 — нет) и доля её
 ## последователей среди подданных (по клеткам регионов).
@@ -172,7 +185,7 @@ func total_capacity() -> float:
 	var total := 0.0
 	for c in capacity:
 		total += c
-	return total * (1.0 + food_bonus)
+	return total * (1.0 + food_bonus + effect(&"food"))
 
 
 func centroid() -> Vector2:

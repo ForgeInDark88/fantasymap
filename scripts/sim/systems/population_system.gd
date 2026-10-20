@@ -9,7 +9,7 @@ const BASE_GROWTH := 0.03
 func tick(_world: World, nation: Nation) -> void:
 	for r in nation.pop.size():
 		var p := nation.pop[r]
-		var cap := nation.capacity[r] * (1.0 + nation.food_bonus)
+		var cap := nation.capacity[r] * (1.0 + nation.food_bonus + nation.effect(&"food"))
 		if cap <= 0.0:
 			# Земли этого народа больше нет — остатки рассеиваются.
 			nation.pop[r] = p * 0.85 if p > 1.0 else 0.0

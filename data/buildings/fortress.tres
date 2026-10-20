@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_bld")
 id = &"fortress"
+requires_tech = &"masonry"
 display_name = "Крепость"
 description = "Неприступная твердыня, высеченная в скале."
 notable = true

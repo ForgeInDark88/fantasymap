@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_bld")
 id = &"library"
+requires_tech = &"writing"
 display_name = "Библиотека"
 description = "Знания ускоряют науку."
 notable = true

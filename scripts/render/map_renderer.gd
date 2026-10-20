@@ -96,6 +96,12 @@ func refresh_region_palette() -> void:
 				if r >= 0:
 					c = world.religions[r].color
 					c.a = 0.35 + 0.65 * region.faith[r]
+			MapMode.CULTURE:
+				if region.culture >= 0:
+					c = world.cultures[region.culture].color
+					# Культура владельца — ярко, чужая (ассимилируется) — бледнее.
+					var ctrl := region.controller()
+					c.a = 0.9 if ctrl < 0 or world.nations[ctrl].culture == region.culture else 0.45 + 0.3 * region.assim
 		colors[region.id] = c
 	_region_palette = _make_palette(colors, _region_palette)
 	_material.set_shader_parameter("region_palette_tex", _region_palette)

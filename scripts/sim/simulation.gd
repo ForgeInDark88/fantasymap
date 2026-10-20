@@ -26,6 +26,8 @@ var wars := WarSystem.new()
 var heroes := HeroSystem.new()
 var enclaves := EnclaveSystem.new()
 var religion := ReligionSystem.new()
+var techs := TechSystem.new()
+var culture := CultureSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -61,6 +63,7 @@ func step_day(world: World) -> void:
 		if not nation.alive:
 			continue
 		_t("economy", economy.tick.bind(world, nation))
+		_t("techs", techs.tick.bind(world, nation))
 		_t("population", population.tick.bind(world, nation))
 		_t("expansion", expansion.tick.bind(world, nation))
 		_t("cities", cities.tick.bind(world, nation))
@@ -68,6 +71,7 @@ func step_day(world: World) -> void:
 		_t("unrest", unrest.tick.bind(world, nation))
 		_t("events", events.tick.bind(world, nation))
 		_t("religion", religion.tick.bind(world, nation))
+		_t("culture", culture.tick.bind(world, nation))
 		_t("diplomacy", diplomacy.tick_nation.bind(world, nation))
 		_t("enclaves", enclaves.tick.bind(world, nation))
 	_t("wars", wars.tick_day.bind(world))

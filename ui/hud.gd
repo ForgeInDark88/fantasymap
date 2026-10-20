@@ -16,7 +16,7 @@ const CHRONICLE_COLORS := {
 	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b",
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
-	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8",
+	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -196,6 +196,7 @@ func _build_left_panels() -> void:
 	_fate_panel = FatePanel.new()
 	root.add_child(_fate_panel)
 	root.add_child(HeroWindow.new())
+	root.add_child(TechWindow.new())
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
@@ -330,6 +331,20 @@ func _rebuild_legend() -> void:
 						faith.def.description if faith.def != null and not faith.is_heresy() else "Ответвление веры «%s» (%d г.)" % [world.religions[faith.parent].name, faith.founded_year] if faith.is_heresy() else "",
 						", ".join(faith.dogmas), faith.missionary * 100.0, faith.tolerance * 100.0, faith.zeal * 100.0]
 					_legend_row(faith.color, faith.icon(), "%s %s — регионов %d, держав %d" % [faith.symbol, faith.name, regions[id], states.get(id, 0)], tip)
+		MapMode.CULTURE:
+			_legend_title.text = "Культуры"
+			if world != null:
+				var regions := {}
+				for region in world.regions:
+					if region.culture >= 0:
+						regions[region.culture] = regions.get(region.culture, 0) + 1
+				var ids := regions.keys()
+				ids.sort_custom(func(a: int, b: int) -> bool: return regions[a] > regions[b])
+				for id in ids.slice(0, 40):
+					var c := world.cultures[id]
+					var race := RaceDB.by_index(c.race)
+					_legend_row(c.color, race.icon, "%s — регионов %d" % [c.name, regions[id]],
+						"Культура %s (%s), с %d г.\nОбычаи: %s" % [c.name, race.display_name.to_lower(), c.founded_year, ", ".join(c.customs)])
 		MapMode.BIOMES:
 			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():

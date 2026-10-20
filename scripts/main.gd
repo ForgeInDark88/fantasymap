@@ -86,6 +86,11 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.spawn_hero(world, cell)
 		&"source":
 			HeroSystem.power_source(world, null, cell)
+		&"insight":
+			if world.owner[cell] >= 0:
+				GodTools.insight(world, world.nations[world.owner[cell]])
+		&"assimilate":
+			GodTools.assimilate(world, cell)
 		&"religion":
 			if world.owner[cell] >= 0:
 				ReligionSystem.found_religion(world, world.nations[world.owner[cell]])

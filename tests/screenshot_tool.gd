@@ -115,6 +115,23 @@ func _run() -> void:
 		world.year, world.nations.filter(func(n: RefCounted) -> bool: return n.alive).size(),
 		world.heroes.size(), ws.get("avg_tick_ms")])
 
+	# Окно технологий крупнейшего государства и новые графики статистики.
+	bus.tech_window_requested.emit(biggest.id)
+	await _frames(6)
+	_shot(out_dir, "tech_window.png")
+	for c in hud.get_node("Root").get_children():
+		if c.has_method("refresh") and c.get("_columns") != null:
+			c.visible = false
+	_panel(hud, "Статистика", true)
+	for view in [3, 4]:
+		for c in hud.get_node("Root").get_children():
+			if c.get("_chart") != null:
+				c.set("_view", view)
+				c.call("_refresh")
+		await _frames(4)
+		_shot(out_dir, "stats_view%d.png" % view)
+	_panel(hud, "Статистика", false)
+
 	# Окно героя: самый прославленный из живых.
 	var star: RefCounted = null
 	for cand in world.heroes:

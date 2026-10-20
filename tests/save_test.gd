@@ -7,9 +7,10 @@ extends SceneTree
 var _failures := 0
 ## Разделы, появившиеся после формата v1 (этапы 7+): сравниваются после продолжения
 ## истории и вырезаются при имитации старого сохранения.
-const NEW_KEYS: Array[String] = ["religions"]
-const NEW_NATION_KEYS: Array[String] = ["religion", "unity", "effects"]
-const NEW_REGION_KEYS: Array[String] = ["faith"]
+const NEW_KEYS: Array[String] = ["religions", "cultures"]
+const NEW_NATION_KEYS: Array[String] = ["religion", "unity", "effects", "techs", "researching", "research", "tech_seen",
+	"culture", "culture_level"]
+const NEW_REGION_KEYS: Array[String] = ["faith", "culture", "assim"]
 
 
 static func _as_v1(d: Dictionary) -> Dictionary:
@@ -81,8 +82,13 @@ func _initialize() -> void:
 	var da := SaveSystem.to_dict(world)
 	var db := SaveSystem.to_dict(loaded)
 	for key in NEW_KEYS:
+		if JSON.stringify(da.get(key)) != JSON.stringify(db.get(key)):
+			for i in da[key].size():
+				if JSON.stringify(da[key][i]) != JSON.stringify(db[key][i]): print(JSON.stringify(da[key][i]), "\n", JSON.stringify(db[key][i]))
 		_expect(JSON.stringify(da.get(key)) == JSON.stringify(db.get(key)), "после 15 лет разошлось: " + key)
 	_expect(JSON.stringify(da.regions.map(func(r): return r.faith)) == JSON.stringify(db.regions.map(func(r): return r.faith)), "после 15 лет разошлась вера регионов")
+	_expect(JSON.stringify(da.regions.map(func(r): return [r.culture, r.assim])) == JSON.stringify(db.regions.map(func(r): return [r.culture, r.assim])), "после 15 лет разошлась культура регионов")
+	_expect(JSON.stringify(da.nations.map(func(n): return n.techs)) == JSON.stringify(db.nations.map(func(n): return n.techs)), "после 15 лет разошлись технологии")
 
 	# Старое сохранение (формат v1, без новых систем) загружается и живёт дальше.
 	var old := _as_v1(SaveSystem.to_dict(world))

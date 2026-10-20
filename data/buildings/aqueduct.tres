@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"aqueduct"
+display_name = "Акведук"
+description = "Вода для полей и горожан."
+notable = false
+cost = Dictionary[StringName, float]({&"stone": 80.0, &"gold": 40.0})
+min_population = 4000.0
+requires_tech = &"irrigation"
+food_bonus = 0.06

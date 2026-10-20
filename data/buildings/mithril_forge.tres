@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"mithril_forge"
+display_name = "Мифриловая кузня"
+description = "Кузня тайного металла."
+notable = true
+cost = Dictionary[StringName, float]({&"metal": 60.0, &"gold": 80.0})
+min_population = 2500.0
+requires_tech = &"mithril_forging"
+army_bonus = 0.08
+required_traits = Array[StringName]([&"miners"])

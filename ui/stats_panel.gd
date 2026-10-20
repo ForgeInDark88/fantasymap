@@ -2,7 +2,7 @@ class_name StatsPanel
 extends PanelContainer
 ## Статистика мира: сводка и графики по эпохам (World.history).
 
-const VIEWS: Array[String] = ["Население рас", "Площадь государств", "Население государств"]
+const VIEWS: Array[String] = ["Население рас", "Площадь государств", "Население государств", "Открытия по расам", "Религии"]
 const TOP := 8
 
 var _summary: RichTextLabel
@@ -80,6 +80,29 @@ func _refresh() -> void:
 			for snap in world.history:
 				pts.append(Vector2(snap.year, snap.races[race.index]))
 			series.append({"name": race.display_name, "color": race.color, "points": pts})
+	elif _view == 3:
+		for race in RaceDB.all():
+			var pts := PackedVector2Array()
+			for snap in world.history:
+				var t: PackedFloat32Array = snap.get("techs", PackedFloat32Array())
+				if race.index < t.size():
+					pts.append(Vector2(snap.year, t[race.index]))
+			series.append({"name": race.display_name, "color": race.color, "points": pts})
+	elif _view == 4:
+		# Крупнейшие веры сейчас — их число регионов по эпохам.
+		var now := {}
+		for region in world.regions:
+			var f := region.main_faith()
+			if f >= 0:
+				now[f] = now.get(f, 0) + 1
+		var ids := now.keys()
+		ids.sort_custom(func(a: int, b: int) -> bool: return now[a] > now[b])
+		for id in ids.slice(0, TOP):
+			var pts := PackedVector2Array()
+			for snap in world.history:
+				pts.append(Vector2(snap.year, snap.get("faiths", {}).get(id, 0)))
+			var faith := world.religions[id]
+			series.append({"name": faith.name, "color": faith.color, "points": pts})
 	else:
 		var metric := 1 if _view == 1 else 0
 		# Топ государств по текущему показателю (среди живых) + павшие гиганты прошлого не нужны.

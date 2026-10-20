@@ -24,6 +24,8 @@ extends Resource
 @export var allowed_races: Array[StringName] = []
 ## Нужна хотя бы одна из этих особенностей расы (пусто — не нужна).
 @export var required_traits: Array[StringName] = []
+## Нужна технология (data/techs; пусто — не нужна).
+@export var requires_tech: StringName = &""
 ## Не строится, если в городе уже есть одна из этих построек (например, стены и крепость).
 @export var excludes: Array[StringName] = []
 

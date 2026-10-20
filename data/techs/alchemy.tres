@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"alchemy"
+display_name = "Алхимия"
+description = "Эликсиры, порох и поиски философского камня."
+branch = "magic"
+cost = 1.44
+requires = Array[StringName]([&"arcane_lore", &"mining"])
+effects = Dictionary[StringName, float]({&"growth_mult": 1.03, &"trade_mult": 1.04})
+race_weights = Dictionary[StringName, float]({&"goblins": 1.5, &"humans": 1.1})
+notable = false
