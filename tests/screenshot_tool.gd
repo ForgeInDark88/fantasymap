@@ -153,6 +153,26 @@ func _run() -> void:
 		for c in hud.get_node("Root").get_children():
 			if c.has_method("close_window"):
 				c.close_window()
+		# Сыграй за героя: панель «Мой герой», путь и окно выбора.
+		PlayerSystem.take_control(world, star.id)
+		var far := -1
+		for r in world.regions:
+			var plan := PlayerSystem.plan_path(world, world.region_of[star.cell], r.id)
+			if not plan.is_empty() and int(plan.months) >= 3:
+				far = r.id
+				break
+		if far >= 0:
+			PlayerSystem.command(world, &"travel", far)
+		ws.call("step_month")
+		_panel(hud, "Мой герой", true)
+		await _frames(6)
+		_shot(out_dir, "my_hero.png")
+		PlayerSystem.start_event(world, star)
+		await _frames(6)
+		_shot(out_dir, "hero_choice.png")
+		PlayerSystem.choose(world, 0)
+		PlayerSystem.release(world)
+		_panel(hud, "Мой герой", false)
 
 	# Сохранение и загрузка через интерфейс.
 	cam.call("fit_to", renderer.call("get_map_rect"))

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"temple_offering"
+title = "Забытый алтарь"
+text = "В краю {where} герой находит заросший алтарь древнего бога. На камне — следы свежих подношений."
+where = &""
+weight = 1.0
+options = Array[Dictionary]([{"text": "Принести дар и помолиться", "karma": 0.05, "xp": 1.0, "faith": 0.08, "result": "Ветер стих; кажется, кто-то услышал молитву."}, {"text": "Забрать подношения", "karma": -0.12, "xp": 0.5, "faith": -0.1, "result": "Пара серебряных чаш — и тяжёлый взгляд из-за спины."}, {"text": "Очистить алтарь от зарослей", "karma": 0.1, "xp": 0.5, "faith": 0.05, "result": "Алтарь снова виден с дороги."}])

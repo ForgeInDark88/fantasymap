@@ -368,6 +368,8 @@ static func _lore_dict(world: World) -> Dictionary:
 			"leader": o.leader, "founded": o.founded_year, "ended": o.ended_year, "karma": o.karma, "hall": o.hall_cell,
 			"members": Array(o.members), "alive": o.alive, "total": o.total}),
 		"boons": world.nations.map(func(n: Nation) -> Array: return [str(n.god_boon), n.god_boon_until]),
+		"player": {"hero": world.player, "cmd": world.player_cmd, "choice": world.player_choice,
+			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle},
 	}
 
 
@@ -426,6 +428,20 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		o.alive = od.alive
 		o.total = int(od.total)
 		world.orders.append(o)
+	var pl: Dictionary = lore.get("player", {})
+	if not pl.is_empty():
+		world.player = int(pl.hero)
+		world.player_cmd = pl.cmd
+		if world.player_cmd.has("path"):
+			world.player_cmd.path = Array(world.player_cmd.path).map(func(x: Variant) -> int: return int(x))
+			world.player_cmd.target = int(world.player_cmd.target)
+		if world.player_cmd.has("wait"):
+			world.player_cmd.wait = int(world.player_cmd.wait)
+		world.player_choice = pl.choice
+		for j in pl.journal:
+			world.player_journal.append({"year": int(j.year), "month": int(j.month), "text": str(j.text)})
+		world.player_rep = pl.rep
+		world.player_idle = int(pl.idle)
 	for i in mini(lore.boons.size(), world.nations.size()):
 		world.nations[i].god_boon = StringName(lore.boons[i][0])
 		world.nations[i].god_boon_until = int(lore.boons[i][1])

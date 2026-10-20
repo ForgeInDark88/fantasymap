@@ -97,15 +97,15 @@ static func near(world: World, cell: int) -> Ruin:
 
 
 ## Герой исследует руины рядом (вызывается из HeroSystem раз в год).
-static func hero_explore(world: World, hero: Hero) -> void:
+static func hero_explore(world: World, hero: Hero, force: bool = false) -> void:
 	var rng := world.rng
-	if rng.randf() > HERO_EXPLORE:
+	if not force and rng.randf() > HERO_EXPLORE:
 		return
 	var r := near(world, hero.cell)
 	if r == null:
 		return
 	# Умный не полезет к стражу не по силам.
-	if not hero.dares(r.danger, rng):
+	if not force and not hero.dares(r.danger, rng):
 		hero.thought = "Руины «%s» манят, но страж там мне не по зубам." % r.name
 		return
 	var ours := hero.power() * rng.randf_range(0.6, 1.4)

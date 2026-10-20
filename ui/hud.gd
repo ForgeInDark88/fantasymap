@@ -174,6 +174,7 @@ func _build_left_panels() -> void:
 		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
 		["Статистика", "Графики по эпохам", StatsPanel.new()],
 		["Герои", "Герои мира", HeroesPanel.new()],
+		["Мой герой", "Сыграй за героя: команды, журнал, миникарта", MyHeroPanel.new()],
 		["Руины", "Руины и древности мира", RuinsPanel.new()],
 		["Сохранения", "Сохранить или загрузить мир (F5 / F9)", _saves_panel],
 	]
@@ -200,6 +201,9 @@ func _build_left_panels() -> void:
 	root.add_child(HeroWindow.new())
 	root.add_child(TechWindow.new())
 	root.add_child(UnderworldWindow.new())
+	root.add_child(HeroChoicePopup.new())
+	EventBus.my_hero_requested.connect(func(mine: bool) -> void:
+		_left_panels["Мой герой" if mine else "Герои"][0].button_pressed = true)
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
@@ -217,7 +221,8 @@ func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
 			entry[0].set_pressed_no_signal(false)
 			entry[1].visible = false
 	# Полная летопись заменяет ленту.
-	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible
+	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible \
+			and not (_left_panels["Мой герой"][1] as Control).visible
 
 
 func _on_speed_changed(index: int) -> void:

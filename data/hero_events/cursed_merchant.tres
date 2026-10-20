@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"cursed_merchant"
+title = "Странный торговец"
+text = "Торговец в чёрном предлагает в краю {where} древний перстень «за сущие гроши». От перстня веет холодом."
+where = &""
+weight = 0.8
+options = Array[Dictionary]([{"text": "Купить перстень", "item": "ring_of_power", "karma": -0.15, "xp": 0.5, "result": "Перстень сел на палец как влитой. Шёпот в голове не умолкает."}, {"text": "Прогнать торговца", "karma": 0.05, "result": "Торговец растворился в тумане, будто его и не было."}, {"text": "Схватить его и выяснить, откуда перстень", "power": 0.8, "risk": 0.1, "xp": 2.0, "karma": 0.05, "result": "Торговец оказался колдуном — и теперь он мёртв.", "fail": "Колдун ускользнул, наслав порчу."}])

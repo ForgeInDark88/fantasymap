@@ -405,7 +405,9 @@ func _draw_heroes(world: World, zoom: float) -> void:
 		draw_colored_polygon(diamond, hero.hero_class.color)
 		if hero.id == _selected_hero:
 			draw_arc(Vector2.ZERO, r + 6.0, 0.0, TAU, 24, Color.WHITE, 2.0)
-		if zoom >= 1.8 or hero.id == _selected_hero:
+		if hero.id == world.player:
+			draw_arc(Vector2.ZERO, r + 9.0, 0.0, TAU, 24, Color(1.0, 0.85, 0.3), 2.5)
+		if zoom >= 1.8 or hero.id == _selected_hero or hero.id == world.player:
 			var text := "%s, %s %d" % [hero.display_name(), hero.hero_class.display_name.to_lower(), hero.level]
 			var size := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
 			draw_string_outline(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))

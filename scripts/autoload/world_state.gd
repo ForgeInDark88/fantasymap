@@ -48,6 +48,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if world == null or is_generating or speed_index == 0:
 		return
+	# Герой игрока ждёт решения — мир стоит.
+	if not world.player_choice.is_empty():
+		return
 	_day_accum += delta * SPEEDS[speed_index] * DAYS_PER_SECOND
 	var start := Time.get_ticks_usec()
 	var ticks := 0
@@ -78,7 +81,7 @@ func toggle_pause() -> void:
 
 ## Ровно один год (кнопка «+1 год»).
 func step_year() -> void:
-	if world == null or is_generating:
+	if world == null or is_generating or not world.player_choice.is_empty():
 		return
 	simulation.step(world)
 	EventBus.year_passed.emit(world.year)
@@ -86,7 +89,7 @@ func step_year() -> void:
 
 ## Ровно один день (кнопка «+1 день»).
 func step_day() -> void:
-	if world == null or is_generating:
+	if world == null or is_generating or not world.player_choice.is_empty():
 		return
 	simulation.step_day(world)
 	EventBus.year_passed.emit(world.year)
@@ -94,7 +97,7 @@ func step_day() -> void:
 
 ## Ровно один месяц (кнопка «+1 мес.»).
 func step_month() -> void:
-	if world == null or is_generating:
+	if world == null or is_generating or not world.player_choice.is_empty():
 		return
 	simulation.step_month(world)
 	EventBus.year_passed.emit(world.year)

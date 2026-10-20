@@ -93,6 +93,15 @@ var lineages: Array[Dictionary] = []
 ## Ещё не выросшие дети героев: {parents, name, race, class, karma, intellect, adult, cell, lineage}.
 var hero_births: Array[Dictionary] = []
 var orders: Array[HeroOrder] = []
+## Игра за героя (PlayerSystem, этап 10.2): id героя игрока (-1 — режим наблюдателя),
+## текущая команда, выбор, ждущий решения, журнал приключений, репутация
+## ("n<id>" — у державы, "r<id>" — у веры, "o<id>" — у ордена), месяцы без команд.
+var player := -1
+var player_cmd: Dictionary = {}
+var player_choice: Dictionary = {}
+var player_journal: Array[Dictionary] = []
+var player_rep: Dictionary = {}
+var player_idle := 0
 ## Руины (RuinSystem).
 var ruins: Array[Ruin] = []
 ## Подземный мир: граф пещер (UndergroundSystem).

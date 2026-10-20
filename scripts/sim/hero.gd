@@ -167,6 +167,7 @@ func leave_service(world: World) -> void:
 func die(world: World, killer: Hero = null) -> void:
 	RuinSystem.on_hero_died(world, self)
 	ArtifactSystem.on_hero_death(world, self, killer)
+	var was_player := world.player == id
 	leave_service(world)
 	alive = false
 	ally_nation = -1
@@ -188,6 +189,8 @@ func die(world: World, killer: Hero = null) -> void:
 	while world.fate_queue.size() > 60:
 		world.heroes[world.fate_queue[0]].fate = &"rest"
 		world.fate_queue.remove_at(0)
+	if was_player:
+		PlayerSystem.on_death(world, self)
 
 
 func alignment_name() -> String:

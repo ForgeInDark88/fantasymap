@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"village_monster"
+title = "Чудовище у деревни"
+text = "Старейшины деревни в краю {where} молят избавить их от чудовища, что таскает скот."
+where = &"nation"
+weight = 1.2
+options = Array[Dictionary]([{"text": "Выследить чудовище", "power": 1.0, "risk": 0.2, "xp": 3.0, "karma": 0.05, "rep": 0.12, "result": "Голова чудовища висит над воротами деревни.", "fail": "Чудовище оказалось сильнее; герой отступил, зализывая раны."}, {"text": "Потребовать плату вперёд", "karma": -0.05, "xp": 0.5, "rep": -0.03, "result": "Старейшины собрали что могли; чудовище подождёт."}, {"text": "Отказать", "rep": -0.05, "result": "Деревня осталась со своей бедой."}])

@@ -55,3 +55,6 @@ signal tech_window_requested(nation_id: int)
 ## Открыть окно подземного мира.
 @warning_ignore("unused_signal")
 signal underworld_window_requested
+
+## Режим «Сыграй за героя»: открыть панель «Мой герой» (true) или «Герои» (false — выбрать героя).
+signal my_hero_requested(open_my_hero: bool)
