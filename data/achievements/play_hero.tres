@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/achievement_def.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"play_hero"
+title = "Сам себе герой"
+description = "Вы впервые сыграли за героя."
+hidden = false
+cond = &"count"
+key = &"player_heroes"
+target = 1.0

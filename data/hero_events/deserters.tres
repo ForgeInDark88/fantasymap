@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"deserters"
+title = "Дезертиры"
+text = "У костра в краю {where} сидят дезертиры армии государства {owner}. Они просят не выдавать их."
+where = &"nation"
+weight = 0.8
+options = Array[Dictionary]([{"text": "Выдать страже", "karma": -0.03, "rep": 0.1, "xp": 0.5, "result": "Стража схватила беглецов; держава благодарна."}, {"text": "Отпустить с миром", "karma": 0.08, "rep": -0.03, "result": "Беглецы растворились в лесах."}, {"text": "Взять в свой отряд", "karma": -0.05, "xp": 1.0, "rep": -0.08, "result": "Теперь у героя есть свои мечи."}])

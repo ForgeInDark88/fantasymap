@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ChronicleTemplateDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/chronicle_template_def.gd" id="1_ct"]
+
+[resource]
+script = ExtResource("1_ct")
+id = &"common"
+topic = &"common"
+titles = PackedStringArray()
+parts = Dictionary[String, PackedStringArray]({})
+words = Dictionary[String, PackedStringArray]({"then": PackedStringArray("Затем", "Вскоре", "Позже", "В те же годы", "Минуло немного времени, и", "Спустя годы"), "great": PackedStringArray("великий", "славный", "памятный", "грозный"), "chronicler": PackedStringArray("пишет летописец", "говорят старые свитки", "гласят хроники", "помнят сказители"), "people": PackedStringArray("народы", "племена", "державы", "земли")})

@@ -110,6 +110,16 @@ func _apply_tool(world: World, cell: int) -> void:
 			CrisisSystem.start(world, _tool_params.crisis)
 		&"road":
 			GodTools.road_from(world, cell)
+		&"player_travel":
+			if world.region_of[cell] >= 0:
+				var res := PlayerSystem.command(world, &"travel", world.region_of[cell])
+				if not res.is_empty():
+					PlayerSystem.note(world, "Не выйдет: %s." % res)
+			EventBus.god_tool_changed.emit(&"", {})
+		&"player_create":
+			if world.region_of[cell] >= 0 and PlayerSystem.create_hero(world, _tool_params.race, _tool_params.cls, _tool_params.name, world.region_of[cell]) != null:
+				EventBus.my_hero_requested.emit(true)
+			EventBus.god_tool_changed.emit(&"", {})
 		&"artifact":
 			GodTools.gift_artifact(world, _tool_params.artifact, cell)
 		&"bless":

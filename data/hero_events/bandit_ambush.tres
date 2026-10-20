@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"bandit_ambush"
+title = "Засада"
+text = "Из-за камней в краю {where} выходят разбойники и требуют плату за проход."
+where = &""
+weight = 1.5
+options = Array[Dictionary]([{"text": "Обнажить оружие", "power": 0.6, "risk": 0.15, "xp": 2.0, "rep": 0.05, "result": "Разбойники разбежались, оставив раненых.", "fail": "Разбойников было слишком много — пришлось бежать, едва уцелев."}, {"text": "Заплатить", "xp": 0.2, "result": "Кошель полегчал, но голова цела."}, {"text": "Предложить им вступить в шайку героя", "karma": -0.15, "xp": 1.0, "rep": -0.05, "result": "Разбойники признали героя вожаком — до поры."}])

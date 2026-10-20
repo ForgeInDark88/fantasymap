@@ -6,6 +6,10 @@ var _list: VBoxContainer
 var _card: RichTextLabel
 var _show_dead: CheckBox
 var _details: Button
+var _play: Button
+var _new_race: OptionButton
+var _new_class: OptionButton
+var _new_name: LineEdit
 var _selected := -1
 var _last_refresh_ms := 0
 var _last_click_ms := 0
@@ -44,6 +48,37 @@ func _init() -> void:
 	_details.visible = false
 	_details.pressed.connect(func() -> void: EventBus.hero_window_requested.emit(_selected))
 	box.add_child(_details)
+	_play = Button.new()
+	_play.text = "Играть за героя"
+	_play.tooltip_text = "Сыграй за героя: управляйте им сами, мир живёт дальше"
+	_play.focus_mode = Control.FOCUS_NONE
+	_play.visible = false
+	_play.pressed.connect(func() -> void:
+		if WorldState.world != null and PlayerSystem.take_control(WorldState.world, _selected):
+			EventBus.my_hero_requested.emit(true))
+	box.add_child(_play)
+	# Свой герой: раса, класс, имя, затем клик по стартовому региону.
+	var row := HBoxContainer.new()
+	_new_race = OptionButton.new()
+	for race in RaceDB.all():
+		_new_race.add_item(race.display_name)
+	row.add_child(_new_race)
+	_new_class = OptionButton.new()
+	for c in PoliticsDB.hero_classes():
+		_new_class.add_item(c.display_name)
+	row.add_child(_new_class)
+	_new_name = LineEdit.new()
+	_new_name.placeholder_text = "имя (необязательно)"
+	_new_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_new_name)
+	box.add_child(row)
+	var create := Button.new()
+	create.text = "Создать своего героя (затем клик по стартовому региону)"
+	create.focus_mode = Control.FOCUS_NONE
+	create.pressed.connect(func() -> void:
+		EventBus.god_tool_changed.emit(&"player_create", {"race": RaceDB.all()[_new_race.selected],
+			"cls": PoliticsDB.hero_classes()[_new_class.selected], "name": _new_name.text}))
+	box.add_child(create)
 	visibility_changed.connect(func() -> void:
 		if visible:
 			_refresh())
@@ -111,6 +146,7 @@ func _status(world: World, h: Hero) -> String:
 
 func _show_card(world: World) -> void:
 	_details.visible = _selected >= 0 and _selected < world.heroes.size()
+	_play.visible = _details.visible and world.heroes[_selected].alive and not world.heroes[_selected].is_ruler and world.player != _selected
 	if not _details.visible:
 		_card.text = "[color=#8a90a0]Выберите героя, чтобы увидеть его историю (двойной клик — окно героя).[/color]"
 		return

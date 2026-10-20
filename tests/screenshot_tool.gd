@@ -153,6 +153,52 @@ func _run() -> void:
 		for c in hud.get_node("Root").get_children():
 			if c.has_method("close_window"):
 				c.close_window()
+		# Сыграй за героя: панель «Мой герой», путь и окно выбора.
+		PlayerSystem.take_control(world, star.id)
+		var far := -1
+		for r in world.regions:
+			var plan := PlayerSystem.plan_path(world, world.region_of[star.cell], r.id)
+			if not plan.is_empty() and int(plan.months) >= 3:
+				far = r.id
+				break
+		if far >= 0:
+			PlayerSystem.command(world, &"travel", far)
+		ws.call("step_month")
+		_panel(hud, "Мой герой", true)
+		await _frames(6)
+		_shot(out_dir, "my_hero.png")
+		PlayerSystem.start_event(world, star)
+		await _frames(6)
+		_shot(out_dir, "hero_choice.png")
+		PlayerSystem.choose(world, 0)
+		PlayerSystem.release(world)
+		_panel(hud, "Мой герой", false)
+
+	# Хроники: ключевые события и история войны.
+	bus.chronicles_window_requested.emit()
+	await _frames(4)
+	_shot(out_dir, "chronicles.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_stories") != null:
+			var list: ItemList = c.get("_list")
+			for i in list.item_count:
+				if list.get_item_text(i).begins_with("Войны"):
+					list.select(i)
+					c.call("_on_item", i)
+					break
+			await _frames(4)
+			_shot(out_dir, "chronicles_war.png")
+			c.visible = false
+
+	# Достижения: окно и уведомление.
+	bus.achievement_unlocked.emit(load("res://data/achievements/portal_closed.tres"))
+	bus.achievements_window_requested.emit()
+	await _frames(4)
+	_shot(out_dir, "achievements.png")
+	bus.achievements_window_requested.emit()
+	for c in hud.get_node("Root").get_children():
+		if c.get("_toasts") != null:
+			(c.get("_window") as Control).visible = false
 
 	# Сохранение и загрузка через интерфейс.
 	cam.call("fit_to", renderer.call("get_map_rect"))

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"wounded_traveller"
+title = "Раненый путник"
+text = "На обочине дороги в краю {where} стонет раненый путник. Его обобрали разбойники."
+where = &""
+weight = 1.5
+options = Array[Dictionary]([{"text": "Перевязать раны и проводить до селения", "karma": 0.08, "xp": 0.5, "rep": 0.05, "result": "Путник благословил героя и разнёс о нём добрую молву."}, {"text": "Обыскать — вдруг разбойники что-то упустили", "karma": -0.1, "xp": 0.3, "result": "Нашлась пара монет. Путник проклял героя вслед."}, {"text": "Пройти мимо", "result": "Дорога важнее."}])

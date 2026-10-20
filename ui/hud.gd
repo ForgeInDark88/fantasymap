@@ -174,6 +174,7 @@ func _build_left_panels() -> void:
 		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
 		["Статистика", "Графики по эпохам", StatsPanel.new()],
 		["Герои", "Герои мира", HeroesPanel.new()],
+		["Мой герой", "Сыграй за героя: команды, журнал, миникарта", MyHeroPanel.new()],
 		["Руины", "Руины и древности мира", RuinsPanel.new()],
 		["Сохранения", "Сохранить или загрузить мир (F5 / F9)", _saves_panel],
 	]
@@ -200,12 +201,39 @@ func _build_left_panels() -> void:
 	root.add_child(HeroWindow.new())
 	root.add_child(TechWindow.new())
 	root.add_child(UnderworldWindow.new())
+	root.add_child(ChroniclesWindow.new())
+	root.add_child(HeroChoicePopup.new())
+	root.add_child(AchievementsWindow.new())
+	EventBus.my_hero_requested.connect(func(mine: bool) -> void:
+		_left_panels["Мой герой" if mine else "Герои"][0].button_pressed = true)
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
 	_fate_button.focus_mode = Control.FOCUS_NONE
 	_fate_button.pressed.connect(_fate_panel.open_panel)
 	_panel_buttons.add_child(_fate_button)
+	var chronicles := Button.new()
+	chronicles.text = "Хроники"
+	chronicles.tooltip_text = "Связные истории мира: эпохи, войны, герои, державы, веры"
+	chronicles.focus_mode = Control.FOCUS_NONE
+	chronicles.pressed.connect(func() -> void: EventBus.chronicles_window_requested.emit())
+	_panel_buttons.add_child(chronicles)
+	var ach := Button.new()
+	ach.text = "🏆"
+	ach.tooltip_text = "Достижения"
+	ach.focus_mode = Control.FOCUS_NONE
+	ach.pressed.connect(func() -> void: EventBus.achievements_window_requested.emit())
+	_panel_buttons.add_child(ach)
+	var audio := AudioPanel.new()
+	audio.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	audio.position = Vector2(-320, 50)
+	root.add_child(audio)
+	var sound := Button.new()
+	sound.text = "🔊"
+	sound.tooltip_text = "Звук и музыка"
+	sound.focus_mode = Control.FOCUS_NONE
+	sound.pressed.connect(func() -> void: audio.visible = not audio.visible)
+	_panel_buttons.add_child(sound)
 
 
 func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
@@ -217,7 +245,8 @@ func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
 			entry[0].set_pressed_no_signal(false)
 			entry[1].visible = false
 	# Полная летопись заменяет ленту.
-	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible
+	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible \
+			and not (_left_panels["Мой герой"][1] as Control).visible
 
 
 func _on_speed_changed(index: int) -> void:

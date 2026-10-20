@@ -198,6 +198,8 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 	war.day = world.day
 	war.attackers.append(attacker)
 	war.defenders.append(defender)
+	war.first_attacker = attacker
+	war.first_defender = defender
 	var na := world.nations[attacker]
 	var nd := world.nations[defender]
 	# Защитника поддерживают союзники, сюзерен и вассалы (если не связаны с нападающим).

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/achievement_def.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"crises_3"
+title = "Закалённый мир"
+description = "Мир пережил три мировых кризиса."
+hidden = false
+cond = &"count"
+key = &"crises_survived"
+target = 3.0

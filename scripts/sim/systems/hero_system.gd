@@ -82,6 +82,9 @@ func tick_day(world: World) -> void:
 	for hero: Hero in acting:
 		if not hero.alive or hero.is_ruler:
 			continue
+		if hero.id == world.player:
+			PlayerSystem.tick_month(world, hero)
+			continue
 		if hero.id % Simulation.MONTHS == world.month:
 			_yearly(world, hero)
 		if not hero.alive:
@@ -126,6 +129,11 @@ func tick_day(world: World) -> void:
 			if not hero.alive or not other.alive:
 				continue
 			var where := world.region_label(hero.cell, "диких землях")
+			# Герой игрока сам решает, как быть со встречным.
+			if world.player >= 0 and (hero.id == world.player or other.id == world.player):
+				var me := hero if hero.id == world.player else other
+				PlayerSystem.encounter(world, me, other if me == hero else hero, world.rng.randf() < _duel_chance(world, hero, other))
+				continue
 			if world.rng.randf() < _duel_chance(world, hero, other):
 				duel(world, hero, other, where)
 				if not hero.alive:
