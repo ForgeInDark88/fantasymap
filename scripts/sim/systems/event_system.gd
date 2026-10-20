@@ -8,9 +8,19 @@ extends RefCounted
 
 func tick(world: World, nation: Nation) -> void:
 	_expire_modifiers(world, nation)
+	# Один бросок на сумму шансов: событие в год редко больше одного, так дешевле,
+	# чем бросать кость за каждое событие (их шанс от этого почти не меняется).
+	var total := 0.0
 	for e in EconomyDB.events():
-		if world.rng.randf() < e.chance:
+		total += e.chance * CrisisSystem.event_mult(world, e.id)
+	var roll := world.rng.randf()
+	if roll >= total:
+		return
+	for e in EconomyDB.events():
+		roll -= e.chance * CrisisSystem.event_mult(world, e.id)
+		if roll < 0.0:
 			apply(world, nation, e)
+			return
 
 
 ## Эпидемии с прошлого года — до обхода государств.

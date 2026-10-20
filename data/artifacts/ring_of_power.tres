@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ArtifactDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/artifact_def.gd" id="1_art"]
+
+[resource]
+script = ExtResource("1_art")
+id = &"ring_of_power"
+display_name = "Кольцо Власти"
+kind = "ring"
+name_patterns = PackedStringArray("Кольцо {place}", "Перстень Сумерек", "Кольцо Шёпота")
+power_mult = 1.3
+karma_drift = -0.02
+wits_bonus = 0.1
+nation_effects = Dictionary[StringName, float]({&"stability": 0.03})
+cursed = false
+weight = 1.0
+famous = true

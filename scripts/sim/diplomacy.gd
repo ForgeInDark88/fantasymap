@@ -5,7 +5,9 @@ extends RefCounted
 ## (allies, trade_partners, overlord), а меняются только через этот класс.
 
 const CAUSE_NAMES := {
-	&"territory": "за земли", &"resources": "за богатства", &"racial": "священная",
+	&"territory": "за земли", &"resources": "за богатства", &"racial": "расовая",
+	&"holy": "священная", &"crusade": "крестовый поход", &"schism": "раскол", &"religious": "за веру",
+	&"espionage": "возмездия", &"reunification": "за воссоединение", &"invasion": "нашествие",
 	&"revenge": "мести", &"independence": "за независимость", &"civil": "гражданская",
 	&"expansion": "завоевательная", &"reconquest": "за возвращение земель", &"coalition": "коалиции",
 }
@@ -57,6 +59,26 @@ func war_between(a: int, b: int) -> War:
 	return null
 
 
+## Государства, ведущие войну (приблизительный кэш: обновляется при объявлении и
+## окончании войн; для эвристик героев и разведки, не для учёта).
+var _at_war: Dictionary = {}
+var _at_war_key := Vector2i(-1, -1)
+
+
+func at_war(nation_id: int) -> bool:
+	var key := Vector2i(wars.size(), _next_war_id)
+	if key != _at_war_key:
+		_at_war_key = key
+		_at_war.clear()
+		for war in wars:
+			if war.active:
+				for m in war.attackers:
+					_at_war[m] = true
+				for m in war.defenders:
+					_at_war[m] = true
+	return _at_war.has(nation_id)
+
+
 func wars_of(nation_id: int) -> Array[War]:
 	var result: Array[War] = []
 	for war in wars:
@@ -96,6 +118,22 @@ func opinion(world: World, a: int, b: int) -> float:
 	# Гегемона боятся все.
 	if b == hegemon:
 		o -= 0.15
+	# Соседство под землёй без торговли — трения за пещеры и жилы.
+	if na.tunnel_neighbors.has(b) and not na.trade_partners.has(b):
+		o -= 0.05
+	# Общие организации и общее имперское наследие сближают.
+	o += OrgSystem.opinion_bonus(world, a, b)
+	if na.legacy >= 0 and na.legacy == nb.legacy:
+		o += LegacySystem.OPINION_BONUS
+	# Мягкая сила: блестящая культура b располагает к ней.
+	if nb.culture_level > na.culture_level:
+		o += minf(0.15, (nb.culture_level - na.culture_level) / (na.culture_level + nb.culture_level + 10.0) * 0.3)
+	# Единоверцы ближе, иноверцы — тем дальше, чем нетерпимее вера a.
+	if na.state_religion >= 0 and nb.state_religion >= 0:
+		if na.state_religion == nb.state_religion:
+			o += 0.12
+		else:
+			o -= 0.1 * world.religions[na.state_religion].hostility(world.religions[nb.state_religion])
 	# Претензии на земли друг друга.
 	if has_claims_against(world, a, b):
 		o -= 0.2
@@ -165,6 +203,8 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 	# Защитника поддерживают союзники, сюзерен и вассалы (если не связаны с нападающим).
 	var helpers := PackedInt32Array(nd.allies.keys())
 	helpers.append_array(vassals_of(world, defender))
+	# Общая оборона организаций (пакты, священные союзы, совет рас).
+	helpers.append_array(OrgSystem.defenders_for(world, defender, attacker, cause))
 	if nd.overlord >= 0 and cause != &"independence":
 		helpers.append(nd.overlord)
 	for h in helpers:
@@ -191,7 +231,21 @@ func declare_war(world: World, attacker: int, defender: int, cause: StringName) 
 static func _cause_title(cause: StringName) -> String:
 	match cause:
 		&"racial":
+			return "Расовая война:"
+		&"holy":
 			return "Священная война:"
+		&"crusade":
+			return "Крестовый поход:"
+		&"schism":
+			return "Война раскола:"
+		&"religious":
+			return "Восстание за веру:"
+		&"espionage":
+			return "Война возмездия:"
+		&"reunification":
+			return "Война за воссоединение:"
+		&"invasion":
+			return "Нашествие:"
 		&"independence":
 			return "Освободительная война:"
 		&"civil":

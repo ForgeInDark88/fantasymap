@@ -25,6 +25,22 @@ var diplomacy := DiplomacySystem.new()
 var wars := WarSystem.new()
 var heroes := HeroSystem.new()
 var enclaves := EnclaveSystem.new()
+var religion := ReligionSystem.new()
+var techs := TechSystem.new()
+var culture := CultureSystem.new()
+var spies := SpySystem.new()
+var roads := RoadSystem.new()
+var climate := ClimateSystem.new()
+var underground := UndergroundSystem.new()
+var ruins := RuinSystem.new()
+var crises := CrisisSystem.new()
+var eras := EraSystem.new()
+var societies := SocietySystem.new()
+var orgs := OrgSystem.new()
+var legacies := LegacySystem.new()
+var lineages := LineageSystem.new()
+var orders := OrderSystem.new()
+var gods := GodSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -59,24 +75,37 @@ func step_day(world: World) -> void:
 		id += MONTHS * DAYS
 		if not nation.alive:
 			continue
-		_t("economy", economy.tick.bind(world, nation))
-		_t("population", population.tick.bind(world, nation))
-		_t("expansion", expansion.tick.bind(world, nation))
-		_t("cities", cities.tick.bind(world, nation))
-		_t("rulers", rulers.tick.bind(world, nation))
-		_t("unrest", unrest.tick.bind(world, nation))
-		_t("events", events.tick.bind(world, nation))
-		_t("diplomacy", diplomacy.tick_nation.bind(world, nation))
-		_t("enclaves", enclaves.tick.bind(world, nation))
-	_t("wars", wars.tick_day.bind(world))
-	_t("heroes", heroes.tick_day.bind(world))
+		if profile:
+			for s in _nation_systems:
+				var t0 := Time.get_ticks_usec()
+				(s[1] as Callable).call(world, nation)
+				_record(s[0], Time.get_ticks_usec() - t0)
+		else:
+			for s in _nation_systems:
+				(s[1] as Callable).call(world, nation)
+	if profile:
+		_t("wars", wars.tick_day.bind(world))
+		_t("heroes", heroes.tick_day.bind(world))
+	else:
+		wars.tick_day(world)
+		heroes.tick_day(world)
 	world.cleanup_dead()
 
 
 ## Раз в год для всего мира: эпидемии от соседей, забывание обид, коалиции, статистика.
 func _new_year(world: World) -> void:
+	climate.tick_year(world)
+	crises.tick_year(world)
 	events.flush_pending(world)
 	diplomacy.tick_year(world)
+	religion.tick_year(world)
+	societies.tick_year(world)
+	orgs.tick_year(world)
+	legacies.tick_year(world)
+	underground.tick_year(world)
+	eras.tick_year(world)
+	lineages.tick_year(world)
+	orders.tick_year(world)
 	_portals(world)
 	world.record_history()
 
@@ -94,6 +123,26 @@ func _portals(world: World) -> void:
 			var who := world.nations[holder].short_name if holder >= 0 else "свет"
 			world.log_event(&"great", "Врата бездны в регионе %s закрыты — их запечатал %s." % [
 				region.name if region != null else "?", who], PackedInt32Array([holder]) if holder >= 0 else PackedInt32Array())
+
+
+## Годовые системы государства — по порядку (вызов без bind: без лишних выделений памяти).
+var _nation_systems: Array = []
+
+
+func _init() -> void:
+	_nation_systems = [
+		["economy", economy.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
+		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
+		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
+		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],
+	]
+
+
+func _record(system: String, dt: int) -> void:
+	var entry: Array = timings.get(system, [0, 0])
+	entry[0] += dt
+	entry[1] = maxi(entry[1], dt)
+	timings[system] = entry
 
 
 func _t(system: String, call: Callable) -> void:

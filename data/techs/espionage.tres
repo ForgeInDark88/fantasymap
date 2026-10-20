@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"espionage"
+display_name = "Тайнопись"
+description = "Шифры, тайники и осведомители при чужих дворах."
+branch = "society"
+cost = 1.0
+requires = Array[StringName]([&"writing", &"law"])
+effects = Dictionary[StringName, float]({&"spy_mult": 1.3})
+race_weights = Dictionary[StringName, float]({&"goblins": 1.4, &"humans": 1.2, &"halflings": 1.2, &"orcs": 0.4})
+notable = true

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CrisisDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/crisis_def.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+id = &"titan"
+display_name = "Пробуждение титана"
+description = "Древний титан восстаёт из глубин и бредёт по миру, круша города."
+era_name = "Эпоха Титана"
+weight = 0.8
+min_year = 150
+stage_names = PackedStringArray("Дрожь земли", "Шествие титана", "Сон титана")
+stage_years = PackedInt32Array(3, 25, 5)
+stage_effects = Array[Dictionary]([{"stability": -0.02}, {"stability": -0.05, "army_mult": 1.05}, {}])
+stage_harvest = PackedFloat32Array(1.0, 0.95, 1.0)
+stage_pop_loss = PackedFloat32Array(0.0, 0.0, 0.0)
+stage_events = Array[Dictionary]([{"earthquake": 3.0}, {"earthquake": 2.0}, {}])
+special = &"titan"
+invader_race = &"orcs"
+unite = true
+immune_traits = Array[StringName]([])
+start_text = "Земля стонет: из недр поднимается древний титан, ростом выше гор."
+end_text = "Титан уходит в недра земли — до следующего пробуждения."

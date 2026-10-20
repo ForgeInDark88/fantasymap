@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="OrgDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/org_def.gd" id="1_org"]
+
+[resource]
+script = ExtResource("1_org")
+id = &"holy_union"
+display_name = "Священный союз"
+description = "Единоверцы стоят друг за друга против иноверцев."
+name_template = "Священный союз веры «{faith}»"
+color = Color(0.95, 0.95, 0.75, 1)
+basis = "faith"
+requires_tech = &""
+min_trade_partners = 0
+min_members = 3
+max_count = 4
+excluded_traits = Array[StringName]([])
+no_war = true
+mutual_defense = true
+dues = 0.03
+effects = Dictionary[StringName, float]({&"stability": 0.02})
+opinion_bonus = 0.15

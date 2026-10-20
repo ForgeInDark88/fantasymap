@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"siegecraft"
+display_name = "Осадное дело"
+description = "Тараны, подкопы и лестницы."
+branch = "military"
+cost = 0.88
+requires = Array[StringName]([&"masonry"])
+effects = Dictionary[StringName, float]({&"siege_mult": 1.2})
+race_weights = Dictionary[StringName, float]({&"orcs": 1.2})
+notable = false

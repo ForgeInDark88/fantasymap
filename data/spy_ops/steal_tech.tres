@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SpyOpDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/spy_op_def.gd" id="1_op"]
+
+[resource]
+script = ExtResource("1_op")
+id = &"steal_tech"
+display_name = "Кража знаний"
+description = "Шпионы выкрадывают чертежи и трактаты."
+kind = "steal_tech"
+cost = 14.0
+success = 0.45
+exposure = 0.3
+scandal_grudge = 0.12
+scandal_war = 0.0
+weight = 1.0

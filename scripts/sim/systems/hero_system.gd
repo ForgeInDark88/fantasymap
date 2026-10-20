@@ -12,9 +12,13 @@ extends RefCounted
 ## Предел живых героев: BASE + живые государства / PER_NATIONS.
 const BASE_LIMIT := 6
 const PER_NATIONS := 2
+## Потолок живых героев (мир не тонет в героях, когда держав становится много).
+const MAX_HEROES := 32
 ## Великие деяния: шанс в год попытаться (для героя от MIN_GREAT_LEVEL уровня).
 const GREAT_DEED_CHANCE := 0.012
 const MIN_GREAT_LEVEL := 7
+## Сколько встреч с другими героями в месяц успевает герой.
+const MAX_MEETINGS := 1
 
 
 ## Появление героя в регионе государства. Возвращает героя или null (лимит;
@@ -25,19 +29,33 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 	for n in world.nations:
 		if n.alive:
 			nations += 1
-	if not force and alive >= BASE_LIMIT + nations / PER_NATIONS:
+	if not force and alive >= mini(MAX_HEROES, BASE_LIMIT + nations / PER_NATIONS):
 		return null
 	var rng := world.rng
 	var people := world.region_majority_race(region, nation.id)
 	var race := RaceDB.by_index(people) if people != World.NO_RACE else nation.race
+	var cls := PoliticsDB.random_hero_class(race, rng)
+	var hero := make_hero(world, race, cls, region.cells[rng.randi_range(0, region.cells.size() - 1)])
+	world.ensure_region_name(region)
+	hero.add_deed(world, "объявился в регионе %s" % region.name)
+	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
+		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
+		hero.hero_class.display_name.to_lower(), hero.alignment_name()], PackedInt32Array([nation.id]))
+	return hero
+
+
+## Новый герой в клетке (имя — сгенерированное или name): возраст, карма, ум
+## по расе и классу; добавляется в мир странником.
+static func make_hero(world: World, race: RaceDef, cls: HeroClassDef, cell: int, name: String = "") -> Hero:
+	var rng := world.rng
 	var hero := Hero.new()
 	hero.id = world.heroes.size()
 	hero.race = race
 	hero.race_id = race.id
-	hero.hero_class = PoliticsDB.random_hero_class(race, rng)
-	hero.name = NameGenerator.unique(world.used_names, NameGenerator.person_name.bind(race, rng))
+	hero.hero_class = cls
+	hero.name = name if not name.is_empty() else NameGenerator.unique(world.used_names, NameGenerator.person_name.bind(race, rng))
 	hero.born_year = world.year
-	hero.karma = clampf(hero.hero_class.karma + rng.randf_range(-0.45, 0.45) - (0.5 if race.has_trait(&"demonic") else 0.0), -1.0, 1.0)
+	hero.karma = clampf(cls.karma + rng.randf_range(-0.45, 0.45) - (0.5 if race.has_trait(&"demonic") else 0.0), -1.0, 1.0)
 	if race.lifespan <= 0:
 		hero.age = rng.randi_range(30, 300)
 		hero.max_age = hero.age + rng.randi_range(200, 600)
@@ -45,16 +63,11 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 		hero.age = int(race.lifespan * rng.randf_range(0.22, 0.4))
 		hero.max_age = int(race.lifespan * rng.randf_range(0.8, 1.1))
 	hero.level = rng.randi_range(1, 3)
-	hero.intellect = clampf(hero.hero_class.intellect + rng.randf_range(-0.25, 0.25), 0.0, 1.0)
-	hero.cell = region.cells[rng.randi_range(0, region.cells.size() - 1)]
+	hero.intellect = clampf(cls.intellect + rng.randf_range(-0.25, 0.25), 0.0, 1.0)
+	hero.cell = cell
 	hero.move_in = rng.randi_range(1, 4)
 	world.heroes.append(hero)
 	world.add_wandering(hero)
-	world.ensure_region_name(region)
-	hero.add_deed(world, "объявился в регионе %s" % region.name)
-	world.log_event(&"hero", "В регионе %s (%s) объявился герой: %s — %s, %s, %s." % [
-		region.name, nation.short_name, hero.name, race.display_name.to_lower(),
-		hero.hero_class.display_name.to_lower(), hero.alignment_name()], PackedInt32Array([nation.id]))
 	return hero
 
 
@@ -78,21 +91,40 @@ func tick_day(world: World) -> void:
 		hero.move_in -= 1
 		if hero.move_in <= 0:
 			_move(world, hero)
-		# Дошёл до цели (пустого трона) — бой со стражем сразу.
+		# Дошёл до цели: потерянный предмет — подобрать, пустой трон — бой со стражем сразу.
 		if hero.goal_cell >= 0 and world.region_of[hero.cell] == world.region_of[hero.goal_cell]:
-			_throne_attempt(world, hero)
+			if hero.artifact_id >= 0 or not ArtifactSystem.try_pick_up(world, hero):
+				_throne_attempt(world, hero)
 	# Встречи: действующий герой встречает любого героя в своём регионе.
 	var wandering := world.wandering_heroes()
 	var region_of := world.region_of
+	var met: Array[Hero] = []
 	for hero: Hero in acting:
-		if not hero.alive or hero.is_ruler or hero.cell < 0:
+		# Встречи — раз в два месяца (каждый герой в свои месяцы).
+		if not hero.alive or hero.is_ruler or hero.cell < 0 or (world.month + hero.id) % 2 != 0:
 			continue
 		var rid := region_of[hero.cell]
+		met.clear()
 		for other in wandering:
 			if other.cell < 0 or region_of[other.cell] != rid or other == hero or not other.alive or other.is_ruler:
 				continue
 			if other.id % Simulation.DAYS == world.day and other.id < hero.id:
 				continue  # пара уже рассмотрена
+			# Супруги и спутники по отряду и так вместе — просто крепнет связь.
+			if hero.spouse == other.id or hero.party_leader == other.id or other.party_leader == hero.id:
+				hero.add_bond(other, 0.02)
+				continue
+			met.append(other)
+		# В людном краю за месяц успеваешь толком поговорить лишь с немногими.
+		# Кровника из виду не упускают.
+		while met.size() > MAX_MEETINGS:
+			var i := world.rng.randi_range(0, met.size() - 1)
+			if met[i].id == hero.vendetta or met[i].vendetta == hero.id:
+				i = (i + 1) % met.size()
+			met.remove_at(i)
+		for other in met:
+			if not hero.alive or not other.alive:
+				continue
 			var where := world.region_label(hero.cell, "диких землях")
 			if world.rng.randf() < _duel_chance(world, hero, other):
 				duel(world, hero, other, where)
@@ -125,6 +157,15 @@ func _yearly(world: World, hero: Hero) -> void:
 			return
 	if rng.randf() < 0.6:
 		_deed(world, hero)
+	if not hero.alive:
+		return
+	RuinSystem.hero_explore(world, hero)
+	if not hero.alive:
+		return
+	ArtifactSystem.hero_yearly(world, hero)
+	LineageSystem.hero_yearly(world, hero)
+	OrderSystem.hero_yearly(world, hero)
+	GodSystem.hero_yearly(world, hero)
 	if not hero.alive:
 		return
 	if hero.level >= MIN_GREAT_LEVEL and rng.randf() < GREAT_DEED_CHANCE * (2.0 if hero.level >= 12 else 1.0):
@@ -260,6 +301,10 @@ func _evil_deed(world: World, hero: Hero) -> void:
 	if roll < 0.35:
 		var loot := maxf(0.0, nation.stock[Goods.GOLD]) * 0.05
 		nation.stock[Goods.GOLD] -= loot
+		# Разбой на дорогах: торговые пути у городов региона становятся опасны.
+		for id in nation.city_ids:
+			if world.region_of[world.cities[id].cell] == world.region_of[hero.cell]:
+				RoadSystem.rob_roads(world, id, 0.3)
 		hero.add_xp(world, 1.0)
 		hero.add_deed(world, "ограбил караван в регионе %s (%d золота)" % [where, roundi(loot)])
 		if rng.randf() < 0.15:
@@ -325,8 +370,7 @@ func _great_deed(world: World, hero: Hero) -> void:
 		&"wonder":
 			_wonder(world, hero)
 		_:
-			hero.artifact = "%s «%s»" % [hero.hero_class.weapon, NameGenerator.place_name(hero.race, rng)]
-			hero.artifact_mult = 1.8
+			ArtifactSystem.create(world, &"legendary_weapon", hero, "", "выкован героем %s" % hero.name)
 			hero.add_deed(world, "выковал легендарное оружие: " + hero.artifact)
 			world.log_event(&"great", "Великое деяние: %s выковал легендарное оружие — %s." % [hero.display_name(), hero.artifact],
 					PackedInt32Array([hero.nation_id]) if hero.nation_id >= 0 else PackedInt32Array())
@@ -444,6 +488,10 @@ static func open_portal(world: World, cell: int, hero: Hero) -> Nation:
 	if hero != null:
 		hero.add_deed(world, "отворил Врата бездны в регионе " + region.name)
 		hero.karma = -1.0
+	# Бездна сразу нападает на всех, с кем соприкоснулась.
+	for other in nation.borders.keys():
+		if world.nations[other].alive and world.diplomacy.war_between(nation.id, other) == null:
+			world.diplomacy.declare_war(world, nation.id, other, &"demonic")
 	return nation
 
 
@@ -492,8 +540,7 @@ func _throne_attempt(world: World, hero: Hero) -> void:
 		hero.die(world)
 		return
 	throne.active = false
-	hero.artifact = throne.artifact
-	hero.artifact_mult = 1.6
+	ArtifactSystem.create(world, &"cursed_weapon", hero, throne.artifact, "добыт у стража трона «%s»" % throne.name)
 	hero.karma = maxf(-1.0, hero.karma - 0.4)
 	hero.epithet = "Проклятый"
 	hero.add_xp(world, 5.0)
@@ -569,8 +616,10 @@ func _move(world: World, hero: Hero) -> void:
 
 func _duel_chance(world: World, a: Hero, b: Hero) -> float:
 	var mod := HeroRelations.duel_modifier(a, b)
-	if mod < 0.0:
+	var brothers := OrderSystem.duel_modifier(world, a, b)
+	if mod < 0.0 or brothers < 0.0 or a.parents.has(b.id) or b.parents.has(a.id):
 		return 0.0
+	mod += brothers
 	if a.nation_id >= 0 and b.nation_id >= 0:
 		if a.nation_id == b.nation_id:
 			return 0.0

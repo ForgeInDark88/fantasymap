@@ -62,6 +62,52 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Счётчики событий мира (ассимиляции, ереси, извержения…) — для тестов,
+## статистики и достижений; см. count().
+var counters: Dictionary[StringName, int] = {}
+
+# --- Климат (ClimateSystem) ---
+## Вулканы (клетки гор), следы бедствий на карте {cell, radius, kind, until},
+## медленные сдвиги климата (температура и влажность) и урожайность поясов
+## (север, умеренный, юг) в текущем году.
+var volcanoes := PackedInt32Array()
+var scars: Array[Dictionary] = []
+var temp_shift := 0.0
+var moist_shift := 0.0
+var zone_harvest := PackedFloat32Array([1.0, 1.0, 1.0])
+## Климатические беды поясов: пояс → {kind, until}; пепельная зима — до года ash_until.
+var zone_events: Dictionary[int, Dictionary] = {}
+var ash_until := -1
+## Мировой кризис (CrisisSystem): пусто — нет; иначе {id, stage, stage_start, start,
+## invader, titan_cell, titan_power, titan_name}. История кризисов и эпох.
+var crisis: Dictionary = {}
+var crisis_history: Array[Dictionary] = []
+var last_crisis_end := -1000
+var crisis_harvest := 1.0
+var crisis_events: Dictionary = {}
+var eras: Array[Dictionary] = []
+## Артефакты-предметы (ArtifactSystem), роды героев, ордена и гильдии (этап 10.1).
+var artifacts: Array[Artifact] = []
+## Роды героев: {name, founder, year}.
+var lineages: Array[Dictionary] = []
+## Ещё не выросшие дети героев: {parents, name, race, class, karma, intellect, adult, cell, lineage}.
+var hero_births: Array[Dictionary] = []
+var orders: Array[HeroOrder] = []
+## Руины (RuinSystem).
+var ruins: Array[Ruin] = []
+## Подземный мир: граф пещер (UndergroundSystem).
+var caves: Array[Cave] = []
+## Дороги и морские пути (граф между городами) и дороги каждого города.
+var roads: Array[Road] = []
+var city_roads: Dictionary[int, PackedInt32Array] = {}
+## Тайные общества и культы, международные организации, наследия империй (этап 8).
+var societies: Array[Society] = []
+var orgs: Array[Organization] = []
+var legacies: Array[Legacy] = []
+## Культуры народов (CultureSystem).
+var cultures: Array[Culture] = []
+## Веры мира: стартовые (по data/religions) и рождённые в истории (ереси, новые веры).
+var religions: Array[Religion] = []
 ## Странствующие (живые и не на троне) герои — чтобы не перебирать ежедневно всех павших.
 var _wandering: Array[Hero] = []
 ## Те же герои, разложенные по «своему» дню месяца (id % 30); пересобирается при изменениях.
@@ -91,6 +137,8 @@ var used_names: Dictionary = {}
 static func create(s: MapSettings) -> World:
 	var world := World.new(MapGenerator.new().generate(s))
 	WorldSeeder.new().seed_world(world)
+	ClimateSystem.place_volcanoes(world)
+	UndergroundSystem.generate(world)
 	return world
 
 
@@ -118,10 +166,18 @@ func _init(world_map: WorldMap, generate: bool = true) -> void:
 	deposit.resize(n)
 	if not generate:
 		return
+	init_religions()
 	_place_deposits()
 	_compute_cell_yields()
 	regions = RegionGenerator.new().generate(self)
 	_fill_region_texels()
+
+
+## Стартовые веры — по одной на каждый data/religions/*.tres.
+func init_religions() -> void:
+	religions.clear()
+	for d in ReligionDB.all():
+		religions.append(Religion.from_def(d as ReligionDef, religions.size()))
 
 
 func _fill_region_texels() -> void:
@@ -196,24 +252,39 @@ func set_owner(cell: int, nation_id: int) -> void:
 
 ## Длина общих границ: число пар соседних клеток разных владельцев.
 func _update_borders(cell: int, old: int, new: int) -> void:
-	for nb in map.neighbors4(cell):
-		var o := owner[nb]
-		if o < 0:
-			continue
-		if old >= 0 and o != old:
-			_add_border(old, o, -1)
-		if new >= 0 and o != new:
-			_add_border(new, o, 1)
+	# Соседи без выделения массива (горячий путь: каждая смена владельца клетки).
+	var w := map.width
+	var x := cell % w
+	if x > 0:
+		_border_pair(owner[cell - 1], old, new)
+	if x < w - 1:
+		_border_pair(owner[cell + 1], old, new)
+	if cell >= w:
+		_border_pair(owner[cell - w], old, new)
+	if cell < owner.size() - w:
+		_border_pair(owner[cell + w], old, new)
+
+
+func _border_pair(o: int, old: int, new: int) -> void:
+	if o < 0:
+		return
+	if old >= 0 and o != old:
+		_add_border(old, o, -1)
+	if new >= 0 and o != new:
+		_add_border(new, o, 1)
 
 
 func _add_border(a: int, b: int, delta: int) -> void:
-	for pair in [[a, b], [b, a]]:
-		var borders := nations[pair[0]].borders
-		var v: int = borders.get(pair[1], 0) + delta
-		if v <= 0:
-			borders.erase(pair[1])
-		else:
-			borders[pair[1]] = v
+	_add_border_one(nations[a].borders, b, delta)
+	_add_border_one(nations[b].borders, a, delta)
+
+
+static func _add_border_one(borders: Dictionary, key: int, delta: int) -> void:
+	var v: int = borders.get(key, 0) + delta
+	if v <= 0:
+		borders.erase(key)
+	else:
+		borders[key] = v
 
 
 func _update_region(cell: int, old: int, new: int) -> void:
@@ -230,6 +301,10 @@ func _update_region(cell: int, old: int, new: int) -> void:
 		if region.name.is_empty():
 			# Регион называет тот, кто первым его заселил, — на своём языке.
 			region.name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(nations[new].race, rng))
+		# Первые поселенцы приносят свою веру и культуру.
+		ReligionSystem.ensure_faith(region, nations[new].state_religion)
+		if region.culture < 0:
+			region.culture = nations[new].culture
 		if old >= 0:
 			region.conquered_year = year
 
@@ -260,6 +335,7 @@ func _transfer_city(city: City, new_owner: int) -> void:
 		if nn.capital_city < 0:
 			city.is_capital = true
 			nn.capital_city = city.id
+			nn.home_cell = city.cell
 	else:
 		destroy_city(city)
 
@@ -275,12 +351,14 @@ func choose_capital(nation: Nation) -> void:
 	if best != null:
 		best.is_capital = true
 		nation.capital_city = best.id
+		nation.home_cell = best.cell
 
 
 ## Город разрушен: исчезает с карты, освобождает место для новых городов.
 func destroy_city(city: City) -> void:
 	if not city.alive:
 		return
+	RuinSystem.on_city_destroyed(self, city)
 	city.alive = false
 	city_cell[city.cell] = -1
 	_mark_city_area(city.cell, -1)
@@ -300,8 +378,20 @@ func destroy_city(city: City) -> void:
 ## казны уходят вместе с землёй.
 func split_off(old: Nation, region_ids: PackedInt32Array, race: RaceDef) -> Nation:
 	var old_pop := old.population
-	var nation := found_nation(race)
+	var nation := found_nation(race, false)
+	# Осколок великой державы наследует её память (до раздела — пока она цела).
+	LegacySystem.on_split(self, old, nation)
 	nation.tech = old.tech
+	# Отколовшиеся исповедуют веру большинства своих земель и хранят их культуру.
+	nation.state_religion = ReligionSystem.majority_faith(self, region_ids, old.state_religion)
+	nation.culture = CultureSystem.majority_culture(self, region_ids, old.culture)
+	nation.tech_seen = old.tech
+	# Знания наследуются — кроме недоступных расе отколовшихся.
+	for t in old.techs:
+		var def := TechDB.find(t)
+		if def != null and def.race_weight(race) > 0.0:
+			nation.techs[t] = true
+	TechSystem.apply_effects(nation)
 	for rid in region_ids:
 		var region := regions[rid]
 		region.unrest = 0.0
@@ -359,14 +449,23 @@ func active_landmarks(kind: StringName) -> Array[Landmark]:
 ## Сколько источников силы контролирует государство.
 ## Живые герои не на троне. Павшие и воцарившиеся отсеиваются при обращении.
 func wandering_heroes() -> Array[Hero]:
-	var k := 0
-	for h in _wandering:
+	# Сначала ищем первого выбывшего — чаще всего его нет, и массив не трогаем.
+	var first := -1
+	for i in _wandering.size():
+		var h := _wandering[i]
+		if not h.alive or h.is_ruler:
+			first = i
+			break
+	if first < 0:
+		return _wandering
+	var k := first
+	for i in range(first + 1, _wandering.size()):
+		var h := _wandering[i]
 		if h.alive and not h.is_ruler:
 			_wandering[k] = h
 			k += 1
-	if k != _wandering.size():
-		_wandering.resize(k)
-		_by_day_dirty = true
+	_wandering.resize(k)
+	_by_day_dirty = true
 	return _wandering
 
 
@@ -404,6 +503,68 @@ func sources_of(nation_id: int) -> int:
 	return count
 
 
+## Народ клетки сменился (ассимиляция): ёмкость и часть жителей переходят
+## к новому народу того же государства.
+func convert_cell_race(cell: int, new_race: int) -> void:
+	var old_race := cell_race[cell]
+	if old_race == new_race:
+		return
+	var o := owner[cell]
+	if o < 0 or old_race == NO_RACE:
+		cell_race[cell] = new_race
+		return
+	var nation := nations[o]
+	var old_cap := cell_capacity(RaceDB.by_index(old_race), cell)
+	var moved := 0.0
+	if nation.capacity[old_race] > 0.0:
+		moved = nation.pop[old_race] * clampf(old_cap / nation.capacity[old_race], 0.0, 1.0)
+	nation.capacity[old_race] = maxf(0.0, nation.capacity[old_race] - old_cap)
+	nation.pop[old_race] = maxf(0.0, nation.pop[old_race] - moved)
+	cell_race[cell] = new_race
+	var cap := cell_capacity(RaceDB.by_index(new_race), cell)
+	cell_cap[cell] = cap
+	nation.capacity[new_race] += cap
+	nation.pop[new_race] += moved
+
+
+func count(key: StringName, amount: int = 1) -> void:
+	counters[key] = counters.get(key, 0) + amount
+
+
+## Смена биома суши (дрейф климата): добыча и ёмкость земли владельца пересчитываются.
+func change_land_biome(cell: int, new_biome: int) -> void:
+	if map.biome[cell] == new_biome or Biome.is_water(new_biome) or not map.is_land(cell):
+		return
+	var o := owner[cell]
+	var base := cell * Goods.COUNT
+	var r := cell_race[cell]
+	var nation: Nation = nations[o] if o >= 0 else null
+	if nation != null:
+		for g in Goods.COUNT:
+			nation.yields[g] -= cell_yield[base + g]
+		if r != NO_RACE:
+			nation.capacity[r] = maxf(0.0, nation.capacity[r] - cell_capacity(RaceDB.by_index(r), cell))
+	map.biome[cell] = new_biome
+	refresh_cell_yield(cell)
+	if nation != null:
+		for g in Goods.COUNT:
+			nation.yields[g] += cell_yield[base + g]
+		if r != NO_RACE:
+			var cap := cell_capacity(RaceDB.by_index(r), cell)
+			cell_cap[cell] = cap
+			nation.capacity[r] += cap
+
+
+## Климатический пояс клетки: 0 — север, 1 — умеренный, 2 — юг.
+func climate_zone(cell: int) -> int:
+	return clampi(int(float(cell / map.width) / map.height * 3.0), 0, 2)
+
+
+## Урожайность в этом году у клетки (пояс × пепельная зима).
+func harvest_at(cell: int) -> float:
+	return zone_harvest[climate_zone(cell)] if cell >= 0 else 1.0
+
+
 ## Новая «метка» для обхода (см. mark).
 func next_stamp() -> int:
 	_stamp += 1
@@ -417,13 +578,29 @@ func record_history() -> void:
 	var races := PackedFloat32Array()
 	races.resize(RaceDB.count())
 	var snapshot := {}
+	# Открытия по расам: среднее число технологий у государств расы.
+	var techs := PackedFloat32Array()
+	techs.resize(RaceDB.count())
+	var counts := PackedFloat32Array()
+	counts.resize(RaceDB.count())
 	for n in nations:
 		if not n.alive:
 			continue
 		for r in n.pop.size():
 			races[r] += n.pop[r]
 		snapshot[n.id] = PackedFloat32Array([n.population, n.cell_count])
-	history.append({"year": year, "races": races, "nations": snapshot})
+		techs[n.race.index] += n.techs.size()
+		counts[n.race.index] += 1.0
+	for r in techs.size():
+		if counts[r] > 0.0:
+			techs[r] /= counts[r]
+	# Распространение религий: в скольких регионах вера — вера большинства.
+	var faiths := {}
+	for region in regions:
+		var f := region.main_faith()
+		if f >= 0:
+			faiths[f] = faiths.get(f, 0) + 1
+	history.append({"year": year, "races": races, "nations": snapshot, "techs": techs, "faiths": faiths})
 
 
 ## Дата для интерфейса и летописи.
@@ -443,12 +620,17 @@ func cleanup_dead() -> void:
 	for nation in nations:
 		if nation.alive and nation.cell_count == 0:
 			nation.alive = false
+			RuinSystem.on_nation_fell(self, nation, nation.home_cell)
 			nation.army = 0.0
 			for id in nation.city_ids.duplicate():
 				destroy_city(cities[id])
 			diplomacy.forget_nation(self, nation.id)
 			for hid in nation.hero_ids.duplicate():
 				heroes[hid].leave_service(self)
+			for c in caves:
+				if c.owner == nation.id:
+					c.owner = -1
+					c.city = false
 			log_event(&"fall", "Государство %s пало." % nation.name, PackedInt32Array([nation.id]))
 
 
@@ -512,6 +694,7 @@ func region_population(region: Region, owner_id: int) -> float:
 
 
 func _add_cell(nation: Nation, cell: int) -> void:
+	nation.territory_dirty = true
 	cell_slot[cell] = nation.cells.size()
 	nation.cells.append(cell)
 	nation.sum_x += cell % map.width
@@ -522,6 +705,7 @@ func _add_cell(nation: Nation, cell: int) -> void:
 
 
 func _remove_cell(nation: Nation, cell: int) -> void:
+	nation.territory_dirty = true
 	var slot := cell_slot[cell]
 	var last_index := nation.cells.size() - 1
 	var last := nation.cells[last_index]
@@ -560,7 +744,7 @@ func add_nation(race: RaceDef) -> Nation:
 
 ## Создаёт государство расы race с именем, формой правления, правителем и цветом
 ## (без территории — её назначают через set_owner).
-func found_nation(race: RaceDef) -> Nation:
+func found_nation(race: RaceDef, own_culture: bool = true) -> Nation:
 	var nation := add_nation(race)
 	nation.short_name = NameGenerator.unique(used_names, NameGenerator.place_name.bind(race, rng))
 	var title := NameGenerator.state_title(race, nation.short_name, rng)
@@ -569,6 +753,10 @@ func found_nation(race: RaceDef) -> Nation:
 	nation.government = PoliticsDB.government(StringName(title[2]))
 	new_ruler(nation, true)
 	nation.color = nation_color(nation.id)
+	if not religions.is_empty():
+		nation.state_religion = ReligionSystem.pick_for_race(self, race)
+	if own_culture:
+		nation.culture = CultureSystem.new_culture(self, nation).id
 	return nation
 
 
@@ -651,6 +839,7 @@ func add_city(nation: Nation, cell: int, race: RaceDef, is_capital: bool) -> Cit
 	nation.city_ids.append(city.id)
 	if is_capital:
 		nation.capital_city = city.id
+		nation.home_cell = city.cell
 	return city
 
 

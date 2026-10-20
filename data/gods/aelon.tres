@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"aelon"
+display_name = "Аэлон"
+genitive = "Аэлона"
+title = "Солнце-Творец"
+description = "Отец света, хранитель порядка и милосердия."
+sphere = &"home"
+karma = 0.8
+religions = Array[StringName]([&"light"])
+color = Color(0.98, 0.85, 0.35, 1)
+symbol = "☀"
+boon = Dictionary[StringName, float]({&"stability": 0.05})
+boon_text = "дарует мир и порядок"
+curse_weapon = "Меч Рассвета"

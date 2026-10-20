@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/stone_ancestors.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"stone_ancestors"
+display_name = "Предки Камня"
+description = "Дворфы чтят предков, высеченных в камне, и закон клятвы."
+symbol = "⛰"
+icon = ExtResource("2_icon")
+color = Color(0.7, 0.55, 0.4, 1)
+races = Dictionary[StringName, float]({&"dwarves": 1.0})
+dogmas = PackedStringArray("Культ предков", "Клятва крови и камня")
+effects = Dictionary[StringName, float]({&"army_mult": 1.05, &"stability": 0.05})
+missionary = 0.1
+tolerance = 0.45
+zeal = 0.35
+magic = 0.2
+undead = -0.6
+demons = -1.0

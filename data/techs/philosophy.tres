@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"philosophy"
+display_name = "Философия"
+description = "Мудрецы спорят о сути мира."
+branch = "society"
+cost = 1.2
+requires = Array[StringName]([&"writing"])
+effects = Dictionary[StringName, float]({&"science_mult": 1.06, &"culture_mult": 1.1})
+race_weights = Dictionary[StringName, float]({&"elves": 1.4, &"humans": 1.2, &"orcs": 0.3, &"goblins": 0.5})
+notable = false

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"agriculture"
+display_name = "Земледелие"
+description = "Плуг и севооборот кормят города."
+branch = "economy"
+cost = 0.4
+requires = Array[StringName]([])
+effects = Dictionary[StringName, float]({&"food": 0.05})
+race_weights = Dictionary[StringName, float]({&"halflings": 1.6, &"undead": 0.0})
+notable = false

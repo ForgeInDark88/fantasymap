@@ -74,7 +74,17 @@ func _draw() -> void:
 	var political := _mode == MapMode.POLITICAL or _mode == MapMode.RACES
 	if political:
 		_draw_nation_labels(world, zoom)
-	if political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES:
+	var map_like := political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES \
+			or MapMode.is_region_mode(_mode) or _mode == MapMode.TRADE
+	if _mode == MapMode.UNDERGROUND:
+		_draw_caves(world, zoom)
+		_draw_cities(world, zoom)
+	if map_like:
+		_draw_scars(world, zoom)
+		_draw_roads(world, zoom)
+		_draw_ruins(world, zoom)
+		_draw_titan(world, zoom)
+	if map_like:
 		_draw_region_labels(world, zoom)
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
@@ -170,6 +180,161 @@ func _draw_cities(world: World, zoom: float) -> void:
 			var text_color := Color(1, 1, 0.95) if tier >= 2 else Color(0.88, 0.88, 0.84)
 			draw_string_outline(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.05, 0.05, 0.08, 0.85))
 			draw_string(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
+
+
+const SCAR_COLORS := {"ash": Color(0.35, 0.33, 0.33, 0.45), "flood": Color(0.3, 0.55, 0.95, 0.4),
+	"fire": Color(0.85, 0.35, 0.15, 0.4), "drought": Color(0.85, 0.7, 0.35, 0.35)}
+
+
+## Следы бедствий (пепел, затопления, гари, засуха) и вулканы.
+func _draw_scars(world: World, zoom: float) -> void:
+	draw_set_transform(Vector2.ZERO)
+	for s in world.scars:
+		var pos := renderer.cell_center(int(s.cell))
+		var col: Color = SCAR_COLORS.get(s.kind, Color(0.5, 0.5, 0.5, 0.3))
+		var left := clampf((int(s.until) - world.year) / 5.0, 0.25, 1.0)
+		col.a *= left
+		var r: float = s.radius * MapRenderer.CELL_SIZE
+		draw_circle(pos, r, col)
+		draw_arc(pos, r, 0.0, TAU, 32, Color(col, minf(1.0, col.a * 1.6)), 1.5 / zoom)
+	if zoom < 0.6:
+		return
+	var inv := Vector2.ONE / zoom
+	for v in world.volcanoes:
+		var pos := renderer.cell_center(v)
+		draw_set_transform(pos, 0.0, inv)
+		var hot := world.ash_until > world.year
+		var pts := PackedVector2Array([Vector2(-6, 4), Vector2(0, -6), Vector2(6, 4)])
+		draw_colored_polygon(pts, Color(0.45, 0.2, 0.15) if not hot else Color(0.9, 0.3, 0.1))
+		draw_polyline(pts + PackedVector2Array([pts[0]]), Color(0.08, 0.06, 0.06), 1.5)
+		draw_circle(Vector2(0, -6), 1.8, Color(1.0, 0.55, 0.2))
+	draw_set_transform(Vector2.ZERO)
+
+
+const CAVE_COLORS := {&"cavern": Color(0.6, 0.55, 0.5), &"mithril": Color(0.75, 0.9, 1.0), &"gems": Color(0.85, 0.4, 0.9),
+	&"lair": Color(0.85, 0.25, 0.2), &"ruins": Color(0.85, 0.75, 0.45)}
+
+
+## Подземный мир: ходы (чем глубже — тем темнее), узлы по виду и хозяину, входы.
+func _draw_caves(world: World, zoom: float) -> void:
+	draw_set_transform(Vector2.ZERO)
+	for c in world.caves:
+		var pa := renderer.cell_center(c.cell)
+		for nb in c.neighbors:
+			if nb < c.id:
+				continue
+			var o := world.caves[nb]
+			var shade := 0.85 - 0.12 * maxf(c.depth, o.depth)
+			draw_line(pa, renderer.cell_center(o.cell), Color(shade, shade * 0.85, shade * 0.6, 0.8), 2.0 / zoom, true)
+	var inv := Vector2.ONE / zoom
+	for c in world.caves:
+		draw_set_transform(renderer.cell_center(c.cell), 0.0, inv)
+		var r := 4.0 + 2.0 * c.depth
+		var fill: Color = CAVE_COLORS.get(c.kind, Color.GRAY)
+		draw_circle(Vector2.ZERO, r + 2.0, Color(0.05, 0.04, 0.04))
+		draw_circle(Vector2.ZERO, r, fill)
+		if c.owner >= 0:
+			draw_arc(Vector2.ZERO, r + 3.0, 0.0, TAU, 20, world.nations[c.owner].color.lightened(0.2), 2.5)
+		if c.city:
+			draw_rect(Rect2(-r * 0.45, -r * 0.45, r * 0.9, r * 0.9), Color(1, 0.95, 0.8))
+		if c.entrance:
+			draw_arc(Vector2(0, -r - 5.0), 4.0, PI, TAU, 10, Color(0.95, 0.9, 0.8), 2.0)
+		if zoom >= 1.5:
+			var text := c.name
+			var size := 11
+			var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			draw_string_outline(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.8))
+			draw_string(_font, Vector2(-w * 0.5, r + 14.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0.95, 0.92, 0.85))
+	draw_set_transform(Vector2.ZERO)
+
+
+## Титан мирового кризиса — огромная тень с пылающими глазами.
+func _draw_titan(world: World, zoom: float) -> void:
+	if world.crisis.is_empty() or int(world.crisis.get("titan_cell", -1)) < 0:
+		return
+	var pos := renderer.cell_center(int(world.crisis.titan_cell))
+	draw_set_transform(pos, 0.0, Vector2.ONE / zoom)
+	var r := clampf(14.0 * zoom, 14.0, 30.0)
+	draw_circle(Vector2.ZERO, r + 3.0, Color(0.05, 0.03, 0.03, 0.9))
+	draw_circle(Vector2.ZERO, r, Color(0.45, 0.12, 0.08))
+	draw_circle(Vector2(-r * 0.35, -r * 0.15), r * 0.16, Color(1.0, 0.7, 0.2))
+	draw_circle(Vector2(r * 0.35, -r * 0.15), r * 0.16, Color(1.0, 0.7, 0.2))
+	var label := str(world.crisis.titan_name)
+	var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string_outline(_font, Vector2(-w * 0.5, r + 16.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, 4, Color(0, 0, 0, 0.85))
+	draw_string(_font, Vector2(-w * 0.5, r + 16.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.75, 0.55))
+	draw_set_transform(Vector2.ZERO)
+
+
+## Руины: обломок колонны (исчерпанные — бледнее, проклятые — с лиловым ореолом).
+func _draw_ruins(world: World, zoom: float) -> void:
+	if zoom < 0.9:
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for r in world.ruins:
+		if r.cell < 0 or r.revived:
+			continue
+		var pos := renderer.cell_center(r.cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var a := 0.45 if r.depleted() else 0.95
+		if r.cursed:
+			draw_circle(Vector2.ZERO, 8.0, Color(0.6, 0.3, 0.8, 0.35))
+		var stone := Color(0.78, 0.74, 0.68, a)
+		var dark := Color(0.08, 0.07, 0.06, a)
+		draw_rect(Rect2(-5.5, 3.0, 11.0, 3.0), dark)
+		draw_rect(Rect2(-4.5, 3.5, 9.0, 2.0), stone)
+		draw_rect(Rect2(-4.0, -5.0, 3.0, 8.0), stone)
+		draw_rect(Rect2(1.0, -2.0, 3.0, 5.0), stone)
+		if r.kind == &"tomb":
+			draw_rect(Rect2(-1.0, -9.0, 2.0, 5.0), stone)
+			draw_rect(Rect2(-3.0, -7.5, 6.0, 1.6), stone)
+	draw_set_transform(Vector2.ZERO)
+
+
+## Дороги и морские пути — линии между городами. Подробность по зуму: на
+## общем плане — только пути между крупными городами; в режиме «Торговля» —
+## все, толщина по обороту.
+func _draw_roads(world: World, zoom: float) -> void:
+	var trade := _mode == MapMode.TRADE
+	if not trade and zoom < 0.7:
+		return
+	var view := _visible_rect().grow(60.0 / zoom)
+	var max_traffic := 1.0
+	if trade:
+		for r in world.roads:
+			if r.alive:
+				max_traffic = maxf(max_traffic, r.traffic)
+	draw_set_transform(Vector2.ZERO)
+	for r in world.roads:
+		if not r.alive:
+			continue
+		var ca := world.cities[r.a]
+		var cb := world.cities[r.b]
+		if not ca.alive or not cb.alive:
+			continue
+		if not trade and zoom < 1.4 and (ca.tier() < 2 or cb.tier() < 2):
+			continue
+		var pa := renderer.cell_center(ca.cell)
+		var pb := renderer.cell_center(cb.cell)
+		if not view.has_point(pa) and not view.has_point(pb):
+			continue
+		var px := 1.2
+		var col := Color(0.82, 0.72, 0.5, 0.75)
+		if r.sea:
+			col = Color(0.55, 0.78, 0.95, 0.7)
+		if trade:
+			var k := sqrt(r.traffic / max_traffic)
+			px = 1.0 + 4.0 * k
+			col = Color(0.95, 0.75, 0.3, 0.45 + 0.5 * k) if not r.sea else Color(0.5, 0.8, 1.0, 0.45 + 0.5 * k)
+			if r.safety < 0.6:
+				col = col.lerp(Color(0.9, 0.3, 0.25, col.a), 0.6)  # разбой и пираты
+		if r.sea:
+			draw_dashed_line(pa, pb, col, px / zoom, 6.0 / zoom)
+		else:
+			draw_line(pa, pb, col, px / zoom, true)
 
 
 ## Названия регионов — курсивом под городами, только при приближении.

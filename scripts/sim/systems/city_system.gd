@@ -9,8 +9,13 @@ const FOUND_COST_GOLD := 40.0
 const BUILD_CHANCE := 0.4
 
 
+## Раз в сколько лет пересчитывать население городов (со сдвигом по id).
+const GROW_PERIOD := 2
+
+
 func tick(world: World, nation: Nation) -> void:
-	_grow_cities(world, nation)
+	if (world.year + nation.id) % GROW_PERIOD == 0:
+		_grow_cities(world, nation)
 	# Бонусы взвешены населением городов, а оно меняется плавно — хватит раза в 10 лет.
 	if (world.year + nation.id) % 10 == 0:
 		recompute_building_effects(world, nation)
@@ -38,7 +43,7 @@ func _grow_cities(world: World, nation: Nation) -> void:
 		var city := world.cities[nation.city_ids[k]]
 		var target := urban * weights[k] / total_w
 		# Растут медленно, сжимаются быстрее (голод, войны, бегство жителей).
-		city.population += (target - city.population) * (0.05 if target > city.population else 0.1)
+		city.population += (target - city.population) * (0.05 if target > city.population else 0.1) * GROW_PERIOD
 
 
 func _city_weight(world: World, city: City) -> float:
@@ -49,6 +54,8 @@ func _city_weight(world: World, city: City) -> float:
 		w *= 1.25
 	if city.is_capital:
 		w *= 3.0
+	# Перекрёстки торговых путей процветают.
+	w *= 1.0 + 0.08 * RoadSystem.road_count(world, city.id)
 	# Молодые города ещё не успели вырасти.
 	w *= clampf((world.year - city.founded_year + 10) / 80.0, 0.15, 1.0)
 	return w
@@ -62,13 +69,18 @@ func _maybe_found_city(world: World, nation: Nation) -> void:
 		return
 	if world.rng.randf() > 0.3:
 		return
-	var site := find_city_site(world, nation, 40)
+	# Руины на своей земле — готовое место: город возрождается.
+	var ruin := RuinSystem.revive_site(world, nation)
+	var site := ruin.cell if ruin != null else find_city_site(world, nation, 40)
 	if site < 0:
 		return
 	nation.stock[Goods.WOOD] -= FOUND_COST_WOOD
 	nation.stock[Goods.GOLD] -= FOUND_COST_GOLD
 	var settlers_race := RaceDB.by_index(world.cell_race[site]) if world.cell_race[site] != World.NO_RACE else race
 	var city := world.add_city(nation, site, settlers_race, false)
+	if ruin != null:
+		ruin.revived = true
+		world.log_event(&"ruins", "«%s»: %s возрождает здесь город — %s." % [ruin.name, nation.name, city.name], PackedInt32Array([nation.id]))
 	city.population = world.rng.randf_range(200.0, 600.0)
 	world.log_event(&"city", "%s основывает город %s." % [nation.name, city.name], PackedInt32Array([nation.id]))
 
@@ -117,6 +129,8 @@ func _try_build(world: World, nation: Nation) -> void:
 
 func can_build(world: World, nation: Nation, city: City, b: BuildingDef) -> bool:
 	if not b.buildable or city.buildings.has(b.id) or city.population < b.min_population:
+		return false
+	if b.requires_tech != &"" and not nation.techs.has(b.requires_tech):
 		return false
 	for other in b.excludes:
 		if city.buildings.has(other):

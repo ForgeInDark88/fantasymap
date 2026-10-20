@@ -101,7 +101,22 @@ func _advance_siege(world: World, war: War, winner: int, margin: float) -> void:
 	var region := world.regions[war.siege_region]
 	var defense := _region_defense(world, region, war.members(-winner))
 	# Десант медленнее: снабжение через море.
-	var speed := (0.35 + 0.5 * margin) * (0.6 if war.siege_landing else 1.0)
+	# Осадное дело ускоряет осады, мореходство — десанты (верфи — ещё сильнее).
+	var attacker := world.nations[war.leader(winner)]
+	var speed := (0.35 + 0.5 * margin) * attacker.effect(&"siege_mult")
+	# Подкоп: у наступающих есть пещера под осаждённым регионом.
+	if UndergroundSystem.sapping(world, war.members(winner), war.siege_region):
+		speed *= UndergroundSystem.SAP_SIEGE
+	# Дорога к осаждаемому городу от города наступающих — подвоз и переброска войск.
+	var target_city := _region_city(world, war.siege_region, war.members(-winner))
+	if target_city != null:
+		for rid in world.city_roads.get(target_city.id, PackedInt32Array()):
+			var road := world.roads[rid]
+			if road.alive and not road.sea and war.members(winner).has(world.cities[road.other(target_city.id)].nation_id):
+				speed *= 1.25
+				break
+	if war.siege_landing:
+		speed *= 0.6 * attacker.effect(&"naval_mult") * (1.25 if _has_building(world, war.members(winner), &"shipyard") else 1.0)
 	war.siege_progress += speed / (1.0 + defense)
 	if war.siege_progress >= 1.0:
 		_capture(world, war, region, winner)
@@ -156,6 +171,15 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 	var best_score := -INF
 	var coastal_best := -1
 	var coastal_score := -INF
+	# Регионы с городами проигравших и с трофеями — заранее, без обхода клеток.
+	var city_regions := {}
+	for m in losers:
+		for id in world.nations[m].city_ids:
+			city_regions[world.region_of[world.cities[id].cell]] = true
+	var trophy_regions := {}
+	for lm in world.landmarks:
+		if lm.active and (lm.kind == &"source" or lm.kind == &"portal"):
+			trophy_regions[world.region_of[lm.cell]] = true
 	for m in losers:
 		for rid in world.nations[m].region_counts:
 			var region := world.regions[rid]
@@ -169,14 +193,13 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 			if not front and not coast:
 				continue
 			var score := float(world.nations[m].region_counts[rid]) + world.rng.randf() * 20.0
-			if _region_city(world, rid, losers) != null:
+			if city_regions.has(rid):
 				score += 40.0  # города — главная цель
 			for w in winners:
 				if region.claims.has(w):
 					score += 60.0  # возвращаем своё
-			for lm in world.landmarks:
-				if lm.active and (lm.kind == &"source" or lm.kind == &"portal") and world.region_of[lm.cell] == rid:
-					score += 80.0  # источник силы и врата бездны — главные трофеи
+			if trophy_regions.has(rid):
+				score += 80.0  # источник силы и врата бездны — главные трофеи
 			if front and score > best_score:
 				best_score = score
 				best = rid
@@ -188,6 +211,14 @@ func _pick_target(world: World, war: War, winner: int) -> void:
 	if best < 0 and coastal_best >= 0 and _has_port(world, winners):
 		war.siege_region = coastal_best
 		war.siege_landing = true
+
+
+func _has_building(world: World, members: PackedInt32Array, building: StringName) -> bool:
+	for m in members:
+		for id in world.nations[m].city_ids:
+			if world.cities[id].buildings.has(building):
+				return true
+	return false
 
 
 func _has_port(world: World, members: PackedInt32Array) -> bool:
@@ -229,6 +260,8 @@ func _region_defense(world: World, region: Region, owners: PackedInt32Array) -> 
 			if def != null:
 				defense += def.defense
 	var center_owner := world.owner[region.center]
+	if center_owner >= 0:
+		defense += world.nations[center_owner].effect(&"defense")
 	if center_owner >= 0 and world.nations[center_owner].race.has_trait(&"forest_bond"):
 		var biome := world.map.biome[region.center]
 		if biome == Biome.FOREST or biome == Biome.JUNGLE:
@@ -242,6 +275,8 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 	var losers := war.members(-winner)
 	var winners := war.members(winner)
 	var city := _region_city(world, region.id, losers)
+	if city != null:
+		TechSystem.on_city_captured(world, world.nations[war.leader(winner)], world.nations[city.nation_id])
 	var capital_lost: Nation = null
 	if city != null and city.is_capital:
 		capital_lost = world.nations[city.nation_id]
@@ -298,6 +333,8 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 			world.log_event(&"conquest", "%s захватывает регион %s и город %s." % [conqueror.short_name, region.name, city.name], ids)
 	else:
 		world.log_event(&"conquest", "%s захватывает регион %s." % [conqueror.short_name, region.name], ids)
+	if capital_lost != null:
+		ArtifactSystem.on_capital_taken(world, capital_lost, world.nations[war.leader(winner)])
 	if capital_lost != null and capital_lost.alive:
 		war.score += winner * 25.0
 		capital_lost.stability = maxf(0.0, capital_lost.stability - 0.15)
@@ -309,7 +346,7 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 				old, capital_lost.name, capital_lost.ruler_display()], PackedInt32Array([capital_lost.id]))
 	# Отрезанные клочки проигравших внутри земель победителя присоединяются сразу.
 	for loser in losers_hit:
-		EnclaveSystem.absorb(world, world.nations[loser])
+		EnclaveSystem.absorb_if_split(world, world.nations[loser])
 	world.cleanup_dead()
 
 

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"runecraft"
+display_name = "Рунная магия"
+description = "Руны хранят крепости и кузни."
+branch = "magic"
+cost = 1.44
+requires = Array[StringName]([&"arcane_lore", &"masonry"])
+effects = Dictionary[StringName, float]({&"defense": 0.3, &"production_mult": 1.04})
+race_weights = Dictionary[StringName, float]({&"dwarves": 2.5, &"humans": 0.4, &"elves": 0.6})
+notable = true

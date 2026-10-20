@@ -17,7 +17,7 @@ static func pending(world: World) -> Array[Hero]:
 
 
 static func second_chance(world: World, hero: Hero) -> bool:
-	if hero.returns >= MAX_RETURNS:
+	if hero.returns >= max_returns(hero):
 		return false
 	_take(world, hero)
 	# Возвращается туда, где жил его народ (или в любой регион с людьми).
@@ -48,6 +48,11 @@ static func second_chance(world: World, hero: Hero) -> bool:
 	return true
 
 
+## Избранник бога может вернуться на раз больше.
+static func max_returns(hero: Hero) -> int:
+	return MAX_RETURNS + (1 if hero.chosen else 0)
+
+
 static func ignore(world: World, hero: Hero) -> void:
 	_take(world, hero)
 	hero.fate = &"rest"
@@ -55,15 +60,20 @@ static func ignore(world: World, hero: Hero) -> void:
 
 ## Заточить душу героя в оружие и воздвигнуть пустой трон в глухом месте.
 static func curse(world: World, hero: Hero) -> Landmark:
-	var cell := _remote_cell(world)
+	# Пустой трон встаёт в глухих руинах, если такие есть.
+	var ruin := RuinSystem.remote_ruin(world)
+	var cell := ruin.cell if ruin != null else _remote_cell(world)
 	if cell < 0:
 		return null
 	_take(world, hero)
 	hero.fate = &"cursed"
-	var artifact := "%s %s" % [hero.hero_class.weapon, _genitive(hero.name)]
+	# Душа избранника бога заточается в оружие этого бога.
+	var god := LoreDB.god(hero.patron_god) if hero.patron_god != &"" else null
+	var weapon := god.curse_weapon if god != null and not god.curse_weapon.is_empty() else hero.hero_class.weapon
+	var artifact := "%s %s" % [weapon, _genitive(hero.name)]
 	var region := world.region_at(cell)
 	world.ensure_region_name(region)
-	var lm := world.add_landmark(&"throne", "Трон %s" % _genitive(hero.name), cell, hero.id)
+	var lm := world.add_landmark(&"throne", "Трон %s%s" % [_genitive(hero.name), (" в руинах %s" % ruin.name.trim_prefix("Руины ")) if ruin != null else ""], cell, hero.id)
 	lm.artifact = artifact + " (проклятый)"
 	lm.guardian = hero.power() * 1.6 + 1500.0
 	world.log_event(&"fate", "Судьба прокляла героя %s: его душа заточена в оружие «%s». В регионе %s возник пустой трон, его стережёт чудовище." % [

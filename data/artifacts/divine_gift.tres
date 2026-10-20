@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ArtifactDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/artifact_def.gd" id="1_art"]
+
+[resource]
+script = ExtResource("1_art")
+id = &"divine_gift"
+display_name = "Дар богов"
+kind = "relic"
+name_patterns = PackedStringArray("Дар {god}", "Слеза {god}")
+power_mult = 1.5
+karma_drift = 0.02
+wits_bonus = 0.1
+nation_effects = Dictionary[StringName, float]({&"stability": 0.03})
+cursed = false
+weight = 0.0
+famous = true

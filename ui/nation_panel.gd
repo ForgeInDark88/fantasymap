@@ -24,6 +24,9 @@ func _ready() -> void:
 	_body.meta_underlined = false
 	_body.fit_content = false
 	_body.meta_clicked.connect(func(meta: Variant) -> void:
+		if str(meta) == "techs":
+			EventBus.tech_window_requested.emit(_nation_id)
+			return
 		var id := int(str(meta))
 		if id >= 0:
 			EventBus.nation_selected.emit(id))
@@ -64,6 +67,67 @@ func refresh(world: World) -> void:
 		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(nation.army), nation.tech],
 		"[b]Стабильность:[/b] %s" % _stability_text(nation.stability),
 	])
+	var researching := TechDB.find(nation.researching) if nation.researching != &"" else null
+	lines.append("[b]Знания:[/b] %d из %d технологий%s · [url=techs][color=#a8e0ff]окно технологий[/color][/url]" % [
+		nation.techs.size(), TechDB.all().size(),
+		(" · изучается: %s (%d%%)" % [researching.display_name, roundi(minf(1.0, nation.research / researching.cost) * 100.0)]) if researching != null else ""])
+	var roads := {}
+	var trade := 0.0
+	for id in nation.city_ids:
+		for rid in world.city_roads.get(id, PackedInt32Array()):
+			var r := world.roads[rid]
+			if r.alive and not roads.has(rid):
+				roads[rid] = r
+				trade += r.traffic * (0.5 if world.cities[r.other(id)].nation_id != nation.id else 1.0)
+	if not roads.is_empty():
+		var sea := roads.values().filter(func(r: Road) -> bool: return r.sea).size()
+		lines.append("[b]Пути:[/b] дорог %d, морских %d · торговля по ним: %s золота в год" % [roads.size() - sea, sea, fmt(trade)])
+	var caves := UndergroundSystem.owned_by(world, nation.id)
+	if not caves.is_empty():
+		lines.append("[b]Под землёй:[/b] пещер %d, подземных городов %d%s" % [caves.size(), caves.filter(func(c: Cave) -> bool: return c.city).size(),
+			(" · жилы: " + ", ".join(caves.filter(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems").map(func(c: Cave) -> String: return c.kind_name()))) if caves.any(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems") else ""])
+	var spies := SpySystem.spies_of(world, nation).size()
+	lines.append("[b]Разведка:[/b] %d очков%s" % [roundi(nation.intel), (" · шпионов на службе: %d" % spies) if spies > 0 else ""])
+	var orgs := OrgSystem.orgs_of(world, nation.id)
+	if not orgs.is_empty():
+		lines.append("[b]Организации:[/b] " + ", ".join(orgs.map(func(o: Organization) -> String:
+			return "[color=#%s]%s[/color]%s" % [o.def.color.to_html(false), o.name, " (основатель)" if o.founder == nation.id else ""])))
+	if nation.legacy >= 0:
+		var lg := world.legacies[nation.legacy]
+		lines.append("[b]Наследие:[/b] осколок державы %s (память — до %d г.)%s" % [lg.name, lg.until_year,
+			" · [color=#ffd24a]собиратель земель[/color]" if lg.collector == nation.id else ""])
+	var relics: Array[String] = []
+	for a in world.artifacts:
+		if a.nation == nation.id:
+			relics.append(a.name)
+	if not relics.is_empty():
+		lines.append("[b]Сокровищница:[/b] [color=#e8c060]%s[/color]" % ", ".join(relics))
+	if nation.god_boon != &"" and LoreDB.god(nation.god_boon) != null:
+		var g := LoreDB.god(nation.god_boon)
+		lines.append("[b]Милость бога:[/b] [color=#%s]%s %s[/color] %s (до %d г.)" % [g.color.to_html(false), g.symbol, g.display_name,
+			g.boon_text, nation.god_boon_until])
+	var halls: Array[String] = []
+	for o in world.orders:
+		if o.alive and o.hall_cell >= 0 and world.owner[o.hall_cell] == nation.id:
+			halls.append("%s (%d)" % [o.name, o.members.size()])
+	if not halls.is_empty():
+		lines.append("[b]Обители орденов:[/b] [color=#a8c8f0]%s[/color]" % ", ".join(halls))
+	var secret: Array[String] = []
+	for s in world.societies:
+		if not s.alive:
+			continue
+		var inf := 0.0
+		for rid in s.influence:
+			if world.regions[rid].controller() == nation.id:
+				inf = maxf(inf, s.influence[rid])
+		if inf > 0.0:
+			secret.append("%s «%s» (до %d%%)" % [s.kind_name(), s.name, roundi(inf * 100.0)])
+	if not secret.is_empty():
+		lines.append("[b]Тайные общества:[/b] [color=#c8a0e0]%s[/color]" % ", ".join(secret))
+	if nation.culture >= 0:
+		var culture := world.cultures[nation.culture]
+		lines.append("[b]Культура:[/b] [color=#%s]%s[/color] (престиж %d) · обычаи: %s" % [culture.color.to_html(false), culture.name,
+			roundi(nation.culture_level), ", ".join(culture.customs)])
 	if not nation.hero_ids.is_empty():
 		var heroes := Array(nation.hero_ids).map(func(id: int) -> String:
 			var h := world.heroes[id]
@@ -137,6 +201,9 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			(" · столица" if city.is_capital else "")])
 		if not built.is_empty():
 			lines.append("Постройки: " + ", ".join(built))
+		var rc := RoadSystem.road_count(world, city.id)
+		if rc > 0:
+			lines.append("Путей: %d%s" % [rc, " — торговый перекрёсток" if rc >= 3 else ""])
 	if region != null:
 		var people := world.region_majority_race(region, nation.id)
 		var people_name := RaceDB.by_index(people).display_name.to_lower() if people != World.NO_RACE else "—"
@@ -144,6 +211,21 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 		lines.append("[color=#e8d9a0][b]Регион %s[/b][/color] — %d кл., народ: %s, %s жит.; лояльность %d%%, недовольство %d%%" % [
 			region.name, region.cells.size(), people_name, fmt(world.region_population(region, nation.id)),
 			roundi(region.loyalty * 100.0), roundi(minf(region.unrest, 1.0) * 100.0)])
+		if not region.faith.is_empty():
+			lines.append("Вера: " + faith_text(world, region.faith, 3))
+		var here: Array[String] = []
+		for r in world.ruins:
+			if r.cell >= 0 and not r.revived and world.region_of[r.cell] == region.id:
+				here.append("%s (%s%s)" % [r.name, r.kind_name(), ", исчерпаны" if r.depleted() else ""])
+		if not here.is_empty():
+			lines.append("[color=#b8a8a0]Руины: %s[/color]" % ", ".join(here))
+		for s in world.societies:
+			if s.alive and s.influence.has(region.id):
+				lines.append("[color=#c8a0e0]%s «%s»: влияние %d%%[/color]" % [s.kind_name().capitalize(), s.name, roundi(s.influence[region.id] * 100.0)])
+		if region.culture >= 0:
+			var rc := world.cultures[region.culture]
+			lines.append("Культура: [color=#%s]%s[/color]%s" % [rc.color.to_html(false), rc.name,
+				(" · ассимиляция %d%%" % roundi(region.assim * 100.0)) if region.culture != nation.culture else ""])
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")
@@ -204,6 +286,25 @@ func _append_diplomacy(world: World, nation: Nation, lines: Array[String]) -> vo
 			if region.unrest >= 0.5:
 				unruly += 1
 	lines.append("[b]Регионов:[/b] %d%s" % [regions, (" · [color=#ffb04a]неспокойных: %d[/color]" % unruly) if unruly > 0 else ""])
+	if nation.state_religion >= 0:
+		var faith := world.religions[nation.state_religion]
+		lines.append("[b]Вера:[/b] [color=#%s]%s %s[/color]%s — единство %d%%; догматы: %s" % [faith.color.to_html(false), faith.symbol,
+			faith.name, " (ересь)" if faith.is_heresy() else "", roundi(nation.faith_unity * 100.0), ", ".join(faith.dogmas).to_lower()])
+		var shares := ReligionSystem.nation_shares(world, nation)
+		shares.erase(nation.state_religion)
+		if not shares.is_empty():
+			lines.append("Иноверцы: " + faith_text(world, shares, 4))
+
+
+## «☀ Церковь Света 70%, ☾ Вечная Ночь 20%» — крупнейшие доли вер.
+static func faith_text(world: World, faith: Dictionary, top: int) -> String:
+	var ids := faith.keys()
+	ids.sort_custom(func(a: int, b: int) -> bool: return faith[a] > faith[b])
+	var parts: Array[String] = []
+	for id in ids.slice(0, top):
+		var r := world.religions[id]
+		parts.append("[color=#%s]%s %s[/color] %d%%" % [r.color.to_html(false), r.symbol, r.name, roundi(faith[id] * 100.0)])
+	return ", ".join(parts)
 
 
 static func _stability_text(v: float) -> String:

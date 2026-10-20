@@ -86,6 +86,55 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.spawn_hero(world, cell)
 		&"source":
 			HeroSystem.power_source(world, null, cell)
+		&"spy":
+			var target := world.owner[cell]
+			if _selected_nation >= 0 and target >= 0 and target != _selected_nation:
+				SpySystem.run(world, world.nations[_selected_nation], world.nations[target], _tool_params.op)
+		&"society":
+			if world.owner[cell] >= 0 and world.region_of[cell] >= 0:
+				SocietySystem.found(world, world.nations[world.owner[cell]], world.region_of[cell])
+		&"org":
+			if world.owner[cell] >= 0:
+				if OrgSystem.try_form(world, _tool_params.org, world.nations[world.owner[cell]]) == null:
+					world.log_event(&"org", "Призыв %s собрать организацию «%s» остался без ответа." % [
+						world.nations[world.owner[cell]].name, _tool_params.org.display_name])
+		&"eruption":
+			GodTools.eruption(world, cell)
+		&"drought":
+			GodTools.drought(world, cell)
+		&"invasion":
+			UndergroundSystem.invasion(world, cell)
+		&"ruin":
+			GodTools.ancient_ruin(world, cell)
+		&"crisis":
+			CrisisSystem.start(world, _tool_params.crisis)
+		&"road":
+			GodTools.road_from(world, cell)
+		&"artifact":
+			GodTools.gift_artifact(world, _tool_params.artifact, cell)
+		&"bless":
+			GodTools.bless(world, _tool_params.god, cell)
+		&"chosen":
+			GodTools.choose_hero(world, _tool_params.god, cell)
+		&"child":
+			GodTools.hero_child(world, cell)
+		&"order":
+			GodTools.found_order(world, cell)
+		&"collector":
+			var o := world.owner[cell]
+			if o >= 0 and world.nations[o].legacy >= 0:
+				LegacySystem.set_collector(world, world.legacies[world.nations[o].legacy], world.nations[o])
+		&"insight":
+			if world.owner[cell] >= 0:
+				GodTools.insight(world, world.nations[world.owner[cell]])
+		&"assimilate":
+			GodTools.assimilate(world, cell)
+		&"religion":
+			if world.owner[cell] >= 0:
+				ReligionSystem.found_religion(world, world.nations[world.owner[cell]])
+		&"heresy":
+			if world.owner[cell] >= 0:
+				ReligionSystem.start_heresy(world, world.nations[world.owner[cell]])
 		&"portal":
 			var demons := HeroSystem.open_portal(world, cell, null)
 			if demons != null:

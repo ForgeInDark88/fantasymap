@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="OrgDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/org_def.gd" id="1_org"]
+
+[resource]
+script = ExtResource("1_org")
+id = &"trade_league"
+display_name = "Торговая лига"
+description = "Купеческие державы снижают пошлины и вместе охраняют караваны."
+name_template = "Торговая лига {name}"
+color = Color(0.95, 0.8, 0.35, 1)
+basis = "trade"
+requires_tech = &""
+min_trade_partners = 3
+min_members = 3
+max_count = 2
+excluded_traits = Array[StringName]([])
+no_war = true
+mutual_defense = false
+dues = 0.03
+effects = Dictionary[StringName, float]({&"trade_mult": 1.08})
+opinion_bonus = 0.12

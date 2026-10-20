@@ -14,8 +14,30 @@ const MIN_COASTAL_POCKET := 15
 
 
 func tick(world: World, nation: Nation) -> void:
-	if (world.year + nation.id) % PERIOD == 0:
+	# Полная проверка — только если территория менялась с прошлой.
+	if (world.year + nation.id) % PERIOD == 0 and nation.territory_dirty:
+		nation.territory_dirty = false
 		absorb(world, nation)
+
+
+## Быстрая проверка после захвата: если регионы государства по-прежнему
+## связаны между собой (граф регионов), анклава почти наверняка нет — полный
+## обход клеток не нужен (раз в PERIOD лет он всё равно выполняется).
+static func absorb_if_split(world: World, nation: Nation) -> int:
+	if not nation.alive or nation.region_counts.size() < 2:
+		return 0
+	var keys := nation.region_counts.keys()
+	var seen := {keys[0]: true}
+	var queue: Array = [keys[0]]
+	while not queue.is_empty():
+		var rid: int = queue.pop_back()
+		for nb in world.regions[rid].neighbors:
+			if not seen.has(nb) and nation.region_counts.has(nb):
+				seen[nb] = true
+				queue.append(nb)
+	if seen.size() == keys.size():
+		return 0
+	return absorb(world, nation)
 
 
 ## Находит связные куски территории и отдаёт окружённые соседям.

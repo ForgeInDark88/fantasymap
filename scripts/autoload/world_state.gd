@@ -37,6 +37,11 @@ func _ready() -> void:
 	RaceDB.ensure_loaded()
 	EconomyDB.ensure_loaded()
 	PoliticsDB.ensure_loaded()
+	ReligionDB.ensure_loaded()
+	TechDB.ensure_loaded()
+	OrgDB.ensure_loaded()
+	CrisisDB.ensure_loaded()
+	LoreDB.ensure_loaded()
 	EventBus.generate_requested.connect(generate)
 
 

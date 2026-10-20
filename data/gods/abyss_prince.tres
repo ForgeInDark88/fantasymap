@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"abyss_prince"
+display_name = "Князь Бездны"
+genitive = "Князя Бездны"
+title = "Пожиратель миров"
+description = "Голод, что приходит из-за Врат."
+sphere = &"abyss"
+karma = -1.0
+religions = Array[StringName]([&"abyss"])
+color = Color(0.55, 0.05, 0.1, 1)
+symbol = "⛧"
+boon = Dictionary[StringName, float]({&"army_mult": 1.12})
+boon_text = "насылает легионы"
+curse_weapon = "Клинок Бездны"

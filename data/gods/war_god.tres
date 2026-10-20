@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"war_god"
+display_name = "Гаррах"
+genitive = "Гарраха"
+title = "Бог войны"
+description = "Бог доблести и стали; ему молятся воины всех народов."
+sphere = &"war"
+karma = 0.0
+religions = Array[StringName]([])
+color = Color(0.8, 0.4, 0.3, 1)
+symbol = "⚔"
+boon = Dictionary[StringName, float]({&"army_mult": 1.05})
+boon_text = "дарует победу в битве"
+curse_weapon = "Копьё Гарраха"

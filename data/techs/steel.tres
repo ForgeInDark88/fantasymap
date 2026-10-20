@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"steel"
+display_name = "Сталь"
+description = "Закалённая сталь — оружие и доспехи нового века."
+branch = "military"
+cost = 1.6
+requires = Array[StringName]([&"iron_forging"])
+effects = Dictionary[StringName, float]({&"army_mult": 1.08})
+race_weights = Dictionary[StringName, float]({&"dwarves": 1.5})
+notable = true

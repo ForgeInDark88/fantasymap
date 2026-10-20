@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"song_of_tree"
+display_name = "Песнь Древа"
+genitive = "Песни Древа"
+title = "Голос леса"
+description = "Живая песнь, текущая сквозь корни мира."
+sphere = &"nature"
+karma = 0.6
+religions = Array[StringName]([&"forest_song"])
+color = Color(0.3, 0.8, 0.45, 1)
+symbol = "❦"
+boon = Dictionary[StringName, float]({&"science_mult": 1.05, &"growth_mult": 1.04})
+boon_text = "шепчет мудрость листвы"
+curse_weapon = "Лук Песни"

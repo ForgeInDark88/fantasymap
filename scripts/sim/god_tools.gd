@@ -141,6 +141,9 @@ static func set_elevation(world: World, i: int, e: float) -> bool:
 	else:
 		map.biome[i] = Biome.SEA
 		map.river[i] = 0
+		for r in world.ruins:
+			if r.cell == i:
+				r.cell = -1  # руины ушли под воду
 		world.cell_race[i] = World.NO_RACE
 		world.deposit[i] = 0
 		if was_land:
@@ -186,3 +189,169 @@ static func _detach_from_region(world: World, i: int) -> void:
 	world.region_of[i] = -1
 	world.region_texels[i * 4] = 0
 	world.region_texels[i * 4 + 1] = 0
+
+
+## Озарение: текущее исследование завершается мгновенно (или открывается доступная технология).
+static func insight(world: World, nation: Nation) -> TechDef:
+	var t := TechDB.find(nation.researching) if nation.researching != &"" else null
+	if t == null:
+		for res in TechDB.all():
+			if TechSystem.is_available(nation, res as TechDef):
+				t = res
+				break
+	if t == null:
+		return null
+	TechSystem.unlock(world, nation, t, "")
+	world.log_event(&"tech", "Озарение свыше: учёные государства %s постигли %s." % [nation.name, t.display_name.to_lower()],
+			PackedInt32Array([nation.id]))
+	return t
+
+
+## Слияние культур: регион клетки перенимает культуру своего владельца.
+static func assimilate(world: World, cell: int) -> bool:
+	var region := world.region_at(cell)
+	var o := world.owner[cell]
+	if region == null or o < 0 or world.nations[o].culture < 0 or region.culture == world.nations[o].culture:
+		return false
+	CultureSystem.assimilate(world, world.nations[o], region)
+	return true
+
+
+## Дорога от ближайшего к клетке города к ближайшему другому городу (даром).
+static func road_from(world: World, cell: int) -> Road:
+	var pos := Vector2(world.map.cell_pos(cell))
+	var from: City = null
+	for c in world.cities:
+		if c.alive and (from == null or pos.distance_squared_to(Vector2(world.map.cell_pos(c.cell))) < pos.distance_squared_to(Vector2(world.map.cell_pos(from.cell)))):
+			from = c
+	if from == null:
+		return null
+	var fp := Vector2(world.map.cell_pos(from.cell))
+	var to: City = null
+	for c in world.cities:
+		if c.alive and c != from and not RoadSystem._connected(world, from.id, c.id) \
+				and (to == null or fp.distance_squared_to(Vector2(world.map.cell_pos(c.cell))) < fp.distance_squared_to(Vector2(world.map.cell_pos(to.cell)))):
+			to = c
+	if to == null:
+		return null
+	var path := RoadSystem.measure(world, from.cell, to.cell)
+	var sea := path.x < 0.0
+	var length := fp.distance_to(Vector2(world.map.cell_pos(to.cell))) * 1.2 if sea else path.x
+	var road := RoadSystem.build(world, from, to, sea, length, 0 if sea else int(path.y))
+	world.log_event(&"trade", "По воле богов %s связала %s и %s." % ["морская тропа" if sea else "дорога", from.name, to.name],
+			PackedInt32Array([from.nation_id, to.nation_id]))
+	return road
+
+
+## Извержение ближайшего вулкана (до 15 клеток) или новой горы-вулкана под курсором.
+static func eruption(world: World, cell: int) -> bool:
+	var pos := Vector2(world.map.cell_pos(cell))
+	var best := -1
+	for v in world.volcanoes:
+		if Vector2(world.map.cell_pos(v)).distance_to(pos) <= 15.0 and (best < 0 or Vector2(world.map.cell_pos(v)).distance_to(pos) < Vector2(world.map.cell_pos(best)).distance_to(pos)):
+			best = v
+	if best < 0:
+		if world.map.biome[cell] != Biome.MOUNTAINS and world.map.biome[cell] != Biome.HILLS:
+			return false
+		world.volcanoes.append(cell)
+		best = cell
+	ClimateSystem.erupt(world, best)
+	return true
+
+
+## Засуха в климатическом поясе клетки.
+static func drought(world: World, cell: int) -> void:
+	var z := world.climate_zone(cell)
+	world.zone_events[z] = {"kind": "drought", "until": world.year + 3}
+	world.zone_harvest[z] = ClimateSystem.DROUGHT_HARVEST
+	world.scars.append({"cell": cell, "radius": 8.0, "kind": "drought", "until": world.year + 3})
+	world.log_event(&"climate", "По воле богов %s пришла великая сушь." % ClimateSystem.ZONE_NAMES[z])
+
+
+## Древние руины по воле Бога: храм забытых богов в клетке.
+static func ancient_ruin(world: World, cell: int) -> Ruin:
+	var name := "Руины %s" % NameGenerator.place_name(RaceDB.all()[world.rng.randi_range(0, RaceDB.count() - 1)], world.rng)
+	var r := RuinSystem.add(world, &"temple", cell, name, "древнее святилище, поднятое из небытия (%d г.)" % world.year)
+	if r != null:
+		r.wealth *= 2.0
+		world.log_event(&"ruins", "Земля разверзлась в регионе %s: открылись древние руины — %s." % [world.region_label(cell, "диких землях"), name])
+	return r
+
+
+# --- Этап 10.1: артефакты, боги, роды, ордена ---
+
+## Ближайший к клетке живой герой-странник (не дальше max_dist клеток).
+static func nearest_hero(world: World, cell: int, max_dist: float = 25.0) -> Hero:
+	var p := Vector2(world.map.cell_pos(cell))
+	var best: Hero = null
+	var best_d := max_dist
+	for h in world.wandering_heroes():
+		if h.alive and h.cell >= 0:
+			var d := p.distance_to(Vector2(world.map.cell_pos(h.cell)))
+			if d < best_d:
+				best_d = d
+				best = h
+	return best
+
+
+## Даровать артефакт: ближайшему герою, иначе в сокровищницу владельца, иначе — лежит в земле.
+static func gift_artifact(world: World, def: ArtifactDef, cell: int) -> Artifact:
+	if def == null or not world.map.is_land(cell):
+		return null
+	var hero := nearest_hero(world, cell)
+	var a := ArtifactSystem.create(world, def.id, null, "", "явлен по воле богов")
+	if hero != null:
+		ArtifactSystem.give(world, a, hero, "дарован богами")
+		hero.add_deed(world, "получил от богов %s" % a.name)
+		world.log_event(&"artifact", "По воле богов герою %s явлен предмет — %s." % [hero.display_name(), a.name])
+	elif world.owner[cell] >= 0:
+		ArtifactSystem.to_treasury(world, a, world.nations[world.owner[cell]], "явлен по воле богов")
+		world.log_event(&"artifact", "По воле богов в сокровищнице %s явилась реликвия — %s." % [world.nations[world.owner[cell]].name, a.name],
+				PackedInt32Array([world.owner[cell]]))
+	else:
+		ArtifactSystem.drop(world, a, cell)
+		world.log_event(&"artifact", "По воле богов в краю %s скрыт предмет — %s. Кто найдёт его?" % [world.region_label(cell, "диких земель"), a.name])
+	return a
+
+
+## Милость бога державе под клеткой.
+static func bless(world: World, god: GodDef, cell: int) -> bool:
+	var o := world.owner[cell]
+	if god == null or o < 0:
+		return false
+	GodSystem.grant_boon(world, world.nations[o], god)
+	return true
+
+
+## Бог избирает ближайшего героя.
+static func choose_hero(world: World, god: GodDef, cell: int) -> Hero:
+	var hero := nearest_hero(world, cell)
+	if god == null or hero == null:
+		return null
+	GodSystem.make_chosen(world, hero, god)
+	return hero
+
+
+## Дитя героев: у ближайшего героя (с супругом — общее, иначе находится пара рядом) рождается ребёнок.
+static func hero_child(world: World, cell: int) -> Dictionary:
+	var hero := nearest_hero(world, cell)
+	if hero == null:
+		return {}
+	var other: Hero = world.heroes[hero.spouse] if hero.spouse >= 0 and world.heroes[hero.spouse].alive else null
+	if other == null:
+		for h in world.wandering_heroes():
+			if h != hero and h.alive and h.spouse < 0 and h.race == hero.race:
+				other = h
+				break
+		if other == null:
+			return {}
+		hero.spouse = other.id
+		other.spouse = hero.id
+		world.log_event(&"lineage", "По воле богов герои %s и %s сочетались браком." % [hero.display_name(), other.display_name()])
+	return LineageSystem.birth(world, hero, other)
+
+
+## Ближайший герой основывает орден.
+static func found_order(world: World, cell: int) -> HeroOrder:
+	var hero := nearest_hero(world, cell)
+	return OrderSystem.found(world, hero) if hero != null else null

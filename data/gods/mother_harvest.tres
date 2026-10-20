@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"mother_harvest"
+display_name = "Мать Урожая"
+genitive = "Матери Урожая"
+title = "Владычица полей"
+description = "Древняя богиня земли и колосьев."
+sphere = &"harvest"
+karma = 0.5
+religions = Array[StringName]([&"old_gods", &"hearth"])
+color = Color(0.6, 0.8, 0.35, 1)
+symbol = "❀"
+boon = Dictionary[StringName, float]({&"growth_mult": 1.08})
+boon_text = "дарует обильные урожаи"
+curse_weapon = "Серп Жатвы"

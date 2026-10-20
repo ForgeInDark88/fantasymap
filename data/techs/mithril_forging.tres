@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"mithril_forging"
+display_name = "Мифриловая ковка"
+description = "Тайное искусство дворфов: доспехи легче шёлка и крепче камня."
+branch = "military"
+cost = 1.44
+requires = Array[StringName]([&"iron_forging"])
+effects = Dictionary[StringName, float]({&"army_mult": 1.12, &"defense": 0.3})
+race_weights = Dictionary[StringName, float]({&"dwarves": 3.0, &"humans": 0.1, &"elves": 0.2, &"orcs": 0.0, &"goblins": 0.1, &"undead": 0.0, &"halflings": 0.05})
+notable = true

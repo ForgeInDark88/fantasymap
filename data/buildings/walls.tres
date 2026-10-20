@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_bld")
 id = &"walls"
+requires_tech = &"masonry"
 display_name = "Стены"
 description = "Каменные стены защищают от осад."
 notable = true

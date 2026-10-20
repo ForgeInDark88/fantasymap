@@ -7,7 +7,9 @@ class_name SaveSystem
 ## границ, счётчики регионов) не сохраняется: при загрузке он пересобирается
 ## через World.set_owner, поэтому гарантированно согласован.
 
-const VERSION := 1
+## Версия формата. 1 — этап 6; 2 — религии, технологии и далее (этапы 7+).
+## Старые версии загружаются: недостающее заполняется значениями по умолчанию.
+const VERSION := 2
 const SAVE_DIR := "user://saves/"
 const EXACT_PREFIX := "~"
 
@@ -43,7 +45,7 @@ static func load_world(path: String) -> World:
 		push_error("SaveSystem: не удалось прочитать " + path)
 		return null
 	var data = JSON.parse_string(text)
-	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) != VERSION:
+	if typeof(data) != TYPE_DICTIONARY or int(data.get("version", 0)) < 1 or int(data.get("version", 0)) > VERSION:
 		push_error("SaveSystem: неверный формат сохранения " + path)
 		return null
 	return from_dict(unexact(data))
@@ -60,7 +62,8 @@ static func to_dict(world: World) -> Dictionary:
 	for r in world.regions:
 		regions.append({"name": r.name, "center": r.center, "loyalty": r.loyalty, "unrest": r.unrest,
 			"conquered": r.conquered_year, "pacified": r.pacified_until, "claims": _int_dict(r.claims),
-			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal})
+			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal,
+			"faith": _int_dict(r.faith), "culture": r.culture, "assim": r.assim})
 	var nations := []
 	for n in world.nations:
 		nations.append(_nation_dict(n))
@@ -86,7 +89,8 @@ static func to_dict(world: World) -> Dictionary:
 		var ns := {}
 		for id in snap.nations:
 			ns[str(id)] = Array(snap.nations[id])
-		history.append({"year": snap.year, "races": Array(snap.races), "nations": ns})
+		history.append({"year": snap.year, "races": Array(snap.races), "nations": ns,
+			"techs": Array(snap.get("techs", PackedFloat32Array())), "faiths": _int_dict(snap.get("faiths", {}))})
 	var chronicle := []
 	for e in world.chronicle:
 		chronicle.append({"y": e.year, "m": e.get("month", 0), "d": e.get("day", 0), "k": str(e.kind),
@@ -111,6 +115,30 @@ static func to_dict(world: World) -> Dictionary:
 		"cities": cities,
 		"heroes": heroes,
 		"landmarks": landmarks,
+		"religions": world.religions.map(_religion_dict),
+		"crisis": {"current": world.crisis, "history": world.crisis_history, "last_end": world.last_crisis_end,
+			"harvest": world.crisis_harvest, "events": world.crisis_events, "eras": world.eras},
+		"ruins": world.ruins.map(func(r: Ruin) -> Array: return [r.name, str(r.kind), r.cell, r.origin, r.created_year,
+			r.wealth, r.danger, r.cursed, r.hero_id, r.revived]),
+		"caves": world.caves.map(func(c: Cave) -> Array: return [c.name, str(c.kind), c.cell, c.depth, c.entrance,
+			Array(c.neighbors), c.owner, c.monsters, c.city, c.explored]),
+		"counters": _str_dict(world.counters),
+		"climate": {"volcanoes": Array(world.volcanoes), "scars": world.scars, "temp_shift": world.temp_shift,
+			"moist_shift": world.moist_shift, "zone_harvest": Array(world.zone_harvest), "zone_events": _int_dict(world.zone_events),
+			"ash_until": world.ash_until},
+		"roads": world.roads.map(func(r: Road) -> Array: return [r.a, r.b, r.sea, r.length, r.bridges, r.built_year,
+			r.safety, r.traffic, r.alive]),
+		"societies": world.societies.map(func(s: Society) -> Dictionary: return {"id": s.id, "name": s.name, "kind": str(s.kind),
+			"religion": s.religion, "home": s.home, "leader": s.leader, "founded": s.founded_year,
+			"influence": _int_dict(s.influence), "seized": s.seized, "alive": s.alive}),
+		"orgs": world.orgs.map(func(o: Organization) -> Dictionary: return {"id": o.id, "def": str(o.def.id), "name": o.name,
+			"members": Array(o.members), "founder": o.founder, "founded": o.founded_year, "faith": o.faith,
+			"alive": o.alive, "banned": _int_dict(o.banned)}),
+		"legacies": world.legacies.map(func(l: Legacy) -> Dictionary: return {"id": l.id, "name": l.name, "origin": l.origin,
+			"regions": Array(l.regions), "founded": l.founded_year, "until": l.until_year, "collector": l.collector, "alive": l.alive}),
+		"cultures": world.cultures.map(func(c: Culture) -> Dictionary: return {"id": c.id, "name": c.name, "race": c.race,
+			"color": _col(c.color), "customs": Array(c.customs), "origin": c.origin_nation, "founded": c.founded_year}),
+		"lore": _lore_dict(world),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -142,11 +170,177 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"famine": n.famine_years, "founded": n.founded_year, "alive": n.alive, "label": n.label_cell,
 		"overlord": n.overlord, "vassal_since": n.vassal_since, "allies": n.allies.keys(), "trade": n.trade_partners.keys(),
 		"stalled": n.stalled_years, "collapse": n.collapse_years,
+		"religion": n.state_religion, "unity": n.faith_unity, "effects": _effects_dict(n),
+		"techs": n.techs.keys().map(func(t: StringName) -> String: return str(t)), "researching": str(n.researching),
+		"research": n.research, "tech_seen": n.tech_seen, "culture": n.culture, "culture_level": n.culture_level,
+		"intel": n.intel, "legacy": n.legacy, "home": n.home_cell, "tdirty": n.territory_dirty,
 		"modifiers": n.modifiers.map(func(m: Dictionary) -> Dictionary:
 			var c := m.duplicate()
 			c.id = str(m.id)
 			return c),
 	}
+
+
+static func _effects_dict(n: Nation) -> Dictionary:
+	var out := {}
+	for src in n.effect_sources:
+		out[str(src)] = _str_dict(n.effect_sources[src])
+	return out
+
+
+static func _str_dict(d: Dictionary) -> Dictionary:
+	var out := {}
+	for k in d:
+		out[str(k)] = d[k]
+	return out
+
+
+static func _religion_dict(r: Religion) -> Dictionary:
+	return {"id": r.id, "name": r.name, "symbol": r.symbol, "color": _col(r.color), "def": str(r.def.id) if r.def != null else "",
+		"parent": r.parent, "root": r.root, "founded": r.founded_year, "origin": r.origin_nation, "dogmas": Array(r.dogmas),
+		"effects": _str_dict(r.effects), "missionary": r.missionary, "tolerance": r.tolerance, "zeal": r.zeal,
+		"magic": r.magic, "undead": r.undead, "demons": r.demons, "alive": r.alive}
+
+
+## Религии (v2). В сохранениях v1 их нет — веры назначаются заново по расам.
+static func _load_religions(world: World, data: Dictionary) -> void:
+	if not data.has("religions"):
+		world.init_religions()
+		for n in world.nations:
+			n.state_religion = ReligionSystem.pick_for_race(world, n.race)
+		for region in world.regions:
+			var c := region.controller()
+			if c >= 0:
+				region.faith = {world.nations[c].state_religion: 1.0}
+		return
+	for rd in data.religions:
+		var r := Religion.new()
+		r.id = int(rd.id)
+		r.name = rd.name
+		r.symbol = rd.symbol
+		r.color = _to_col(rd.color)
+		r.def = ReligionDB.find(StringName(rd.def)) if not rd.def.is_empty() else null
+		r.parent = int(rd.parent)
+		r.root = int(rd.root)
+		r.founded_year = int(rd.founded)
+		r.origin_nation = int(rd.origin)
+		r.dogmas = PackedStringArray(rd.dogmas)
+		for k in rd.effects:
+			r.effects[StringName(k)] = float(rd.effects[k])
+		r.missionary = rd.missionary
+		r.tolerance = rd.tolerance
+		r.zeal = rd.zeal
+		r.magic = rd.magic
+		r.undead = rd.undead
+		r.demons = rd.demons
+		r.alive = rd.alive
+		world.religions.append(r)
+	for i in data.regions.size():
+		var region := world.regions[i]
+		region.faith.clear()
+		var fd: Dictionary = data.regions[i].get("faith", {})
+		for k in fd:
+			region.faith[int(k)] = float(fd[k])
+	for k in data.nations.size():
+		var nd: Dictionary = data.nations[k]
+		var n := world.nations[k]
+		n.state_religion = int(nd.get("religion", -1))
+		n.faith_unity = nd.get("unity", 1.0)
+		var eff: Dictionary = nd.get("effects", {})
+		for src in eff:
+			n.set_effects(StringName(src), eff[src])
+
+
+## Технологии и культура (v2). Из сохранений v1 — культура по государству,
+## технологий нет (очки исследований начнут копиться с текущего уровня науки).
+static func _load_techs_and_cultures(world: World, data: Dictionary) -> void:
+	if data.has("cultures"):
+		for cd in data.cultures:
+			var c := Culture.new()
+			c.id = int(cd.id)
+			c.name = cd.name
+			c.race = int(cd.race)
+			c.color = _to_col(cd.color)
+			c.customs = PackedStringArray(cd.customs)
+			c.origin_nation = int(cd.origin)
+			c.founded_year = int(cd.founded)
+			world.cultures.append(c)
+	for k in data.nations.size():
+		var nd: Dictionary = data.nations[k]
+		var n := world.nations[k]
+		if not data.has("cultures"):
+			n.culture = CultureSystem.new_culture(world, n).id
+			n.tech_seen = n.tech
+			continue
+		for t in nd.get("techs", []):
+			if TechDB.find(StringName(t)) != null:
+				n.techs[StringName(t)] = true
+		n.researching = StringName(nd.get("researching", ""))
+		n.research = nd.get("research", 0.0)
+		n.tech_seen = nd.get("tech_seen", n.tech)
+		n.culture = int(nd.get("culture", -1))
+		n.culture_level = nd.get("culture_level", 0.0)
+	for i in data.regions.size():
+		var region := world.regions[i]
+		var rd: Dictionary = data.regions[i]
+		if rd.has("culture"):
+			region.culture = int(rd.culture)
+			region.assim = rd.get("assim", 0.0)
+		else:
+			var c := region.controller()
+			region.culture = world.nations[c].culture if c >= 0 else -1
+
+
+## Разведка, тайные общества, организации, наследия (этап 8; в v1 их нет — пусто).
+static func _load_intrigue(world: World, data: Dictionary) -> void:
+	for k in data.nations.size():
+		var nd: Dictionary = data.nations[k]
+		world.nations[k].intel = nd.get("intel", 0.0)
+		world.nations[k].legacy = int(nd.get("legacy", -1))
+		world.nations[k].home_cell = int(nd.get("home", -1))
+		world.nations[k].territory_dirty = nd.get("tdirty", true)
+	for sd in data.get("societies", []):
+		var s := Society.new()
+		s.id = int(sd.id)
+		s.name = sd.name
+		s.kind = StringName(sd.kind)
+		s.religion = int(sd.religion)
+		s.home = int(sd.home)
+		s.leader = sd.leader
+		s.founded_year = int(sd.founded)
+		for r in sd.influence:
+			s.influence[int(r)] = float(sd.influence[r])
+		s.seized = int(sd.seized)
+		s.alive = sd.alive
+		world.societies.append(s)
+	for od in data.get("orgs", []):
+		var o := Organization.new()
+		o.id = int(od.id)
+		o.def = OrgDB.find_org(StringName(od.def))
+		if o.def == null:
+			continue
+		o.name = od.name
+		o.members = PackedInt32Array(od.members)
+		o.founder = int(od.founder)
+		o.founded_year = int(od.founded)
+		o.faith = int(od.faith)
+		o.alive = od.alive
+		for m in od.get("banned", {}):
+			o.banned[int(m)] = int(od.banned[m])
+		world.orgs.append(o)
+	for ld in data.get("legacies", []):
+		var l := Legacy.new()
+		l.id = int(ld.id)
+		l.name = ld.name
+		l.origin = int(ld.origin)
+		l.regions = PackedInt32Array(ld.regions)
+		l.founded_year = int(ld.founded)
+		l.until_year = int(ld.until)
+		l.collector = int(ld.collector)
+		l.alive = ld.alive
+		world.legacies.append(l)
+	# Кэш членства (Nation.org_ids) — из списков организаций.
+	OrgSystem._apply_membership(world)
 
 
 static func _hero_dict(h: Hero) -> Dictionary:
@@ -158,7 +352,83 @@ static func _hero_dict(h: Hero) -> Dictionary:
 		"fate": str(h.fate), "returns": h.returns, "goal": h.goal_cell, "bonds": _int_dict(h.bonds),
 		"spouse": h.spouse, "mentor": h.mentor, "party": h.party_leader, "ally": h.ally_nation, "ally_until": h.ally_until,
 		"vendetta": h.vendetta, "killed_by": h.killed_by, "intellect": h.intellect, "thought": h.thought,
+		"parents": Array(h.parents), "children": Array(h.children), "lineage": h.lineage, "artifact_id": h.artifact_id,
+		"order": h.order, "god": str(h.patron_god), "chosen": h.chosen, "awits": h._artifact_wits,
 	}
+
+
+## Этап 10.1: артефакты, роды, дети, ордена, милости богов.
+static func _lore_dict(world: World) -> Dictionary:
+	return {
+		"artifacts": world.artifacts.map(func(a: Artifact) -> Dictionary: return {"def": str(a.def.id) if a.def != null else "",
+			"name": a.name, "hero": a.hero, "nation": a.nation, "cell": a.cell, "year": a.created_year, "history": Array(a.history)}),
+		"lineages": world.lineages,
+		"births": world.hero_births,
+		"orders": world.orders.map(func(o: HeroOrder) -> Dictionary: return {"name": o.name, "kind": str(o.kind), "founder": o.founder,
+			"leader": o.leader, "founded": o.founded_year, "ended": o.ended_year, "karma": o.karma, "hall": o.hall_cell,
+			"members": Array(o.members), "alive": o.alive, "total": o.total}),
+		"boons": world.nations.map(func(n: Nation) -> Array: return [str(n.god_boon), n.god_boon_until]),
+	}
+
+
+static func _load_lore(world: World, data: Dictionary) -> void:
+	if not data.has("lore"):
+		# Старое сохранение: оружие героев (строки) становится предметами без ГСЧ.
+		for h in world.heroes:
+			if h.artifact.is_empty():
+				continue
+			var a := Artifact.new()
+			a.id = world.artifacts.size()
+			a.def = LoreDB.artifact(&"legendary_weapon" if h.artifact_mult >= 1.75 else (&"cursed_weapon" if h.artifact_mult >= 1.5 else &"ancient_weapon"))
+			a.name = h.artifact
+			a.created_year = h.born_year
+			if h.alive and not h.is_ruler:
+				a.hero = h.id
+				h.artifact_id = a.id
+			elif h.is_ruler and h.nation_id >= 0:
+				a.nation = h.nation_id
+			else:
+				a.cell = h.cell
+			world.artifacts.append(a)
+		for n in world.nations:
+			ArtifactSystem.apply_nation_effects(world, n)
+		return
+	var lore: Dictionary = data.lore
+	for ad in lore.artifacts:
+		var a := Artifact.new()
+		a.id = world.artifacts.size()
+		a.def = LoreDB.artifact(StringName(ad.def))
+		a.name = ad.name
+		a.hero = int(ad.hero)
+		a.nation = int(ad.nation)
+		a.cell = int(ad.cell)
+		a.created_year = int(ad.year)
+		a.history = PackedStringArray(ad.history)
+		world.artifacts.append(a)
+	for l in lore.lineages:
+		world.lineages.append({"name": str(l.name), "founder": int(l.founder), "year": int(l.year), "heroes": int(l.heroes)})
+	for b in lore.births:
+		world.hero_births.append({"parents": [int(b.parents[0]), int(b.parents[1])], "race": str(b.race), "class": str(b["class"]),
+			"name": str(b.name), "karma": float(b.karma), "intellect": float(b.intellect), "adult": int(b.adult),
+			"lineage": int(b.lineage), "cell": int(b.cell), "born": int(b.born), "epithet": str(b.epithet)})
+	for od in lore.orders:
+		var o := HeroOrder.new()
+		o.id = world.orders.size()
+		o.name = od.name
+		o.kind = StringName(od.kind)
+		o.founder = int(od.founder)
+		o.leader = int(od.leader)
+		o.founded_year = int(od.founded)
+		o.ended_year = int(od.ended)
+		o.karma = od.karma
+		o.hall_cell = int(od.hall)
+		o.members = PackedInt32Array(od.members)
+		o.alive = od.alive
+		o.total = int(od.total)
+		world.orders.append(o)
+	for i in mini(lore.boons.size(), world.nations.size()):
+		world.nations[i].god_boon = StringName(lore.boons[i][0])
+		world.nations[i].god_boon_until = int(lore.boons[i][1])
 
 
 static func _war_dict(w: War) -> Dictionary:
@@ -371,8 +641,84 @@ static func from_dict(data: Dictionary) -> World:
 		var ns := {}
 		for k in snap.nations:
 			ns[int(k)] = PackedFloat32Array(snap.nations[k])
-		world.history.append({"year": int(snap.year), "races": PackedFloat32Array(snap.races), "nations": ns})
+		var faiths := {}
+		for k in snap.get("faiths", {}):
+			faiths[int(k)] = int(snap.faiths[k])
+		world.history.append({"year": int(snap.year), "races": PackedFloat32Array(snap.races), "nations": ns,
+			"techs": PackedFloat32Array(snap.get("techs", [])), "faiths": faiths})
 	world.terrain_version = int(data.get("terrain_version", 0))
+	_load_religions(world, data)
+	_load_techs_and_cultures(world, data)
+	_load_intrigue(world, data)
+	var cr: Dictionary = data.get("crisis", {})
+	if not cr.is_empty():
+		var cur: Dictionary = cr.current
+		if not cur.is_empty():
+			world.crisis = {"id": str(cur.id), "stage": int(cur.stage), "stage_start": int(cur.stage_start), "start": int(cur.start),
+				"invader": int(cur.invader), "titan_cell": int(cur.titan_cell), "titan_power": float(cur.titan_power),
+				"titan_name": str(cur.titan_name)}
+		for h in cr.history:
+			world.crisis_history.append({"id": str(h.id), "name": str(h.name), "start": int(h.start), "end": int(h.end)})
+		world.last_crisis_end = int(cr.last_end)
+		world.crisis_harvest = float(cr.harvest)
+		world.crisis_events = cr.events
+		for e in cr.eras:
+			world.eras.append({"name": str(e.name), "start": int(e.start), "end": int(e.end)})
+	for rd in data.get("ruins", []):
+		var r := Ruin.new()
+		r.id = world.ruins.size()
+		r.name = rd[0]
+		r.kind = StringName(rd[1])
+		r.cell = int(rd[2])
+		r.origin = rd[3]
+		r.created_year = int(rd[4])
+		r.wealth = rd[5]
+		r.danger = rd[6]
+		r.cursed = rd[7]
+		r.hero_id = int(rd[8])
+		r.revived = rd[9]
+		world.ruins.append(r)
+	if not data.has("caves"):
+		UndergroundSystem.generate(world)
+	for cd in data.get("caves", []):
+		var c := Cave.new()
+		c.id = world.caves.size()
+		c.name = cd[0]
+		c.kind = StringName(cd[1])
+		c.cell = int(cd[2])
+		c.depth = int(cd[3])
+		c.entrance = cd[4]
+		c.neighbors = PackedInt32Array(cd[5])
+		c.owner = int(cd[6])
+		c.monsters = cd[7]
+		c.city = cd[8]
+		c.explored = cd[9]
+		world.caves.append(c)
+	for n in world.nations:
+		n.tunnel_neighbors = UndergroundSystem.tunnel_neighbors(world, n.id)
+	var cnt: Dictionary = data.get("counters", {})
+	for k in cnt:
+		world.counters[StringName(k)] = int(cnt[k])
+	var cl: Dictionary = data.get("climate", {})
+	if cl.is_empty():
+		ClimateSystem.place_volcanoes(world)
+	else:
+		world.volcanoes = PackedInt32Array(cl.volcanoes)
+		for sc in cl.scars:
+			world.scars.append({"cell": int(sc.cell), "radius": float(sc.radius), "kind": sc.kind, "until": int(sc.until)})
+		world.temp_shift = cl.temp_shift
+		world.moist_shift = cl.moist_shift
+		world.zone_harvest = PackedFloat32Array(cl.zone_harvest)
+		for z in cl.zone_events:
+			world.zone_events[int(z)] = {"kind": cl.zone_events[z].kind, "until": int(cl.zone_events[z].until)}
+		world.ash_until = int(cl.ash_until)
+	for rd in data.get("roads", []):
+		var road := RoadSystem.build(world, world.cities[int(rd[0])], world.cities[int(rd[1])], rd[2], rd[3], int(rd[4]))
+		road.built_year = int(rd[5])
+		road.safety = rd[6]
+		road.traffic = rd[7]
+		road.alive = rd[8]
+	_load_lore(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])
@@ -468,6 +814,14 @@ static func _restore_hero(hd: Dictionary) -> Hero:
 	h.killed_by = int(hd.killed_by)
 	h.intellect = hd.get("intellect", h.hero_class.intellect)
 	h.thought = hd.get("thought", "")
+	h.parents = PackedInt32Array(hd.get("parents", []))
+	h.children = PackedInt32Array(hd.get("children", []))
+	h.lineage = int(hd.get("lineage", -1))
+	h.artifact_id = int(hd.get("artifact_id", -1))
+	h.order = int(hd.get("order", -1))
+	h.patron_god = StringName(hd.get("god", ""))
+	h.chosen = hd.get("chosen", false)
+	h._artifact_wits = hd.get("awits", 0.0)
 	return h
 
 
@@ -503,6 +857,17 @@ static func _reorder(d: Dictionary, order: Array) -> void:
 			copy.erase(int(k))
 	for k in copy:
 		d[k] = copy[k]
+
+
+## Цвет без потерь (to_html округляет до 8 бит на канал).
+static func _col(c: Color) -> Array:
+	return [c.r, c.g, c.b, c.a]
+
+
+static func _to_col(v: Variant) -> Color:
+	if typeof(v) == TYPE_STRING:
+		return Color.html(v)
+	return Color(v[0], v[1], v[2], v[3])
 
 
 static func _raw(text: String) -> PackedByteArray:

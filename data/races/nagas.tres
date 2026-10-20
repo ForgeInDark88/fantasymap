@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"nagas"
+era_title = "Змеиных царей"
 display_name = "Наги"
 description = "Змеелюди морских глубин. Поднимаются из пучины вместе с островами, живут у воды и в болотах."
 color = Color(0.1, 0.7, 0.75, 1)

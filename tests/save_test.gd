@@ -5,6 +5,29 @@ extends SceneTree
 ##   godot --headless --path . -s res://tests/save_test.gd -- [seed]
 
 var _failures := 0
+## Разделы, появившиеся после формата v1 (этапы 7+): сравниваются после продолжения
+## истории и вырезаются при имитации старого сохранения.
+const NEW_KEYS: Array[String] = ["religions", "cultures", "societies", "orgs", "legacies", "roads", "climate", "counters", "caves", "ruins", "crisis", "lore"]
+const NEW_NATION_KEYS: Array[String] = ["religion", "unity", "effects", "techs", "researching", "research", "tech_seen",
+	"culture", "culture_level", "intel", "legacy", "home", "tdirty"]
+const NEW_REGION_KEYS: Array[String] = ["faith", "culture", "assim"]
+const NEW_HERO_KEYS: Array[String] = ["parents", "children", "lineage", "artifact_id", "order", "god", "chosen", "awits"]
+
+
+static func _as_v1(d: Dictionary) -> Dictionary:
+	d.version = 1
+	for k in NEW_KEYS:
+		d.erase(k)
+	for n in d.nations:
+		for k in NEW_NATION_KEYS:
+			n.erase(k)
+	for r in d.regions:
+		for k in NEW_REGION_KEYS:
+			r.erase(k)
+	for h in d.heroes:
+		for k in NEW_HERO_KEYS:
+			h.erase(k)
+	return d
 
 
 func _initialize() -> void:
@@ -60,6 +83,25 @@ func _initialize() -> void:
 		sim.step(loaded)
 	_expect(loaded.owner == world.owner, "после 15 лет карты разошлись")
 	_expect(loaded.chronicle_total == world.chronicle_total, "после 15 лет летописи разошлись")
+	var da := SaveSystem.to_dict(world)
+	var db := SaveSystem.to_dict(loaded)
+	for key in NEW_KEYS:
+		if JSON.stringify(da.get(key)) != JSON.stringify(db.get(key)):
+			for i in da[key].size():
+				if JSON.stringify(da[key][i]) != JSON.stringify(db[key][i]): print(JSON.stringify(da[key][i]), "\n", JSON.stringify(db[key][i]))
+		_expect(JSON.stringify(da.get(key)) == JSON.stringify(db.get(key)), "после 15 лет разошлось: " + key)
+	_expect(JSON.stringify(da.regions.map(func(r): return r.faith)) == JSON.stringify(db.regions.map(func(r): return r.faith)), "после 15 лет разошлась вера регионов")
+	_expect(JSON.stringify(da.regions.map(func(r): return [r.culture, r.assim])) == JSON.stringify(db.regions.map(func(r): return [r.culture, r.assim])), "после 15 лет разошлась культура регионов")
+	_expect(JSON.stringify(da.nations.map(func(n): return n.techs)) == JSON.stringify(db.nations.map(func(n): return n.techs)), "после 15 лет разошлись технологии")
+
+	# Старое сохранение (формат v1, без новых систем) загружается и живёт дальше.
+	var old := _as_v1(SaveSystem.to_dict(world))
+	var restored := SaveSystem.from_dict(SaveSystem.unexact(JSON.parse_string(JSON.stringify(SaveSystem.exact(old), "", false, true))))
+	_expect(restored != null and restored.owner == world.owner, "сохранение v1 не загрузилось")
+	if restored != null:
+		for y in 3:
+			sim.step(restored)
+		_expect(restored.nations.size() >= world.nations.size(), "мир из v1 не живёт")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	_finish()
 

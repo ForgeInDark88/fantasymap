@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_race")
 id = &"orcs"
+era_title = "Орды"
 display_name = "Орки"
 description = "Воинственные кочевники степей и холмов. Живут недолго, растут быстро и сильны в бою."
 color = Color(0.8, 0.18, 0.15, 1)

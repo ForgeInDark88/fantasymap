@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/cave_worm.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"cave_worm"
+display_name = "Культ Пещерного Червя"
+description = "Гоблины поклоняются Великому Червю, что грызёт корни мира."
+symbol = "∿"
+icon = ExtResource("2_icon")
+color = Color(0.55, 0.6, 0.2, 1)
+races = Dictionary[StringName, float]({&"goblins": 1.0, &"orcs": 0.2})
+dogmas = PackedStringArray("Дары в глубины", "Хитрость превыше силы")
+effects = Dictionary[StringName, float]({&"trade_mult": 1.06, &"growth_mult": 1.04})
+missionary = 0.3
+tolerance = 0.6
+zeal = 0.35
+magic = 0.4
+undead = 0.0
+demons = -0.3

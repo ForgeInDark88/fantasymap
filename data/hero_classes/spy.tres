@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="HeroClassDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_class_def.gd" id="1_hc"]
+
+[resource]
+script = ExtResource("1_hc")
+id = &"spy"
+display_name = "Шпион"
+description = "Тень при дворе: шпион и убийца на службе тайной канцелярии."
+power = 240.0
+race_weights = Dictionary[StringName, float]({&"humans": 0.6, &"goblins": 0.7, &"halflings": 0.5, &"elves": 0.4, &"undead": 0.4, &"nagas": 0.5})
+default_weight = 0.15
+loyalty = 0.7
+aggression = 0.35
+color = Color(0.35, 0.35, 0.45, 1)
+intellect = 0.75
+karma = -0.2
+weapon = "Стилет"

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"night_lord"
+display_name = "Владыка Ночи"
+genitive = "Владыки Ночи"
+title = "Хозяин порога"
+description = "Смерть, тлен и вечная нежизнь."
+sphere = &"death"
+karma = -0.8
+religions = Array[StringName]([&"eternal_night"])
+color = Color(0.45, 0.3, 0.6, 1)
+symbol = "☾"
+boon = Dictionary[StringName, float]({&"army_mult": 1.06})
+boon_text = "поднимает павших в строй"
+curse_weapon = "Коса Ночи"

@@ -11,6 +11,25 @@ const TOOLS := [
 	[&"hero", "Призвать героя", "Клик по государству: в этом регионе появится герой."],
 	[&"source", "Источник силы", "Клик по суше: здесь забьёт источник силы (не больше двух в мире)."],
 	[&"portal", "Открыть Врата бездны", "Клик по суше: из портала хлынут демоны, воюющие со всеми."],
+	[&"religion", "Основать религию", "Клик по государству: пророк приносит новую веру, она становится государственной."],
+	[&"heresy", "Вызвать ересь", "Клик по государству: в его дальних регионах рождается ересь (возможен раскол)."],
+	[&"insight", "Озарение", "Клик по государству: его учёные мгновенно завершают текущее исследование."],
+	[&"assimilate", "Слияние культур", "Клик по региону: его жители перенимают культуру владельца."],
+	[&"spy", "Тайная операция", "Сначала выберите государство-заказчика (обычным кликом), затем включите инструмент и кликните по жертве."],
+	[&"society", "Тайное общество", "Клик по региону: в нём тайно собирается культ, братство или заговор."],
+	[&"org", "Созвать организацию", "Клик по государству: оно созывает организацию выбранного вида (если найдутся участники)."],
+	[&"eruption", "Извержение", "Клик у гор: ближайший вулкан извергается (или гора под курсором становится вулканом)."],
+	[&"drought", "Засуха", "Клик: на климатический пояс клетки обрушивается великая сушь."],
+	[&"invasion", "Нашествие из глубин", "Клик: из ближайшего логова чудовищ полчища вырываются на поверхность."],
+	[&"ruin", "Древние руины", "Клик по суше: из-под земли открывается древнее святилище, полное сокровищ и опасностей."],
+	[&"crisis", "Мировой кризис", "Клик по карте: на мир обрушивается выбранный кризис (идущий — заканчивается)."],
+	[&"road", "Проложить дорогу", "Клик у города: от него пройдёт дорога (или морской путь) к ближайшему городу."],
+	[&"artifact", "Даровать артефакт", "Клик у героя: он получает предмет выбранного вида (нет героя — реликвия в сокровищницу или клад в земле)."],
+	[&"bless", "Милость бога", "Клик по государству: выбранный бог дарует ему свою милость на 10 лет."],
+	[&"chosen", "Избранник бога", "Клик у героя: выбранный бог избирает его и одаривает."],
+	[&"child", "Дитя героев", "Клик у героя: у него (и супруга или героя рядом) родится ребёнок — продолжатель рода."],
+	[&"order", "Основать орден", "Клик у героя: он основывает орден или гильдию своего класса."],
+	[&"collector", "Собиратель земель", "Клик по государству-наследнику империи: оно провозглашает себя собирателем её земель."],
 	[&"raise", "Поднять землю", "Клик: земля поднимается (вода становится сушей, равнины — холмами и горами)."],
 	[&"lower", "Опустить землю", "Клик: земля опускается (может уйти под воду вместе с городами)."],
 ]
@@ -18,6 +37,11 @@ const TOOLS := [
 var _buttons: Dictionary[StringName, Button] = {}
 var _race: OptionButton
 var _event: OptionButton
+var _op: OptionButton
+var _org: OptionButton
+var _crisis: OptionButton
+var _artifact: OptionButton
+var _god: OptionButton
 var _radius: HSlider
 var _hint: Label
 var _tool: StringName = &""
@@ -25,9 +49,15 @@ var _tool: StringName = &""
 
 func _init() -> void:
 	custom_minimum_size = Vector2(320, 0)
+	# Инструментов много — панель прокручивается.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(330, 700)
+	add_child(scroll)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
-	add_child(box)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(box)
 	var title := Label.new()
 	title.text = "Панель Бога"
 	title.add_theme_font_size_override("font_size", 16)
@@ -57,6 +87,36 @@ func _init() -> void:
 				_event.add_item(e.display_name)
 			_event.item_selected.connect(func(_i: int) -> void: _emit())
 			box.add_child(_event)
+		elif t[0] == &"spy":
+			_op = OptionButton.new()
+			for op in OrgDB.ops():
+				_op.add_item(op.display_name)
+			_op.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_op)
+		elif t[0] == &"crisis":
+			_crisis = OptionButton.new()
+			for c in CrisisDB.all():
+				_crisis.add_item(c.display_name)
+			_crisis.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_crisis)
+		elif t[0] == &"artifact":
+			_artifact = OptionButton.new()
+			for a in LoreDB.artifacts():
+				_artifact.add_item(a.display_name)
+			_artifact.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_artifact)
+		elif t[0] == &"chosen":
+			_god = OptionButton.new()
+			for g in LoreDB.gods():
+				_god.add_item("%s %s" % [g.symbol, g.display_name])
+			_god.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_god)
+		elif t[0] == &"org":
+			_org = OptionButton.new()
+			for o in OrgDB.orgs():
+				_org.add_item(o.display_name)
+			_org.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_org)
 		elif t[0] == &"lower":
 			var row := HBoxContainer.new()
 			var l := Label.new()
@@ -113,5 +173,10 @@ func _emit() -> void:
 		"race": RaceDB.all()[_race.selected],
 		"event": EconomyDB.events()[_event.selected],
 		"radius": int(_radius.value),
+		"op": OrgDB.ops()[_op.selected],
+		"org": OrgDB.orgs()[_org.selected],
+		"crisis": CrisisDB.all()[_crisis.selected],
+		"artifact": LoreDB.artifacts()[_artifact.selected],
+		"god": LoreDB.gods()[_god.selected],
 	}
 	EventBus.god_tool_changed.emit(_tool, params)

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ArtifactDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/artifact_def.gd" id="1_art"]
+
+[resource]
+script = ExtResource("1_art")
+id = &"holy_relic"
+display_name = "Святая реликвия"
+kind = "relic"
+name_patterns = PackedStringArray("Мощи святого {name}", "Чаша {place}", "Знамя Света")
+power_mult = 1.15
+karma_drift = 0.03
+wits_bonus = 0.0
+nation_effects = Dictionary[StringName, float]({&"stability": 0.04})
+cursed = false
+weight = 1.0
+famous = true

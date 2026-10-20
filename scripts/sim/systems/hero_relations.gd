@@ -118,7 +118,7 @@ static func duel_modifier(a: Hero, b: Hero) -> float:
 static func yearly(world: World, hero: Hero) -> void:
 	var rng := world.rng
 	if hero.ally_nation >= 0 and (world.year >= hero.ally_until or not world.nations[hero.ally_nation].alive
-			or world.diplomacy.wars_of(hero.ally_nation).is_empty()):
+			or not world.diplomacy.at_war(hero.ally_nation)):
 		hero.add_deed(world, "закончил помогать государству %s" % world.nations[hero.ally_nation].short_name)
 		hero.thought = ""
 		hero.ally_nation = -1
@@ -160,7 +160,7 @@ static func _join_war(world: World, hero: Hero) -> void:
 		if hero.bonds[other_id] < 0.5:
 			continue
 		var friend := world.heroes[other_id]
-		if friend.alive and friend.nation_id >= 0 and not world.diplomacy.wars_of(friend.nation_id).is_empty():
+		if friend.alive and friend.nation_id >= 0 and world.diplomacy.at_war(friend.nation_id):
 			choice = friend.nation_id
 			reason = "на помощь другу %s" % friend.name
 			break
@@ -174,10 +174,13 @@ static func _join_war(world: World, hero: Hero) -> void:
 	if choice < 0 and hero.karma < 0.3 and rng.randf() < 0.25:
 		# Наёмник: идёт к богатому воюющему государству.
 		var best := -1
-		for n in world.nations:
-			if n.alive and n.stock[Goods.GOLD] >= 400.0 and not world.diplomacy.wars_of(n.id).is_empty() \
-					and (best < 0 or n.stock[Goods.GOLD] > world.nations[best].stock[Goods.GOLD]):
-				best = n.id
+		for war in world.diplomacy.wars:
+			if not war.active:
+				continue
+			for m in war.attackers + war.defenders:
+				var n := world.nations[m]
+				if n.alive and n.stock[Goods.GOLD] >= 400.0 and (best < 0 or n.stock[Goods.GOLD] > world.nations[best].stock[Goods.GOLD]):
+					best = n.id
 		if best >= 0:
 			world.nations[best].stock[Goods.GOLD] -= 250.0
 			choice = best

@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_bld")
 id = &"deep_mine"
+requires_tech = &"deep_mining"
 display_name = "Глубинные копи"
 description = "Дворфийские копи уходят к самым корням гор."
 notable = true

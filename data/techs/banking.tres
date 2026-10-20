@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TechDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tech_def.gd" id="1_tech"]
+
+[resource]
+script = ExtResource("1_tech")
+id = &"banking"
+display_name = "Банковское дело"
+description = "Векселя и ростовщики: золото работает само."
+branch = "economy"
+cost = 1.76
+requires = Array[StringName]([&"coinage", &"writing"])
+effects = Dictionary[StringName, float]({&"trade_mult": 1.1})
+race_weights = Dictionary[StringName, float]({&"humans": 1.4, &"goblins": 1.3, &"nagas": 1.2})
+notable = true

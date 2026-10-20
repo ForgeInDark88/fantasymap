@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_def.gd" id="1_bld"]
+
+[resource]
+script = ExtResource("1_bld")
+id = &"university"
+display_name = "Университет"
+description = "Учёные и книжники: наука и культура."
+notable = true
+cost = Dictionary[StringName, float]({&"gold": 120.0, &"stone": 60.0})
+min_population = 6000.0
+requires_tech = &"universities"
+science_bonus = 0.12
+stability = 0.01

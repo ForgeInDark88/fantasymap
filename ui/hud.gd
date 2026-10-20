@@ -16,7 +16,8 @@ const CHRONICLE_COLORS := {
 	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b",
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
-	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff",
+	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -115,9 +116,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_status.text = "Быстрое сохранение: " + WorldState.world.date_text() if WorldState.world != null else ""
 	elif key.keycode == KEY_F9:
 		_saves_panel.load_game(SavesPanel.QUICK_SAVE)
-	# 1..8 — режимы карты.
-	elif key.keycode >= KEY_1 and key.keycode < KEY_1 + MapMode.NAMES.size():
-		EventBus.map_mode_changed.emit(key.keycode - KEY_1)
+	# 1–9, 0, −, = — режимы карты.
+	elif MapMode.HOTKEYS.find(key.keycode) >= 0 and MapMode.HOTKEYS.find(key.keycode) < MapMode.NAMES.size():
+		EventBus.map_mode_changed.emit(MapMode.HOTKEYS.find(key.keycode))
 
 
 func _build_mode_buttons() -> void:
@@ -125,7 +126,7 @@ func _build_mode_buttons() -> void:
 	for mode in MapMode.NAMES.size():
 		var b := Button.new()
 		b.text = MapMode.NAMES[mode]
-		b.tooltip_text = "Клавиша %d" % (mode + 1)
+		b.tooltip_text = "Клавиша %s" % MapMode.hotkey_label(mode)
 		b.toggle_mode = true
 		b.button_group = group
 		b.button_pressed = mode == _mode
@@ -173,6 +174,7 @@ func _build_left_panels() -> void:
 		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
 		["Статистика", "Графики по эпохам", StatsPanel.new()],
 		["Герои", "Герои мира", HeroesPanel.new()],
+		["Руины", "Руины и древности мира", RuinsPanel.new()],
 		["Сохранения", "Сохранить или загрузить мир (F5 / F9)", _saves_panel],
 	]
 	var root: Control = _gen_panel.get_parent()
@@ -196,6 +198,8 @@ func _build_left_panels() -> void:
 	_fate_panel = FatePanel.new()
 	root.add_child(_fate_panel)
 	root.add_child(HeroWindow.new())
+	root.add_child(TechWindow.new())
+	root.add_child(UnderworldWindow.new())
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
@@ -221,7 +225,7 @@ func _on_speed_changed(index: int) -> void:
 
 
 func _on_year_passed(year: int) -> void:
-	_year_label.text = WorldState.world.date_text() if WorldState.world != null else "Год %d" % year
+	_year_label.text = _date_line(WorldState.world) if WorldState.world != null else "Год %d" % year
 	_refresh_chronicle()
 	if WorldState.world != null:
 		var n := WorldState.world.fate_queue.size()
@@ -230,9 +234,21 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if (_mode == MapMode.POLITICAL or _mode == MapMode.RACES) and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
+
+
+## Дата, время года и климатические беды.
+func _date_line(world: World) -> String:
+	var parts: Array[String] = [world.date_text(), ClimateSystem.season(world.month), EraSystem.current(world)]
+	if world.ash_until > world.year:
+		parts.append("пепельная зима")
+	if not world.crisis.is_empty():
+		var def := CrisisDB.find(StringName(world.crisis.id))
+		if def != null:
+			parts.append("[%s: %s]" % [def.display_name, def.stage_names[int(world.crisis.stage)].to_lower()])
+	return " · ".join(parts)
 
 
 ## Последние записи летописи (полная летопись с фильтрами — этап 5).
@@ -310,6 +326,81 @@ func _rebuild_legend() -> void:
 			_legend_row(Color(0.25, 0.55, 0.2), null, "лес — дерево", "")
 			_legend_row(Color(0.65, 0.65, 0.7), null, "камень", "")
 			_legend_row(Color(0.45, 0.55, 0.8), null, "руда в горах", "")
+		MapMode.RELIGION:
+			_legend_title.text = "Религии"
+			if world != null:
+				var regions := {}
+				var states := {}
+				for region in world.regions:
+					var r := region.main_faith()
+					if r >= 0:
+						regions[r] = regions.get(r, 0) + 1
+				for n in world.nations:
+					if n.alive and n.state_religion >= 0:
+						states[n.state_religion] = states.get(n.state_religion, 0) + 1
+				var ids := regions.keys()
+				ids.sort_custom(func(a: int, b: int) -> bool: return regions[a] > regions[b])
+				for id in ids:
+					var faith := world.religions[id]
+					var tip := "%s\nДогматы: %s\nМиссионерство %.0f%%, терпимость %.0f%%, рвение %.0f%%" % [
+						faith.def.description if faith.def != null and not faith.is_heresy() else "Ответвление веры «%s» (%d г.)" % [world.religions[faith.parent].name, faith.founded_year] if faith.is_heresy() else "",
+						", ".join(faith.dogmas), faith.missionary * 100.0, faith.tolerance * 100.0, faith.zeal * 100.0]
+					_legend_row(faith.color, faith.icon(), "%s %s — регионов %d, держав %d" % [faith.symbol, faith.name, regions[id], states.get(id, 0)], tip)
+		MapMode.CULTURE:
+			_legend_title.text = "Культуры"
+			if world != null:
+				var regions := {}
+				for region in world.regions:
+					if region.culture >= 0:
+						regions[region.culture] = regions.get(region.culture, 0) + 1
+				var ids := regions.keys()
+				ids.sort_custom(func(a: int, b: int) -> bool: return regions[a] > regions[b])
+				for id in ids.slice(0, 40):
+					var c := world.cultures[id]
+					var race := RaceDB.by_index(c.race)
+					_legend_row(c.color, race.icon, "%s — регионов %d" % [c.name, regions[id]],
+						"Культура %s (%s), с %d г.\nОбычаи: %s" % [c.name, race.display_name.to_lower(), c.founded_year, ", ".join(c.customs)])
+		MapMode.TRADE:
+			_legend_title.text = "Торговые пути"
+			if world != null:
+				var land := 0
+				var sea := 0
+				var traffic := 0.0
+				var unsafe := 0
+				for r in world.roads:
+					if r.alive:
+						if r.sea:
+							sea += 1
+						else:
+							land += 1
+						traffic += r.traffic
+						if r.safety < 0.6:
+							unsafe += 1
+				_legend_row(Color(0.95, 0.75, 0.3), null, "дороги — %d" % land, "Толщина — торговый оборот за год")
+				_legend_row(Color(0.5, 0.8, 1.0), null, "морские пути — %d" % sea, "Между портами (гаванями)")
+				_legend_row(Color(0.9, 0.35, 0.3), null, "опасные пути — %d" % unsafe, "Разбойники и пираты снижают доход")
+				_legend_row(Color(0.8, 0.8, 0.8), null, "оборот: %s золота в год" % NationPanel.fmt(traffic), "")
+		MapMode.UNDERGROUND:
+			_legend_title.text = "Подземный мир"
+			if world != null:
+				var kinds := {}
+				var owned := 0
+				var cities := 0
+				for c in world.caves:
+					kinds[c.kind] = kinds.get(c.kind, 0) + 1
+					if c.owner >= 0:
+						owned += 1
+					if c.city:
+						cities += 1
+				for kind in kinds:
+					_legend_row(MapOverlay.CAVE_COLORS.get(kind, Color.GRAY), null, "%s — %d" % [Cave.KIND_NAMES.get(kind, str(kind)), kinds[kind]], "")
+				_legend_row(Color(0.9, 0.9, 0.9), null, "освоено пещер: %d, подземных городов: %d" % [owned, cities],
+					"Кольцо — цвет хозяина; дуга сверху — вход с поверхности")
+				var b := Button.new()
+				b.text = "Окно подземного мира…"
+				b.focus_mode = Control.FOCUS_NONE
+				b.pressed.connect(func() -> void: EventBus.underworld_window_requested.emit())
+				_legend_box.add_child(b)
 		MapMode.BIOMES:
 			_legend_title.text = "Биомы"
 			for def in BiomeDB.all():
@@ -436,7 +527,7 @@ func _on_world_generated(world: World, elapsed_ms: int) -> void:
 		world.map.width, world.map.height, world.nations.size(), world.cities.size(),
 		"Создан" if world.year <= 0 else "Загружен (%s)" % world.date_text(), elapsed_ms / 1000.0]
 	_nation_panel.hide()
-	_year_label.text = world.date_text()
+	_year_label.text = _date_line(world)
 	_chronicle_shown = -1
 	_refresh_chronicle()
 	_rebuild_legend()

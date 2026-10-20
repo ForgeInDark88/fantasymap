@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/god_def.gd" id="1_god"]
+
+[resource]
+script = ExtResource("1_god")
+id = &"flame_judge"
+display_name = "Пламенный Судия"
+genitive = "Пламенного Судии"
+title = "Каратель скверны"
+description = "Огонь, выжигающий ведьм, мертвецов и иноверцев."
+sphere = &"fire"
+karma = 0.3
+religions = Array[StringName]([&"purifying_flame"])
+color = Color(0.95, 0.4, 0.2, 1)
+symbol = "✠"
+boon = Dictionary[StringName, float]({&"army_mult": 1.06})
+boon_text = "вкладывает огонь в сердца воинов"
+curse_weapon = "Пламенный клинок"

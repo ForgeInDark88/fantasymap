@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ReligionDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/religion_def.gd" id="1_rel"]
+[ext_resource type="Texture2D" path="res://assets/icons/religions/purifying_flame.svg" id="2_icon"]
+
+[resource]
+script = ExtResource("1_rel")
+id = &"purifying_flame"
+display_name = "Пламя Очищения"
+description = "Огонь выжигает скверну: магию, мертвецов и иноверцев. Вера воинов и инквизиторов."
+symbol = "✠"
+icon = ExtResource("2_icon")
+color = Color(0.9, 0.35, 0.2, 1)
+races = Dictionary[StringName, float]({&"humans": 0.45})
+dogmas = PackedStringArray("Костры для чародеев", "Крестовый поход против тьмы")
+effects = Dictionary[StringName, float]({&"army_mult": 1.08, &"science_mult": 0.92, &"aggression_mult": 1.15})
+missionary = 0.6
+tolerance = 0.1
+zeal = 0.9
+magic = -0.9
+undead = -1.0
+demons = -1.0
