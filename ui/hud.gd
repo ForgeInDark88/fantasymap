@@ -224,6 +224,16 @@ func _build_left_panels() -> void:
 	ach.focus_mode = Control.FOCUS_NONE
 	ach.pressed.connect(func() -> void: EventBus.achievements_window_requested.emit())
 	_panel_buttons.add_child(ach)
+	var audio := AudioPanel.new()
+	audio.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	audio.position = Vector2(-320, 50)
+	root.add_child(audio)
+	var sound := Button.new()
+	sound.text = "🔊"
+	sound.tooltip_text = "Звук и музыка"
+	sound.focus_mode = Control.FOCUS_NONE
+	sound.pressed.connect(func() -> void: audio.visible = not audio.visible)
+	_panel_buttons.add_child(sound)
 
 
 func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
