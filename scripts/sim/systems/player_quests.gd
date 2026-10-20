@@ -51,6 +51,7 @@ static func restore(d: Dictionary) -> Dictionary:
 # Доска заданий
 # ---------------------------------------------------------------------------
 
+
 ## Края в пределах MAX_STEPS шагов: регион → расстояние.
 static func _near_regions(world: World, from: int) -> Dictionary:
 	var dist := {from: 0}
@@ -239,6 +240,7 @@ static func _fail(world: World, q: Dictionary, why: String) -> void:
 # ---------------------------------------------------------------------------
 # Рынок и храм
 # ---------------------------------------------------------------------------
+
 
 static func open_shop(world: World, h: Hero) -> void:
 	var city := city_here(world, h)
