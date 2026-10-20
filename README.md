@@ -20,7 +20,9 @@
 | Пауза / продолжить | `Пробел`; скорость — `x1` (10 дней/с) `x2` `x5` `x10` `x50`; шаг — «+день» / «+мес.» / «+год» |
 | Судьба | кнопка «Судьба (N)» — суд над павшими героями (на время суда игра на паузе) |
 | Выбрать государство | клик по территории (в карточке — ещё регион и город под курсором), строка легенды, ссылка в летописи; `Esc` — снять выбор |
-| Панели | «Мир» (генерация), «Бог», «Летопись», «Статистика», «Герои», «Руины», «Сохранения» — вверху справа; «Лента» — последние события |
+| Панели | «Мир» (генерация), «Бог», «Летопись», «Статистика», «Герои», «Мой герой», «Руины», «Сохранения» — вверху справа; «Лента» — последние события |
+| Окна | «Хроники» (связные истории, экспорт в Markdown), 🏆 — достижения, 🔊 — звук и музыка |
+| Сыграй за героя | «Герои» → «Играть за героя» (или «Создать своего героя») → команды в «Мой герой»; «Идти в регион» — клик по карте; в окне выбора — клавиши `1`–`4` |
 | Окно героя | клик по значку героя на карте, двойной клик в списке «Героев» или «Подробнее о герое…»; «Следить» — камера за героем (`Esc` — перестать) |
 | Сохранить / загрузить | панель «Сохранения»; `F5` — быстрое сохранение, `F9` — быстрая загрузка |
 | Инструмент Бога | выбрать в панели Бога и кликнуть по карте; ПКМ или `Esc` — отмена |
@@ -40,31 +42,35 @@ Seed может быть числом или любым словом («Арда
 | 7 | Религии и ереси; технологии и культура | ✅ готово |
 | 8 | Шпионаж и тайные общества, международные организации, наследие империй | ✅ готово |
 | 9 | Дороги и торговля, климат, подземный слой, руины, мировые кризисы и эпохи | ✅ готово |
-| 10 | Родословные героев, артефакты, ордена, боги; режим «Сыграй за героя»; хроники; достижения; процедурный звук | |
+| 10 | Родословные героев, артефакты, ордена, боги; режим «Сыграй за героя»; хроники; достижения; процедурный звук | ✅ готово |
 
 ## Архитектура
 
 ```
 scenes/            главная сцена
 scripts/
-  autoload/        EventBus (сигналы), WorldState (текущий мир, фоновое создание)
-  core/            MinHeap (очередь с приоритетом)
-  data/            BiomeDef/BiomeDB, RaceDef/RaceDB, TraitDef, ReligionDef/ReligionDB, TechDef/TechDB, OrgDef/SpyOpDef/OrgDB, CrisisDef/CrisisDB — описания данных
+  autoload/        EventBus (сигналы), WorldState (текущий мир, фоновое создание),
+                   Achievements (достижения), AudioManager (процедурный звук)
+  core/            MinHeap (очередь с приоритетом), SaveSystem, AchievementTracker, Synth (синтез звука)
+  data/            BiomeDef/BiomeDB, RaceDef/RaceDB, TraitDef, ReligionDef/ReligionDB, TechDef/TechDB, OrgDef/SpyOpDef/OrgDB, CrisisDef/CrisisDB,
+                   ArtifactDef/GodDef/HeroEventDef/LoreDB, ChronicleTemplateDef, AchievementDef — описания данных
                    и реестры; Registry — общий загрузчик «папка → список + поиск по id»
   map/             MapSettings, WorldMap (данные карты), MapGenerator, Biome (индексы)
   sim/             World (модель мира), Nation, City, Region + RegionGenerator, War, Diplomacy,
-                   Hero, Religion, Culture, Society, Organization, Legacy, Road, Cave, Ruin, WorldSeeder (стартовые государства), NameGenerator, GodTools,
+                   Hero, Religion, Culture, Society, Organization, Legacy, Road, Cave, Ruin, Artifact, HeroOrder, Chronicler (летописец), WorldSeeder (стартовые государства), NameGenerator, GodTools,
                    Simulation (движок: месяц = тик)
   sim/systems/     EconomySystem, PopulationSystem, ExpansionSystem, CitySystem, RulerSystem,
                    UnrestSystem, EventSystem, DiplomacySystem, WarSystem, EnclaveSystem, HeroSystem,
                    ReligionSystem, TechSystem, CultureSystem, SpySystem, SocietySystem, OrgSystem,
                    LegacySystem, RoadSystem, ClimateSystem, UndergroundSystem, RuinSystem,
-                   CrisisSystem, EraSystem
+                   CrisisSystem, EraSystem, ArtifactSystem, LineageSystem, OrderSystem, GodSystem,
+                   PlayerSystem (игра за героя)
   render/          MapRenderer + political_map.gdshader (границы), MapOverlay (города, подписи),
                    MapPainter (данные → Image), MapMode
   camera/          MapCamera
 ui/                HUD, карточка государства, летопись, статистика (LineChart), герои, окно героя,
-                   окно технологий, сохранения, панель Бога, тема
+                   окно технологий, сохранения, панель Бога, «Мой герой» и окно выбора, «Хроники»,
+                   достижения, звук, тема
 data/biomes/       по одному .tres на биом — цвет, плодородие, проходимость, пригодность
 data/races/        по одному .tres на расу (см. ниже)
 data/traits/       особенности рас (название + описание)
@@ -81,6 +87,11 @@ data/techs/        технологии: ветка, стоимость, тре�
 data/spy_ops/      тайные операции: цена, шанс успеха, разоблачение, скандал
 data/orgs/         международные организации: основа союза, правила, взносы, бонусы
 data/crises/       мировые кризисы: стадии, эффекты, урожай, мор, шансы событий, особое поведение
+data/artifacts/    виды артефактов: имена, сила, ум, карма, эффекты для сокровищницы
+data/gods/         боги пантеона: сфера, натура, веры, дар державе, оружие проклятия
+data/hero_events/  события пути героя игрока с вариантами выбора
+data/chronicle_templates/ шаблоны летописца (части текста, варианты, синонимы)
+data/achievements/ достижения: условие, цель, скрытое
 assets/icons/      иконки рас (SVG)
 tests/             headless-тесты и скрипт скриншотов
 ```
