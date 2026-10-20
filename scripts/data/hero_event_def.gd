@@ -5,7 +5,9 @@ extends Resource
 ##   text — надпись, karma/xp — сдвиг кармы и опыт, rep — репутация у
 ##   владельца края, faith — у веры края; power — испытание силой (доля силы
 ##   героя 5-го уровня его класса): успех даёт result, item (вид артефакта) и
-##   награды, провал — fail и шанс гибели risk; без power — всегда успех.
+##   награды, провал — fail и рана risk (×3; раны ≥ 1 — гибель); без power —
+##   всегда успех. gold — золото (отрицательное — плата: без денег вариант
+##   скрыт), heal/wound — лечение и рана, quest — дать задание (ruins, artifact).
 
 @export var id: StringName
 @export var title: String = ""
@@ -13,5 +15,7 @@ extends Resource
 @export_multiline var text: String = ""
 ## Где случается: &"" — везде, &"nation" — на землях государства, &"wild" — в глуши.
 @export var where: StringName = &""
+## Местность: &"" — любая, &"forest", &"mountains", &"coast", &"desert", &"swamp", &"cold", &"city" (край с городом).
+@export var terrain: StringName = &""
 @export var weight: float = 1.0
 @export var options: Array[Dictionary] = []

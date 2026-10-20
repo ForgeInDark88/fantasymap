@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"pickpocket"
+title = "Карманник"
+text = "В толпе на рынке края {where} чья-то рука скользнула к вашему кошелю."
+where = &""
+terrain = &"city"
+weight = 0.8
+options = Array[Dictionary]([{"text": "Схватить вора", "power": 0.2, "xp": 0.5, "rep": 0.03, "gold": 10.0, "result": "Вор пойман, и у него в карманах нашлось чужое серебро.", "fail": "Вор вывернулся и растворился в толпе."}, {"text": "Отпустить мальчишку", "karma": 0.05, "result": "Вы пожалели голодного сироту."}])

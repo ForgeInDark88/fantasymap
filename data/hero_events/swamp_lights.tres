@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"swamp_lights"
+title = "Болотные огни"
+text = "Над трясиной края {where} пляшут голубые огоньки. Говорят, они ведут к сокровищам утопленников."
+where = &""
+terrain = &"swamp"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Пойти за огнями", "power": 0.5, "risk": 0.15, "quest": "artifact", "xp": 1.5, "result": "Огни привели к костям — и к старой карте, где отмечена пропажа.", "fail": "Трясина едва не утянула вас на дно."}, {"text": "Не сходить с гати", "result": "Огни поплясали и погасли."}])

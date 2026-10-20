@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"tournament"
+title = "Турнир"
+text = "В городе края {where} объявлен турнир: победителю — кошель золота и слава."
+where = &""
+terrain = &"city"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Записаться на турнир", "gold": -10.0, "power": 0.9, "risk": 0.08, "xp": 3.0, "rep": 0.1, "result": "Вы победили! Герольды выкрикивают ваше имя.", "fail": "Соперник выбил вас из седла."}, {"text": "Сделать ставку", "gold": -10.0, "result": "Ставка… сгорела. Но зрелище того стоило."}, {"text": "Посмотреть с трибун", "xp": 0.3, "result": "Славный был турнир."}])

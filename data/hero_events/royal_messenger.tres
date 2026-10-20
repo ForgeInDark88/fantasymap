@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"royal_messenger"
+title = "Гонец державы"
+text = "Гонец государства {owner} догоняет вас в краю {where}: «Ищут храбреца для опасного дела в древних руинах»."
+where = &"nation"
+terrain = &""
+weight = 0.8
+options = Array[Dictionary]([{"text": "Взяться за дело", "quest": "ruins", "rep": 0.05, "xp": 0.5, "result": "Гонец вручил грамоту с печатью."}, {"text": "Отказаться", "rep": -0.03, "result": "Гонец поскакал искать другого."}])

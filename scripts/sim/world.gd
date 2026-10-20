@@ -107,6 +107,9 @@ var player_choice: Dictionary = {}
 var player_journal: Array[Dictionary] = []
 var player_rep: Dictionary = {}
 var player_idle := 0
+## Задания героя игрока (PlayerQuests) и предложения доски заданий, ждущие выбора.
+var player_quests: Array[Dictionary] = []
+var player_offers: Array[Dictionary] = []
 ## Руины (RuinSystem).
 var ruins: Array[Ruin] = []
 ## Подземный мир: граф пещер (UndergroundSystem).

@@ -89,6 +89,7 @@ func _draw() -> void:
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
 		_draw_landmarks(world, zoom)
+		_draw_player_route(world, zoom)
 		_draw_heroes(world, zoom)
 	draw_set_transform(Vector2.ZERO)
 
@@ -383,6 +384,37 @@ func _draw_sieges(world: World, zoom: float) -> void:
 			draw_line(guard - perp, guard + perp, Color(0.95, 0.75, 0.3), 2.0 * scale)
 		draw_arc(Vector2.ZERO, r + 4.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(war.siege_progress, 0.0, 1.0), 24,
 				Color(0.95, 0.3, 0.25), 2.5 * scale)
+
+
+## Герой игрока: путь (пунктир по центрам краёв) и цели заданий (золотые «❖»).
+func _draw_player_route(world: World, zoom: float) -> void:
+	if world.player < 0:
+		return
+	var h := world.heroes[world.player]
+	if not h.alive or h.cell < 0:
+		return
+	var w := 2.0 / zoom
+	var cmd := world.player_cmd
+	if not cmd.is_empty() and cmd.kind == "travel":
+		var prev := renderer.cell_center(h.cell)
+		for r in cmd.path:
+			var region := world.regions[int(r)]
+			var p := renderer.cell_center(region.cells[region.cells.size() / 2])
+			draw_dashed_line(prev, p, Color(1.0, 0.9, 0.4, 0.9), w, 6.0 / zoom)
+			prev = p
+		draw_circle(prev, 5.0 / zoom, Color(1.0, 0.9, 0.4))
+	for q in world.player_quests:
+		var qc := PlayerQuests.target_cell(world, q)
+		if qc < 0:
+			continue
+		var p := renderer.cell_center(qc)
+		draw_set_transform(p, 0.0, Vector2.ONE / zoom)
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)]), Color(0.08, 0.06, 0.02))
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -7), Vector2(7, 0), Vector2(0, 7), Vector2(-7, 0)]), Color(1.0, 0.82, 0.25))
+		var size := _font.get_string_size(q.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
+		draw_string_outline(_font, Vector2(-size.x * 0.5, -13), q.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))
+		draw_string(_font, Vector2(-size.x * 0.5, -13), q.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.85, 0.4))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## Герои — ромбы цвета класса; у присягнувших — кольцо цвета их государства.

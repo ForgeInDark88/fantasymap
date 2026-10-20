@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"forest_witch"
+title = "Лесная ведьма"
+text = "В чаще края {where} стоит избушка ведьмы. Старуха щурится: «Раны вижу, герой. Помогу — не задаром»."
+where = &""
+terrain = &"forest"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Заплатить за снадобье", "gold": -15.0, "heal": 0.6, "result": "Горькое зелье жжёт горло, но раны затягиваются на глазах."}, {"text": "Попросить предсказание", "xp": 1.0, "karma": -0.03, "result": "«Твоя смерть придёт с севера», — шепчет ведьма. Или с юга?"}, {"text": "Прогнать ведьму из леса", "power": 0.6, "risk": 0.12, "karma": 0.05, "xp": 2.0, "rep": 0.05, "result": "Ведьма сбежала, проклиная вас; селяне вздохнули свободно.", "fail": "Ведьма наслала на вас порчу."}])

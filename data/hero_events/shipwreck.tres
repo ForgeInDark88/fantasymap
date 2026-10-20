@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"shipwreck"
+title = "Кораблекрушение"
+text = "У берегов края {where} разбился торговый корабль; волны выносят на берег людей и бочки."
+where = &""
+terrain = &"coast"
+weight = 1.0
+options = Array[Dictionary]([{"text": "Спасать моряков", "karma": 0.12, "xp": 1.0, "rep": 0.06, "result": "Вытащенные из воды моряки поклялись в вечной дружбе."}, {"text": "Собрать груз, пока никто не видит", "karma": -0.12, "gold": 35.0, "rep": -0.04, "result": "Бочки с вином и тюк шёлка — неплохой улов."}, {"text": "Пройти мимо", "result": "Море возьмёт своё."}])

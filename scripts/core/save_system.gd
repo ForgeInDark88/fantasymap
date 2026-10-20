@@ -354,6 +354,7 @@ static func _hero_dict(h: Hero) -> Dictionary:
 		"vendetta": h.vendetta, "killed_by": h.killed_by, "intellect": h.intellect, "thought": h.thought,
 		"parents": Array(h.parents), "children": Array(h.children), "lineage": h.lineage, "artifact_id": h.artifact_id,
 		"order": h.order, "god": str(h.patron_god), "chosen": h.chosen, "awits": h._artifact_wits,
+		"pl": [h.wounds, h.gold, h.gear, h.guards, h.guards_until, h.perk_points, h.strength, h.wit, h.charm],
 	}
 
 
@@ -371,6 +372,7 @@ static func _lore_dict(world: World) -> Dictionary:
 		"player": {"hero": world.player, "cmd": world.player_cmd, "choice": world.player_choice,
 			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle},
 		"bookmarks": world.bookmarks,
+		"quests": world.player_quests, "offers": world.player_offers,
 	}
 
 
@@ -429,6 +431,10 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		o.alive = od.alive
 		o.total = int(od.total)
 		world.orders.append(o)
+	for q in lore.get("quests", []):
+		world.player_quests.append(PlayerQuests.restore(q))
+	for q in lore.get("offers", []):
+		world.player_offers.append(PlayerQuests.restore(q))
 	for b in lore.get("bookmarks", []):
 		world.bookmarks.append({"year": int(b.year), "month": int(b.month), "day": int(b.day), "kind": str(b.kind), "text": str(b.text)})
 	var pl: Dictionary = lore.get("player", {})
@@ -841,6 +847,17 @@ static func _restore_hero(hd: Dictionary) -> Hero:
 	h.patron_god = StringName(hd.get("god", ""))
 	h.chosen = hd.get("chosen", false)
 	h._artifact_wits = hd.get("awits", 0.0)
+	if hd.has("pl"):
+		var pl: Array = hd.pl
+		h.wounds = pl[0]
+		h.gold = pl[1]
+		h.gear = int(pl[2])
+		h.guards = int(pl[3])
+		h.guards_until = int(pl[4])
+		h.perk_points = int(pl[5])
+		h.strength = int(pl[6])
+		h.wit = int(pl[7])
+		h.charm = int(pl[8])
 	return h
 
 

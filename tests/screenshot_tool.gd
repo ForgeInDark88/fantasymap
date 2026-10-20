@@ -164,6 +164,13 @@ func _run() -> void:
 		if far >= 0:
 			PlayerSystem.command(world, &"travel", far)
 		ws.call("step_month")
+		star.gold = 120.0
+		star.wounds = 0.35
+		star.perk_points = 1
+		PlayerQuests.open_board(world, star)
+		if not world.player_offers.is_empty():
+			PlayerSystem.choose(world, 0)
+		world.player_choice = {}
 		_panel(hud, "Мой герой", true)
 		await _frames(6)
 		_shot(out_dir, "my_hero.png")
