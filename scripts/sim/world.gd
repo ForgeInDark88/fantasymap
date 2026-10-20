@@ -62,6 +62,22 @@ var terrain_version := 0
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
+## Счётчики событий мира (ассимиляции, ереси, извержения…) — для тестов,
+## статистики и достижений; см. count().
+var counters: Dictionary[StringName, int] = {}
+
+# --- Климат (ClimateSystem) ---
+## Вулканы (клетки гор), следы бедствий на карте {cell, radius, kind, until},
+## медленные сдвиги климата (температура и влажность) и урожайность поясов
+## (север, умеренный, юг) в текущем году.
+var volcanoes := PackedInt32Array()
+var scars: Array[Dictionary] = []
+var temp_shift := 0.0
+var moist_shift := 0.0
+var zone_harvest := PackedFloat32Array([1.0, 1.0, 1.0])
+## Климатические беды поясов: пояс → {kind, until}; пепельная зима — до года ash_until.
+var zone_events: Dictionary[int, Dictionary] = {}
+var ash_until := -1
 ## Дороги и морские пути (граф между городами) и дороги каждого города.
 var roads: Array[Road] = []
 var city_roads: Dictionary[int, PackedInt32Array] = {}
@@ -102,6 +118,7 @@ var used_names: Dictionary = {}
 static func create(s: MapSettings) -> World:
 	var world := World.new(MapGenerator.new().generate(s))
 	WorldSeeder.new().seed_world(world)
+	ClimateSystem.place_volcanoes(world)
 	return world
 
 
@@ -476,6 +493,44 @@ func convert_cell_race(cell: int, new_race: int) -> void:
 	cell_cap[cell] = cap
 	nation.capacity[new_race] += cap
 	nation.pop[new_race] += moved
+
+
+func count(key: StringName, amount: int = 1) -> void:
+	counters[key] = counters.get(key, 0) + amount
+
+
+## Смена биома суши (дрейф климата): добыча и ёмкость земли владельца пересчитываются.
+func change_land_biome(cell: int, new_biome: int) -> void:
+	if map.biome[cell] == new_biome or Biome.is_water(new_biome) or not map.is_land(cell):
+		return
+	var o := owner[cell]
+	var base := cell * Goods.COUNT
+	var r := cell_race[cell]
+	var nation: Nation = nations[o] if o >= 0 else null
+	if nation != null:
+		for g in Goods.COUNT:
+			nation.yields[g] -= cell_yield[base + g]
+		if r != NO_RACE:
+			nation.capacity[r] = maxf(0.0, nation.capacity[r] - cell_capacity(RaceDB.by_index(r), cell))
+	map.biome[cell] = new_biome
+	refresh_cell_yield(cell)
+	if nation != null:
+		for g in Goods.COUNT:
+			nation.yields[g] += cell_yield[base + g]
+		if r != NO_RACE:
+			var cap := cell_capacity(RaceDB.by_index(r), cell)
+			cell_cap[cell] = cap
+			nation.capacity[r] += cap
+
+
+## Климатический пояс клетки: 0 — север, 1 — умеренный, 2 — юг.
+func climate_zone(cell: int) -> int:
+	return clampi(int(float(cell / map.width) / map.height * 3.0), 0, 2)
+
+
+## Урожайность в этом году у клетки (пояс × пепельная зима).
+func harvest_at(cell: int) -> float:
+	return zone_harvest[climate_zone(cell)] if cell >= 0 else 1.0
 
 
 ## Новая «метка» для обхода (см. mark).

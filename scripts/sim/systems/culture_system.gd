@@ -59,6 +59,7 @@ static func assimilate(world: World, nation: Nation, region: Region) -> void:
 	var old := world.cultures[region.culture].name if region.culture >= 0 else "—"
 	region.culture = nation.culture
 	region.assim = 0.0
+	world.count(&"assimilations")
 	region.unrest *= 0.5
 	# Не враждебные титульному народу жители перенимают и язык.
 	var converted := 0

@@ -12,11 +12,13 @@ extends RefCounted
 ## Предел живых героев: BASE + живые государства / PER_NATIONS.
 const BASE_LIMIT := 6
 const PER_NATIONS := 2
+## Потолок живых героев (мир не тонет в героях, когда держав становится много).
+const MAX_HEROES := 32
 ## Великие деяния: шанс в год попытаться (для героя от MIN_GREAT_LEVEL уровня).
 const GREAT_DEED_CHANCE := 0.012
 const MIN_GREAT_LEVEL := 7
 ## Сколько встреч с другими героями в месяц успевает герой.
-const MAX_MEETINGS := 2
+const MAX_MEETINGS := 1
 
 
 ## Появление героя в регионе государства. Возвращает героя или null (лимит;
@@ -27,7 +29,7 @@ static func spawn(world: World, nation: Nation, region: Region, force: bool = fa
 	for n in world.nations:
 		if n.alive:
 			nations += 1
-	if not force and alive >= BASE_LIMIT + nations / PER_NATIONS:
+	if not force and alive >= mini(MAX_HEROES, BASE_LIMIT + nations / PER_NATIONS):
 		return null
 	var rng := world.rng
 	var people := world.region_majority_race(region, nation.id)

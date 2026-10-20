@@ -17,7 +17,7 @@ const CHRONICLE_COLORS := {
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -223,7 +223,7 @@ func _on_speed_changed(index: int) -> void:
 
 
 func _on_year_passed(year: int) -> void:
-	_year_label.text = WorldState.world.date_text() if WorldState.world != null else "Год %d" % year
+	_year_label.text = _date_line(WorldState.world) if WorldState.world != null else "Год %d" % year
 	_refresh_chronicle()
 	if WorldState.world != null:
 		var n := WorldState.world.fate_queue.size()
@@ -235,6 +235,14 @@ func _on_year_passed(year: int) -> void:
 	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
+
+
+## Дата, время года и климатические беды.
+func _date_line(world: World) -> String:
+	var parts: Array[String] = [world.date_text(), ClimateSystem.season(world.month)]
+	if world.ash_until > world.year:
+		parts.append("пепельная зима")
+	return " · ".join(parts)
 
 
 ## Последние записи летописи (полная летопись с фильтрами — этап 5).
@@ -492,7 +500,7 @@ func _on_world_generated(world: World, elapsed_ms: int) -> void:
 		world.map.width, world.map.height, world.nations.size(), world.cities.size(),
 		"Создан" if world.year <= 0 else "Загружен (%s)" % world.date_text(), elapsed_ms / 1000.0]
 	_nation_panel.hide()
-	_year_label.text = world.date_text()
+	_year_label.text = _date_line(world)
 	_chronicle_shown = -1
 	_refresh_chronicle()
 	_rebuild_legend()

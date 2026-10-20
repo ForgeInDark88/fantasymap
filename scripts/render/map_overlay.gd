@@ -77,6 +77,7 @@ func _draw() -> void:
 	var map_like := political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES \
 			or MapMode.is_region_mode(_mode) or _mode == MapMode.TRADE
 	if map_like:
+		_draw_scars(world, zoom)
 		_draw_roads(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
@@ -174,6 +175,35 @@ func _draw_cities(world: World, zoom: float) -> void:
 			var text_color := Color(1, 1, 0.95) if tier >= 2 else Color(0.88, 0.88, 0.84)
 			draw_string_outline(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.05, 0.05, 0.08, 0.85))
 			draw_string(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
+
+
+const SCAR_COLORS := {"ash": Color(0.35, 0.33, 0.33, 0.45), "flood": Color(0.3, 0.55, 0.95, 0.4),
+	"fire": Color(0.85, 0.35, 0.15, 0.4), "drought": Color(0.85, 0.7, 0.35, 0.35)}
+
+
+## Следы бедствий (пепел, затопления, гари, засуха) и вулканы.
+func _draw_scars(world: World, zoom: float) -> void:
+	draw_set_transform(Vector2.ZERO)
+	for s in world.scars:
+		var pos := renderer.cell_center(int(s.cell))
+		var col: Color = SCAR_COLORS.get(s.kind, Color(0.5, 0.5, 0.5, 0.3))
+		var left := clampf((int(s.until) - world.year) / 5.0, 0.25, 1.0)
+		col.a *= left
+		var r: float = s.radius * MapRenderer.CELL_SIZE
+		draw_circle(pos, r, col)
+		draw_arc(pos, r, 0.0, TAU, 32, Color(col, minf(1.0, col.a * 1.6)), 1.5 / zoom)
+	if zoom < 0.6:
+		return
+	var inv := Vector2.ONE / zoom
+	for v in world.volcanoes:
+		var pos := renderer.cell_center(v)
+		draw_set_transform(pos, 0.0, inv)
+		var hot := world.ash_until > world.year
+		var pts := PackedVector2Array([Vector2(-6, 4), Vector2(0, -6), Vector2(6, 4)])
+		draw_colored_polygon(pts, Color(0.45, 0.2, 0.15) if not hot else Color(0.9, 0.3, 0.1))
+		draw_polyline(pts + PackedVector2Array([pts[0]]), Color(0.08, 0.06, 0.06), 1.5)
+		draw_circle(Vector2(0, -6), 1.8, Color(1.0, 0.55, 0.2))
+	draw_set_transform(Vector2.ZERO)
 
 
 ## Дороги и морские пути — линии между городами. Подробность по зуму: на

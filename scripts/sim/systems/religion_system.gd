@@ -172,6 +172,7 @@ static func start_heresy(world: World, nation: Nation) -> Religion:
 	var heresy := _derive(world, faith, nation)
 	for rid in group:
 		shift(world.regions[rid].faith, heresy.id, 0.6)
+	world.count(&"heresies")
 	var where := world.regions[group[0]].name
 	world.log_event(&"religion", "Ересь в государстве %s: в регионе %s проповедуют «%s» — %s." % [
 		nation.name, where, heresy.name, heresy.dogmas[heresy.dogmas.size() - 1].to_lower()], PackedInt32Array([nation.id]))

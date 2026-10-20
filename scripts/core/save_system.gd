@@ -116,6 +116,10 @@ static func to_dict(world: World) -> Dictionary:
 		"heroes": heroes,
 		"landmarks": landmarks,
 		"religions": world.religions.map(_religion_dict),
+		"counters": _str_dict(world.counters),
+		"climate": {"volcanoes": Array(world.volcanoes), "scars": world.scars, "temp_shift": world.temp_shift,
+			"moist_shift": world.moist_shift, "zone_harvest": Array(world.zone_harvest), "zone_events": _int_dict(world.zone_events),
+			"ash_until": world.ash_until},
 		"roads": world.roads.map(func(r: Road) -> Array: return [r.a, r.b, r.sea, r.length, r.bridges, r.built_year,
 			r.safety, r.traffic, r.alive]),
 		"societies": world.societies.map(func(s: Society) -> Dictionary: return {"id": s.id, "name": s.name, "kind": str(s.kind),
@@ -561,6 +565,22 @@ static func from_dict(data: Dictionary) -> World:
 	_load_religions(world, data)
 	_load_techs_and_cultures(world, data)
 	_load_intrigue(world, data)
+	var cnt: Dictionary = data.get("counters", {})
+	for k in cnt:
+		world.counters[StringName(k)] = int(cnt[k])
+	var cl: Dictionary = data.get("climate", {})
+	if cl.is_empty():
+		ClimateSystem.place_volcanoes(world)
+	else:
+		world.volcanoes = PackedInt32Array(cl.volcanoes)
+		for sc in cl.scars:
+			world.scars.append({"cell": int(sc.cell), "radius": float(sc.radius), "kind": sc.kind, "until": int(sc.until)})
+		world.temp_shift = cl.temp_shift
+		world.moist_shift = cl.moist_shift
+		world.zone_harvest = PackedFloat32Array(cl.zone_harvest)
+		for z in cl.zone_events:
+			world.zone_events[int(z)] = {"kind": cl.zone_events[z].kind, "until": int(cl.zone_events[z].until)}
+		world.ash_until = int(cl.ash_until)
 	for rd in data.get("roads", []):
 		var road := RoadSystem.build(world, world.cities[int(rd[0])], world.cities[int(rd[1])], rd[2], rd[3], int(rd[4]))
 		road.built_year = int(rd[5])

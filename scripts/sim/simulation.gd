@@ -30,6 +30,7 @@ var techs := TechSystem.new()
 var culture := CultureSystem.new()
 var spies := SpySystem.new()
 var roads := RoadSystem.new()
+var climate := ClimateSystem.new()
 var societies := SocietySystem.new()
 var orgs := OrgSystem.new()
 var legacies := LegacySystem.new()
@@ -86,6 +87,7 @@ func step_day(world: World) -> void:
 
 ## Раз в год для всего мира: эпидемии от соседей, забывание обид, коалиции, статистика.
 func _new_year(world: World) -> void:
+	climate.tick_year(world)
 	events.flush_pending(world)
 	diplomacy.tick_year(world)
 	religion.tick_year(world)

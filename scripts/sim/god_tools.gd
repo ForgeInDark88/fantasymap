@@ -238,3 +238,28 @@ static func road_from(world: World, cell: int) -> Road:
 	world.log_event(&"trade", "По воле богов %s связала %s и %s." % ["морская тропа" if sea else "дорога", from.name, to.name],
 			PackedInt32Array([from.nation_id, to.nation_id]))
 	return road
+
+
+## Извержение ближайшего вулкана (до 15 клеток) или новой горы-вулкана под курсором.
+static func eruption(world: World, cell: int) -> bool:
+	var pos := Vector2(world.map.cell_pos(cell))
+	var best := -1
+	for v in world.volcanoes:
+		if Vector2(world.map.cell_pos(v)).distance_to(pos) <= 15.0 and (best < 0 or Vector2(world.map.cell_pos(v)).distance_to(pos) < Vector2(world.map.cell_pos(best)).distance_to(pos)):
+			best = v
+	if best < 0:
+		if world.map.biome[cell] != Biome.MOUNTAINS and world.map.biome[cell] != Biome.HILLS:
+			return false
+		world.volcanoes.append(cell)
+		best = cell
+	ClimateSystem.erupt(world, best)
+	return true
+
+
+## Засуха в климатическом поясе клетки.
+static func drought(world: World, cell: int) -> void:
+	var z := world.climate_zone(cell)
+	world.zone_events[z] = {"kind": "drought", "until": world.year + 3}
+	world.zone_harvest[z] = ClimateSystem.DROUGHT_HARVEST
+	world.scars.append({"cell": cell, "radius": 8.0, "kind": "drought", "until": world.year + 3})
+	world.log_event(&"climate", "По воле богов %s пришла великая сушь." % ClimateSystem.ZONE_NAMES[z])

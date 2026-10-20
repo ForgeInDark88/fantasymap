@@ -55,7 +55,8 @@ func tick(world: World, nation: Nation) -> void:
 	# Еда: урожай (с погодой) против потребления.
 	var consumption := pop_k * race.food_need
 	if race.food_need > 0.0:
-		var harvest := rng.randf_range(0.82, 1.15)
+		# Погода года, засухи, суровые зимы и пепел вулканов (ClimateSystem).
+		var harvest := rng.randf_range(0.82, 1.15) * world.harvest_at(world.cities[nation.capital_city].cell if nation.capital_city >= 0 else -1)
 		var production := nation.total_capacity() / 1000.0 * race.food_need * harvest
 		nation.income[Goods.FOOD] = production - consumption
 	else:

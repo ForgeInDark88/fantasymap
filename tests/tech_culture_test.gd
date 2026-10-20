@@ -22,11 +22,9 @@ func _initialize() -> void:
 			sim.step(world)
 			if y % 100 == 99:
 				_check(world)
-		var assim := 0
+		var assim: int = world.counters.get(&"assimilations", 0)
 		var techs := 0
 		for e in world.chronicle:
-			if e.kind == &"culture":
-				assim += 1
 			if e.kind == &"tech":
 				techs += 1
 		var alive := world.nations.filter(func(n: Nation) -> bool: return n.alive)
@@ -34,7 +32,7 @@ func _initialize() -> void:
 		for n in alive:
 			avg += n.techs.size()
 		avg /= maxf(1.0, alive.size())
-		print("seed %d: технологий в среднем %.1f, записей об открытиях %d, о культуре %d, культур %d" % [
+		print("seed %d: технологий в среднем %.1f, записей об открытиях %d, ассимиляций %d, культур %d" % [
 			cfg[0], avg, techs, assim, world.cultures.size()])
 		_expect(avg >= 2.0, "технологии почти не открываются")
 		_expect(assim > 0, "культура ни разу не распространилась")
