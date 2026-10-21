@@ -79,4 +79,12 @@ signal wild_selected(entity: RefCounted)
 signal market_window_requested(nation_id: int)
 ## Открыть окно «Дипломатия» (журнал, характеры, слухи; nation_id — фильтр, -1 — все).
 signal diplomacy_window_requested(nation_id: int)
+## Удобство (этап 11.F): окна «Справочник» и «История мира», панель
+## уведомлений, всплывающее сообщение, обучение, миникарта.
+signal reference_window_requested
+signal history_window_requested
+signal notices_requested
+signal toast_requested(text: String)
+signal tutorial_requested
+signal minimap_toggled
 signal army_selected(army: Army)

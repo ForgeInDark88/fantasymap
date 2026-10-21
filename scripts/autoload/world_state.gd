@@ -36,6 +36,8 @@ const SPEED_K_DOWN := 22.0
 var speed_now := 1.0
 ## Среднее время одного дня (мс) — для отладки и панели статистики.
 var avg_tick_ms := 0.0
+## Снимки истории и ветви (этап 11.F): авто — раз в Snapshots.AUTO_YEARS лет.
+var snapshots := Snapshots.new()
 
 
 func _ready() -> void:
@@ -50,7 +52,11 @@ func _ready() -> void:
 	CrisisDB.ensure_loaded()
 	LoreDB.ensure_loaded()
 	SmoothSettings.load_settings()
+	Loc.init()
 	EventBus.generate_requested.connect(generate)
+	EventBus.year_passed.connect(func(_y: int) -> void:
+		if world != null and not is_generating:
+			snapshots.maybe_auto(world))
 
 
 func _process(delta: float) -> void:
@@ -164,7 +170,31 @@ func _on_generation_finished(result: World) -> void:
 		if world != null:
 			EventBus.world_generated.emit(world, 0)
 		return
+	# Новый или загруженный мир — новая история: прежние снимки к ней не относятся.
+	if result != world:
+		snapshots = Snapshots.new()
 	world = result
 	settings = world.settings
 	_day_accum = 0.0
 	EventBus.world_generated.emit(world, Time.get_ticks_msec() - _gen_started_ms)
+
+
+## Сделать снимок истории сейчас (окно «История мира»).
+func take_snapshot() -> void:
+	if world != null and not is_generating:
+		snapshots.take(world)
+
+
+## Вернуться к снимку: мир продолжится оттуда новой ветвью (прежние снимки остаются).
+func restore_snapshot(index: int) -> bool:
+	if is_generating:
+		return false
+	var w := snapshots.restore(index)
+	if w == null:
+		return false
+	world = w
+	settings = world.settings
+	_day_accum = 0.0
+	set_speed(0)
+	EventBus.world_generated.emit(world, 0)
+	return true

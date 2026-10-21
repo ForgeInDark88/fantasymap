@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"caravan"
+display_name = "Караван"
+title = "Сопроводить караван в город {target}"
+description = "Купцы платят за охрану: разбойники не тронут караван, пока вы рядом."
+handler = &"caravan"
+weight = 1.1
+gold_base = 30.0
+gold_per_step = 12.0
+xp_base = 1.5
+danger = 1.2

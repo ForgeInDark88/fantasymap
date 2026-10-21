@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"ruins"
+display_name = "Руины"
+title = "Исследовать «{target}»"
+handler = &"ruins"
+weight = 1.0

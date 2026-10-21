@@ -93,3 +93,7 @@ cam_reset={
 
 rendering_device/driver.windows="d3d12"
 environment/defaults/default_clear_color=Color(0.072, 0.143, 0.234, 1)
+
+[internationalization]
+
+locale/fallback="ru"

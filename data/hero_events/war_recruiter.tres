@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"war_recruiter"
+title = "Вербовщик"
+text = "Вербовщик державы {owner} зовёт храбрецов в войско: платят исправно."
+where = &""
+terrain = &""
+weight = 1.0
+requires = &"war"
+options = Array[Dictionary]([{"text": "Записаться (присяга державе)", "xp": 0.5, "rep": 0.1, "swear": true, "result": "Вы приносите присягу — теперь можно вступить в войско."}, {"text": "Отказаться", "result": "Вербовщик ищет других."}])

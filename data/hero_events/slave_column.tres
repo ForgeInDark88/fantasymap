@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"slave_column"
+title = "Колонна невольников"
+text = "По дороге в краю {where} гонят закованных невольников."
+where = &""
+terrain = &""
+weight = 1.0
+requires = &"slavery"
+options = Array[Dictionary]([{"text": "Освободить их", "power": 0.5, "risk": 0.15, "karma": 0.15, "xp": 2.0, "rep": -0.1, "result": "Цепи сброшены, невольники разбегаются в леса.", "fail": "Надсмотрщиков слишком много."}, {"text": "Выкупить старика", "gold": -25.0, "karma": 0.08, "result": "Старик плачет и благодарит."}, {"text": "Пройти мимо", "karma": -0.02, "result": "Звон цепей ещё долго слышен за спиной."}])

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"caravan_attack"
+title = "Нападение на караван"
+text = "На караван в краю {where} напали разбойники; купцы отбиваются из последних сил."
+where = &""
+terrain = &""
+weight = 1.2
+requires = &"caravan"
+options = Array[Dictionary]([{"text": "Броситься на помощь", "power": 0.6, "risk": 0.15, "xp": 2.0, "rep": 0.06, "result": "Разбойники бегут; купцы обещают награду в городе.", "fail": "Вас отбросили, караван разграблен.", "next": "caravan_reward", "delay": 2}, {"text": "Переждать в стороне", "karma": -0.03, "result": "Когда пыль улеглась, на дороге остались лишь обломки телег."}])

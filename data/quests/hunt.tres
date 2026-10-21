@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"hunt"
+display_name = "Охота"
+title = "Сразить чудовище в краю {region}"
+handler = &"hunt"
+weight = 1.0
+danger = 1.5

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"raid"
+display_name = "Набег"
+title = "Отбить набег: {target}"
+description = "Племя или орда грабит пограничье — нужно проучить налётчиков."
+handler = &"raid"
+weight = 1.1
+gold_base = 30.0
+xp_base = 2.0
+danger = 1.6

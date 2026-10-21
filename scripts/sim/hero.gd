@@ -77,6 +77,12 @@ var chosen := false
 ## Раны 0..1 (1 — смерть): слабят героя, заживают со временем и отдыхом.
 var wounds := 0.0
 var gold := 0.0
+## Герой игрока в живом мире (этап 11.H): товары в мешке (индекс MarketDB →
+## единиц), плен (держава и до какого года), иммунитет к болезням (id → год).
+var cargo: Dictionary = {}
+var captive_by := -1
+var captive_until := -1
+var immune: Dictionary = {}
 ## Снаряжение (0..3, кузнец) и наёмная охрана (число бойцов до года guards_until).
 var gear := 0
 var guards := 0

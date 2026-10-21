@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"trade"
+display_name = "Торговля"
+title = "Привезти {amount} ед. товара «{good}» в город {target}"
+description = "Город нуждается в товаре — купите его там, где дёшево, и привезите."
+handler = &"trade"
+weight = 1.0
+gold_base = 25.0
+gold_per_step = 10.0
+xp_base = 1.0

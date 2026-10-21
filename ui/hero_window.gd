@@ -82,6 +82,16 @@ func _init() -> void:
 	_follow_button.focus_mode = Control.FOCUS_NONE
 	_follow_button.pressed.connect(_follow)
 	header.add_child(_follow_button)
+	var watch := Button.new()
+	watch.text = "🔔 Уведомлять"
+	watch.tooltip_text = "Уведомления о делах этого героя (повторно — перестать)"
+	watch.focus_mode = Control.FOCUS_NONE
+	watch.pressed.connect(func() -> void:
+		var world := WorldState.world
+		if world != null and _hero_id >= 0:
+			var on := Notices.toggle_hero(world, _hero_id)
+			EventBus.toast_requested.emit(("Уведомления о герое %s включены." if on else "Уведомления о герое %s выключены.") % world.heroes[_hero_id].name))
+	header.add_child(watch)
 	var close := Button.new()
 	close.text = "Закрыть"
 	close.focus_mode = Control.FOCUS_NONE

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"fugitive"
+title = "Беглец"
+text = "Измождённый беглец просит спрятать его от стражи державы {owner}."
+where = &"nation"
+terrain = &""
+weight = 0.8
+options = Array[Dictionary]([{"text": "Спрятать", "karma": 0.08, "rep": -0.08, "xp": 1.0, "result": "Стража прошла мимо. Беглец обещает вернуть долг.", "next": "fugitive_return", "delay": 6}, {"text": "Выдать страже", "karma": -0.08, "rep": 0.08, "gold": 20.0, "result": "Стража платит за поимку."}, {"text": "Пройти мимо", "result": "Не ваше дело."}])

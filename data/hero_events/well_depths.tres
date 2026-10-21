@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"well_depths"
+title = "Отшельник из колодца"
+text = "Отшельник, которого вы спасли, ждёт у дороги: «Я знаю, где спрятан клад, но путь туда опасен»."
+where = &""
+terrain = &""
+weight = 1.0
+chained = true
+options = Array[Dictionary]([{"text": "Выслушать", "xp": 0.5, "quest": "treasure", "result": "Он чертит на песке карту."}, {"text": "Отказаться", "karma": 0.02, "result": "Старик кивает и исчезает в тумане."}])

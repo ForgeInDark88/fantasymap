@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"strange_tongue"
+title = "Чужая речь"
+text = "Здесь говорят на непонятном языке; торговцы смеются над вашими жестами."
+where = &""
+terrain = &""
+weight = 1.2
+requires = &"foreign"
+options = Array[Dictionary]([{"text": "Нанять толмача", "gold": -10.0, "xp": 0.5, "result": "Толмач помогает — дела идут лучше."}, {"text": "Учить язык у старухи-пряхи", "xp": 1.5, "karma": 0.02, "result": "Пара месяцев — и вы уже понимаете цены."}, {"text": "Обойтись жестами", "result": "Кое-как, но объясниться удалось."}])

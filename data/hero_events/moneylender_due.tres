@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"moneylender_due"
+title = "Срок долга"
+text = "Подручные ростовщика нашли вас: «Сто шестьдесят золотых — или пеняйте на себя»."
+where = &""
+terrain = &""
+weight = 1.0
+chained = true
+options = Array[Dictionary]([{"text": "Расплатиться", "gold": -160.0, "karma": 0.02, "result": "Долг уплачен до медяка."}, {"text": "Отбиться", "power": 0.5, "risk": 0.2, "karma": -0.05, "xp": 1.0, "result": "Подручные бегут, ростовщик проклинает вас.", "fail": "Вас крепко отделали."}, {"text": "Сдаться страже как должник", "capture": "посажен в долговую яму", "result": "Стража уводит вас в долговую яму."}])

@@ -10,7 +10,8 @@ static func start_event(world: World, h: Hero) -> bool:
 	var total := 0.0
 	for res in LoreDB.hero_events():
 		var e := res as HeroEventDef
-		if (e.where == &"nation" and owner < 0) or (e.where == &"wild" and owner >= 0) or not _terrain_ok(world, h, e.terrain):
+		if e.chained or (e.where == &"nation" and owner < 0) or (e.where == &"wild" and owner >= 0) or not _terrain_ok(world, h, e.terrain) \
+				or not _requires_ok(world, h, e.requires):
 			continue
 		pool.append(e)
 		total += e.weight
@@ -23,6 +24,48 @@ static func start_event(world: World, h: Hero) -> bool:
 		if roll <= 0.0:
 			ev = e
 			break
+	_show_event(world, h, ev)
+	return true
+
+
+## Событие по id (продолжение цепочки) — без проверки места.
+static func start_event_id(world: World, h: Hero, id: StringName) -> bool:
+	var ev := LoreDB.hero_event(id)
+	if ev == null or not world.player_choice.is_empty():
+		return false
+	_show_event(world, h, ev)
+	return true
+
+
+## Условие события (этап 11.H): поветрие, война, чужой язык, рабство, логово, город.
+static func _requires_ok(world: World, h: Hero, req: StringName) -> bool:
+	var rid := world.region_of[h.cell]
+	var owner := world.owner[h.cell]
+	match req:
+		&"":
+			return true
+		&"outbreak":
+			return DiseaseSystem.outbreak_in(world, rid) != null
+		&"war":
+			return owner >= 0 and not world.diplomacy.wars_of(owner).is_empty()
+		&"foreign":
+			return not PlayerWorld.speaks_here(world, h)
+		&"slavery":
+			return owner >= 0 and world.nations[owner].slavery
+		&"lair":
+			return rid >= 0 and LairSystem.lair_near(world, rid) != null
+		&"caravan":
+			for c in world.caravans:
+				if c.alive and (world.region_of[world.cities[c.from_city].cell] == rid or world.region_of[world.cities[c.to_city].cell] == rid):
+					return true
+			return false
+		&"rumor":
+			return not RumorSystem.active(world).is_empty()
+	return true
+
+
+static func _show_event(world: World, h: Hero, ev: HeroEventDef) -> void:
+	var owner := world.owner[h.cell]
 	var options: Array = []
 	for i in ev.options.size():
 		var cost := -float(ev.options[i].get("gold", 0.0))
@@ -35,7 +78,6 @@ static func start_event(world: World, h: Hero) -> bool:
 	world.player_choice = {"kind": "event", "event": String(ev.id), "title": ev.title,
 		"text": ev.text.format({"where": world.region_label(h.cell, "диких земель"), "owner": world.nations[owner].short_name if owner >= 0 else "?"}),
 		"options": options}
-	return true
 
 
 static func _terrain_ok(world: World, h: Hero, terrain: StringName) -> bool:
@@ -193,6 +235,10 @@ static func choose(world: World, index: int) -> String:
 			result = PlayerQuests.accept(world, h, int(opt.index))
 		"buy":
 			result = PlayerQuests.buy(world, h, String(opt.item), float(opt.cost))
+		"buy_good":
+			result = PlayerWorld.buy_good(world, h, int(opt.good), float(opt.amount), float(opt.cost))
+		"sell_good":
+			result = PlayerWorld.sell_good(world, h, int(opt.good), float(opt.amount), float(opt.cost))
 		"kill":
 			var o := world.heroes[int(opt.other)]
 			h.karma = clampf(h.karma - 0.05 - maxf(0.0, o.karma) * 0.15, -1.0, 1.0)
@@ -256,6 +302,25 @@ static func _event_outcome(world: World, h: Hero, ev: HeroEventDef, index: int) 
 		if not q.is_empty():
 			world.player_quests.append(q)
 			text += " Новое задание: %s." % q.title
+	if opt.has("cargo"):
+		var gi := MarketDB.index_of(StringName(opt.cargo))
+		if gi >= 0:
+			var amount := minf(float(opt.get("amount", 5.0)), PlayerWorld.cargo_cap(h) - PlayerWorld.cargo_total(h))
+			if amount > 0.0:
+				h.cargo[gi] = float(h.cargo.get(gi, 0.0)) + amount
+				# Учёт рынка: товар пришёл в мир из события — как произведённый.
+				world.market_totals["made"] = float(world.market_totals.get("made", 0.0)) + amount
+				text += " В мешке: +%d ед. «%s»." % [int(amount), (MarketDB.all()[gi] as GoodDef).display_name]
+	if opt.has("capture") and owner >= 0:
+		PlayerWorld.capture(world, h, owner, String(opt.capture))
+		return text
+	if opt.has("swear") and owner >= 0 and h.nation_id != owner:
+		h.leave_service(world)
+		h.nation_id = owner
+		world.nations[owner].hero_ids.append(h.id)
+		rep(world, "n%d" % owner, 0.2)
+	if opt.has("next"):
+		world.player_chain.append({"event": String(opt.next), "at": world.year * 12 + world.month + int(opt.get("delay", 3))})
 	if opt.has("item") and h.artifact_id < 0:
 		var a := ArtifactSystem.create(world, StringName(opt.item), h, "", ev.title.to_lower())
 		if a != null:
