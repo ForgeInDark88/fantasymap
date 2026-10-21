@@ -83,6 +83,7 @@ func refresh(world: World) -> void:
 		var sea := roads.values().filter(func(r: Road) -> bool: return r.sea).size()
 		lines.append("[b]Пути:[/b] дорог %d, морских %d · торговля по ним: %s золота в год" % [roads.size() - sea, sea, fmt(trade)])
 	_append_market(world, nation, lines)
+	_append_ai(world, nation, lines)
 	var caves := UndergroundSystem.owned_by(world, nation.id)
 	if not caves.is_empty():
 		lines.append("[b]Под землёй:[/b] пещер %d, подземных городов %d%s" % [caves.size(), caves.filter(func(c: Cave) -> bool: return c.city).size(),
@@ -246,6 +247,24 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")
+
+
+## Дипломатия (этап 11.E): нрав, последние сделки, слухи о державе.
+func _append_ai(world: World, nation: Nation, lines: Array[String]) -> void:
+	if nation.personality != null:
+		lines.append("[b]Нрав:[/b] %s — [color=#a8b0c0]%s[/color]" % [nation.personality.display_name, nation.personality.description])
+	var shown := 0
+	for k in range(world.diplo_journal.size() - 1, -1, -1):
+		var j: Dictionary = world.diplo_journal[k]
+		if (int(j.a) == nation.id or int(j.b) == nation.id) and bool(j.ok):
+			lines.append("[color=#a8d8b8]%d: %s[/color]" % [int(j.year), j.text])
+			shown += 1
+			if shown >= 2:
+				break
+	for r in RumorSystem.active(world):
+		if int(r.about) == nation.id:
+			lines.append("[color=#b0a8c8]Слух: %s[/color]" % String(r.text).trim_prefix("Говорят, "))
+			break
 
 
 ## Рынок и общество (этап 11.D): сословия, рабство, индекс цен, долги, наёмники, дефицит.

@@ -258,5 +258,10 @@ var classes := PackedFloat32Array([0.04, 0.12, 0.84, 0.0])
 ## Рабство дозволено; индекс цен (инфляция; 1 — как при основании).
 var slavery := false
 var inflation := 1.0
+## Характер (этап 11.E, DealSystem) и при каком правителе он выбран.
+var personality: PersonalityDef
+var personality_ruler := ""
+## Год последнего переноса столицы.
+var capital_year := -1000
 ## Сколько источников силы контролирует государство (пересчитывает EconomySystem).
 var sources := 0

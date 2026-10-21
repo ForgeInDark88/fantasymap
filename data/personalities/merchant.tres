@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PersonalityDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/personality_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"merchant"
+display_name = "Торгаш"
+description = "Всё продаётся: товары, земли, мир. Воевать — себе в убыток."
+weight = 1.0
+races = Dictionary[StringName, float]({&"halflings": 2.0, &"humans": 1.3, &"dwarves": 1.2, &"nagas": 1.3})
+governments = Dictionary[StringName, float]({&"oligarchy": 2.5, &"republic": 1.5})
+aggression = 0.7
+deal_rate = 1.8
+deal_taste = Dictionary[StringName, float]({&"goods": 2.0, &"region": 1.3, &"peace": 1.5, &"tech": 1.0})
+generosity = 0.45
+grudge = 0.8
+rumor = 0.05
+relocation = 0.8

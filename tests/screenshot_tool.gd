@@ -58,6 +58,18 @@ func _run() -> void:
 		if c.get("_world_text") != null:
 			c.visible = false
 
+	# Окно «Дипломатия»: журнал, нравы и слухи с правдой.
+	bus.diplomacy_window_requested.emit(-1)
+	await _frames(10)
+	for c in hud.get_node("Root").get_children():
+		if c.get("_truth") != null:
+			(c.get("_truth") as CheckBox).button_pressed = true
+	await _frames(10)
+	_shot(out_dir, "diplomacy.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_truth") != null:
+			c.visible = false
+
 	# Армия в поле: значки, путь и карточка армии (в мирное время — война крупнейшего с соседом).
 	if not world.armies.any(func(x: RefCounted) -> bool: return x.alive and x.kind == &"land"):
 		for o in biggest.borders:

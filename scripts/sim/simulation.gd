@@ -50,6 +50,8 @@ var market := MarketSystem.new()
 var caravans := CaravanSystem.new()
 var mercs := MercSystem.new()
 var credit := CreditSystem.new()
+var deals := DealSystem.new()
+var rumors := RumorSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -132,6 +134,7 @@ func _new_year(world: World) -> void:
 	languages.tick_year(world)
 	_t("mercs", mercs.tick_year.bind(world))
 	_t("credit", credit.tick_year.bind(world))
+	_t("rumors", rumors.tick_year.bind(world))
 	_portals(world)
 	world.record_history()
 
@@ -161,7 +164,7 @@ func _init() -> void:
 		["economy", economy.tick], ["market", market.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
 		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
 		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
-		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],
+		["diplomacy", diplomacy.tick_nation], ["deals", deals.tick], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],
 		["languages", languages.tick],
 	]
 

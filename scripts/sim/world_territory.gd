@@ -140,6 +140,7 @@ func _transfer_city(city: City, new_owner: int) -> void:
 	if new_owner >= 0:
 		var nn := nations[new_owner]
 		nn.city_ids.append(city.id)
+		city.is_capital = false
 		if nn.capital_city < 0:
 			city.is_capital = true
 			nn.capital_city = city.id
@@ -154,6 +155,7 @@ func choose_capital(nation: Nation) -> void:
 	var best: City = null
 	for id in nation.city_ids:
 		var c := cities[id]
+		c.is_capital = false  # столица одна
 		if best == null or c.population > best.population:
 			best = c
 	if best != null:

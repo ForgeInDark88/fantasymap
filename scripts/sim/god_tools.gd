@@ -555,3 +555,57 @@ static func _nearest_city(world: World, cell: int) -> City:
 				best_d = d
 				best = c
 	return best
+
+
+## Дипломатия (этап 11.E): другой характер правителей.
+static func change_personality(world: World, cell: int) -> PersonalityDef:
+	var n := world.nation_at(cell)
+	if n == null:
+		return null
+	DealSystem.ensure_personality(world, n)
+	var all := PersonalityDB.all()
+	var next: PersonalityDef = all[(all.find(n.personality) + 1) % all.size()]
+	n.personality = next
+	n.personality_ruler = n.ruler_name
+	n.set_effects(&"personality", {"aggression_mult": next.aggression})
+	world.log_event(&"deal", "По воле богов у государства %s новый нрав: %s." % [n.short_name, next.display_name.to_lower()], PackedInt32Array([n.id]))
+	return next
+
+
+static func false_rumor(world: World, cell: int) -> Dictionary:
+	var n := world.nation_at(cell)
+	if n == null:
+		return {}
+	return RumorSystem.spread(world, &"weak", n, null, -1, false)
+
+
+static func move_capital(world: World, cell: int) -> bool:
+	var id := world.city_cell[cell]
+	if id < 0:
+		var c := _nearest_city(world, cell)
+		id = c.id if c != null else -1
+	if id < 0:
+		return false
+	var city := world.cities[id]
+	if city.nation_id < 0 or city.is_capital:
+		return false
+	var n := world.nations[city.nation_id]
+	if n.capital_city >= 0:
+		world.cities[n.capital_city].is_capital = false
+	city.is_capital = true
+	n.capital_city = city.id
+	n.capital_year = world.year
+	world.log_event(&"capital", "По воле богов %s переносит столицу в город %s." % [n.name, city.name], PackedInt32Array([n.id]))
+	return true
+
+
+## Государство from предлагает государству to первую возможную сделку.
+static func force_deal(world: World, simulation: Simulation, from: int, to: int) -> bool:
+	if from < 0 or to < 0 or from == to or not world.nations[from].alive or not world.nations[to].alive:
+		return false
+	for kind in DealSystem.KINDS:
+		var offer := simulation.deals._offer(world, kind, world.nations[from], world.nations[to])
+		if not offer.is_empty():
+			return DealSystem.propose(world, offer)
+	DealSystem.journal(world, &"none", from, to, false, "%s и %s: сделать нечего." % [world.nations[from].short_name, world.nations[to].short_name])
+	return false

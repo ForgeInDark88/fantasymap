@@ -21,6 +21,7 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"market": [Array(n.market_stock), Array(n.market_price), Array(n.market_made), Array(n.market_used), Array(n.market_out),
 			Array(n.market_in), Array(n.market_lost), Array(n.market_demand)],
 		"classes": Array(n.classes), "slavery": n.slavery, "inflation": n.inflation,
+		"persona": str(n.personality.id) if n.personality != null else "", "persona_ruler": n.personality_ruler, "capital_year": n.capital_year,
 		"army": n.army, "stability": n.stability, "tech": n.tech, "expansion_points": n.expansion_points,
 		"famine": n.famine_years, "founded": n.founded_year, "alive": n.alive, "label": n.label_cell,
 		"overlord": n.overlord, "vassal_since": n.vassal_since, "allies": n.allies.keys(), "trade": n.trade_partners.keys(),
@@ -398,6 +399,9 @@ static func _restore_nation(nd: Dictionary) -> Nation:
 		n.classes = PackedFloat32Array(nd.classes)
 	n.slavery = bool(nd.get("slavery", false))
 	n.inflation = nd.get("inflation", 1.0)
+	n.personality = PersonalityDB.find(StringName(nd.get("persona", ""))) if str(nd.get("persona", "")) != "" else null
+	n.personality_ruler = str(nd.get("persona_ruler", ""))
+	n.capital_year = int(nd.get("capital_year", -1000))
 	n.army = nd.army
 	n.stability = nd.stability
 	n.tech = nd.tech
@@ -656,3 +660,19 @@ static func _load_market(world: World, data: Dictionary) -> void:
 	for k in m.get("totals", {}):
 		world.market_totals[str(k)] = float(m.totals[k])
 	MarketSystem.region_goods(world)  # кэш товаров краёв — при загрузке, а не в первом ходе
+
+
+## Дипломатия и ИИ (этап 11.E): журнал и слухи.
+static func _diplo_dict(world: World) -> Dictionary:
+	return {"journal": world.diplo_journal, "rumors": world.rumors, "serial": world.rumor_serial}
+
+
+static func _load_diplo(world: World, data: Dictionary) -> void:
+	var d: Dictionary = data.get("diplo", {})
+	for j in d.get("journal", []):
+		world.diplo_journal.append({"year": int(j.year), "month": int(j.month), "kind": StringName(j.kind), "a": int(j.a), "b": int(j.b),
+			"ok": bool(j.ok), "text": str(j.text)})
+	for r in d.get("rumors", []):
+		world.rumors.append({"id": int(r.id), "year": int(r.year), "kind": StringName(r.kind), "about": int(r.about), "target": int(r.target),
+			"source": int(r.source), "truth": bool(r.truth), "cred": float(r.cred), "until": int(r.until), "text": str(r.text)})
+	world.rumor_serial = int(d.get("serial", 0))

@@ -116,6 +116,11 @@ var loans: Array[Dictionary] = []
 var loan_serial := 0
 var defaults: Dictionary = {}
 var market_totals: Dictionary = {}
+## Дипломатия и ИИ (этап 11.E): журнал предложений {year, month, kind, a, b, ok,
+## text} и слухи {id, year, kind, about, target, source, truth, cred, until, text}.
+var diplo_journal: Array[Dictionary] = []
+var rumors: Array[Dictionary] = []
+var rumor_serial := 0
 ## Товары краёв (MarketSystem.region_goods; производное от карты, не сохраняется).
 var region_goods: Array = []
 ## Края, чьи товары надо пересчитать (смена биома, рельеф).

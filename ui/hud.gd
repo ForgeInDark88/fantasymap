@@ -21,6 +21,7 @@ const CHRONICLE_COLORS := {
 	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"battle": "#ff9a6a", &"pirates": "#9ab8d8",
 	&"tribe": "#d8b080", &"lair": "#e07a6a", &"disease": "#a8c860", &"language": "#c0c8f0",
 	&"caravan": "#e0b878", &"mercs": "#c8c0a8", &"debt": "#e8c070", &"society": "#d8a8c0",
+	&"deal": "#a8d8b8", &"capital": "#f0d090", &"rumor": "#b0a8c8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -208,6 +209,7 @@ func _build_left_panels() -> void:
 	root.add_child(UnderworldWindow.new())
 	root.add_child(ChroniclesWindow.new())
 	root.add_child(MarketWindow.new())
+	root.add_child(DiplomacyWindow.new())
 	root.add_child(ArmyCard.new())
 	root.add_child(WildCard.new())
 	root.add_child(HeroChoicePopup.new())
@@ -237,6 +239,12 @@ func _build_left_panels() -> void:
 	market.focus_mode = Control.FOCUS_NONE
 	market.pressed.connect(func() -> void: EventBus.market_window_requested.emit(_nation_panel.get("_nation_id") if _nation_panel.get("_nation_id") != null else -1))
 	_panel_buttons.add_child(market)
+	var diplo := Button.new()
+	diplo.text = "Дипломатия"
+	diplo.tooltip_text = "Журнал сделок и предложений, характеры держав, слухи (и правда о них)"
+	diplo.focus_mode = Control.FOCUS_NONE
+	diplo.pressed.connect(func() -> void: EventBus.diplomacy_window_requested.emit(_nation_panel.get("_nation_id") if _nation_panel.get("_nation_id") != null else -1))
+	_panel_buttons.add_child(diplo)
 	var ach := Button.new()
 	ach.text = "🏆"
 	ach.tooltip_text = "Достижения"

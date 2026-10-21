@@ -139,6 +139,7 @@ static func to_dict(world: World) -> Dictionary:
 		"lore": _lore_dict(world),
 		"wild": _wild_dict(world),
 		"market": _market_dict(world),
+		"diplo": _diplo_dict(world),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -381,6 +382,7 @@ static func from_dict(data: Dictionary) -> World:
 	_load_lore(world, data)
 	_load_wild(world, data)
 	_load_market(world, data)
+	_load_diplo(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])

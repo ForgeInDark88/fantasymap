@@ -77,4 +77,6 @@ signal follow_hero_requested(hero_id: int)
 signal wild_selected(entity: RefCounted)
 ## Открыть окно «Рынок» (nation_id — чей рынок справа; -1 — крупнейшего).
 signal market_window_requested(nation_id: int)
+## Открыть окно «Дипломатия» (журнал, характеры, слухи; nation_id — фильтр, -1 — все).
+signal diplomacy_window_requested(nation_id: int)
 signal army_selected(army: Army)

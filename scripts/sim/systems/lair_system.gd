@@ -171,6 +171,17 @@ func tick_year(world: World) -> void:
 
 func _month(world: World, l: Lair) -> void:
 	var rng := world.rng
+	# Рельеф изменился (суша ушла под воду, край перекроен): логово — в край своей клетки или к центру края.
+	if world.region_of[l.cell] != l.home:
+		if world.region_of[l.cell] >= 0:
+			l.home = world.region_of[l.cell]
+		elif l.home < world.regions.size() and not world.regions[l.home].cells.is_empty():
+			l.cell = world.regions[l.home].center
+		else:
+			l.alive = false
+			return
+		if l.region >= world.regions.size() or world.regions[l.region].cells.is_empty():
+			l.region = l.home
 	if l.def.great or l.strength < MAX_STRENGTH:
 		l.strength *= 1.0 + l.def.growth / 12.0
 	# Герои в крае чудовища (кроме героя игрока — он решает сам); раз в квартал.

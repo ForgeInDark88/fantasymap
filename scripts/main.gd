@@ -195,6 +195,15 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.toggle_slavery(world, cell)
 		&"forgive":
 			GodTools.forgive_debts(world, cell)
+		&"persona":
+			GodTools.change_personality(world, cell)
+		&"rumor":
+			GodTools.false_rumor(world, cell)
+		&"capital":
+			GodTools.move_capital(world, cell)
+		&"deal":
+			if _selected_nation >= 0:
+				GodTools.force_deal(world, WorldState.simulation, _selected_nation, world.owner[cell])
 		&"mutiny":
 			var rebels := GodTools.mutiny(world, cell)
 			if rebels != null:

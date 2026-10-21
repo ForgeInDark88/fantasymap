@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PersonalityDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/personality_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"schemer"
+display_name = "Интриган"
+description = "Слухи, подкупы и тайные сделки: правда для него — оружие."
+weight = 0.8
+races = Dictionary[StringName, float]({&"goblins": 1.5, &"nagas": 1.5, &"demons": 1.2})
+governments = Dictionary[StringName, float]({&"oligarchy": 1.4, &"empire": 1.2})
+aggression = 1.1
+deal_rate = 1.2
+deal_taste = Dictionary[StringName, float]({&"subsidy": 1.6, &"tech": 1.4, &"region": 1.0})
+generosity = 0.3
+grudge = 1.1
+rumor = 0.35
+relocation = 1.0
