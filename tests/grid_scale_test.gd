@@ -63,8 +63,10 @@ func _baseline_x1() -> void:
 	for y in 80:
 		sim.step(world)
 	var h := _hash(world)
-	_expect(h == BASELINE_HASH, "×1: хэш мира %s ≠ базовой линии %s" % [h, BASELINE_HASH])
-	print("×1: хэш совпадает с базовой линией этапа 12")
+	# Побитное совпадение с базовой линией проверено на этапе 12.A (коммит «12.A…»);
+	# с 12.B мир ×1 иной (настоящее движение) — здесь хэш лишь печатается, а
+	# детерминизм проверяет world_hash_test.
+	print("×1: хэш %s (базовая линия 12.A — %s, совпадал до этапа 12.B)" % [h.left(12), BASELINE_HASH.left(12)])
 
 
 static func _hash(world: World) -> String:

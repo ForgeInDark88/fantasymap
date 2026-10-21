@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MoveProfileDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_profile_def.gd" id="1_mv"]
+
+[resource]
+script = ExtResource("1_mv")
+id = &"monster"
+display_name = "Чудовище"
+speed = 1.6
+biome_mult = {&"plains": 1.0, &"steppe": 1.0, &"forest": 0.9, &"jungle": 0.8, &"swamp": 0.8, &"desert": 0.9, &"tundra": 0.9, &"snow": 0.8, &"hills": 0.85, &"mountains": 0.8}
+road_mult = 1.0
+river_mult = 0.85
+winter_mult = 0.9
+enemy_mult = 1.0
+water_only = false
+can_sail = false
+sea_speed = 2.4
+scout_range = 4.0

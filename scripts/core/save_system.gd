@@ -391,6 +391,7 @@ static func from_dict(data: Dictionary) -> World:
 	_load_market(world, data)
 	_load_diplo(world, data)
 	world.update_label_anchors()
+	Pathfinder.prepare(world)  # материки и сетка моря — сразу, в фоновом потоке загрузки
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])
 	world.rng.state = int(data.rng[1])

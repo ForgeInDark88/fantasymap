@@ -34,11 +34,18 @@ static func spawn(world: World, city: City) -> MercCompany:
 	m.race = world.nations[city.nation_id].race if city.nation_id >= 0 else RaceDB.all()[0]
 	m.strength = rng.randf_range(STRENGTH.x, STRENGTH.y)
 	m.wage = m.strength * WAGE
-	m.cell = city.cell
+	m.m = Mover.new(city.cell, &"army")
 	m.born = world.year
 	world.mercs.append(m)
 	world.count(&"mercs")
 	return m
+
+
+## Каждые сутки отряды на марше идут к нанимателю.
+func tick_day(world: World) -> void:
+	for m in world.mercs:
+		if m.alive and m.m.walking():
+			MovementSystem.advance(world, m.m)
 
 
 func tick_year(world: World) -> void:
@@ -94,7 +101,9 @@ static func _hire(world: World, m: MercCompany, n: Nation) -> void:
 	m.employer = n.id
 	m.unpaid = 0
 	if n.capital_city >= 0:
-		m.cell = world.cities[n.capital_city].cell
+		# К нанимателю отряд идёт сам (по карте, со скоростью войска).
+		m.m.nation = n.id
+		MovementSystem.send(world, m.m, world.cities[n.capital_city].cell)
 	world.count(&"mercs_hired")
 	if m.strength > 4000.0 and world.rng.randf() < 0.3:
 		world.log_event(&"mercs", "%s (%s воинов) нанимается на службу государству %s." % [m.name, ArmySystem._num(m.strength), n.short_name],

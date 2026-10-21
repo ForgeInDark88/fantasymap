@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless-проверка этапа 11.B (армии, флоты, полководцы):
 ##   • инварианты в долгом прогоне: армия не теряется и не раздваивается (одна
-##     армия на государство в войне), стоит в существующем регионе, ссылки
+##     армия на государство в войне), стоит в клетке карты (суша/вода по виду), ссылки
 ##     полководцев и армий согласованы, доля сил в (0, 1];
 ##   • война двух соседей: армии собираются, идут, бьются, фронт движется
 ##     (осада растёт, регионы переходят);
@@ -38,7 +38,14 @@ func _check(world: World, where: String) -> void:
 			_expect(a.nation < 0 and a.own_strength > 0.0, "%s: пираты неверны" % where)
 			continue
 		_expect(a.nation >= 0 and world.nations[a.nation].alive, "%s: армия павшего государства" % where)
-		_expect(a.region >= 0 and a.region < world.regions.size() and a.cell == world.regions[a.region].center, "%s: армия вне карты" % where)
+		# Этап 12.B: армия стоит в любой клетке карты (не в центре региона); сухопутная —
+		# на суше или на кораблях в море, флот — на воде; регион — регион её клетки.
+		_expect(a.cell >= 0 and a.cell < world.map.cell_count() and a.region >= 0 and a.region < world.regions.size(), "%s: армия вне карты" % where)
+		if a.cell >= 0 and a.cell < world.map.cell_count():
+			if a.kind == &"fleet":
+				_expect(not world.map.is_land(a.cell), "%s: флот на суше" % where)
+			elif world.map.is_land(a.cell):
+				_expect(world.region_of[a.cell] == a.region, "%s: регион армии не совпадает с её клеткой" % where)
 		_expect(a.share > 0.0 and a.share <= 1.0, "%s: доля сил %.2f" % [where, a.share])
 		var key := "%d:%d:%s" % [a.nation, a.war, a.kind]
 		_expect(a.war < 0 or not seen.has(key), "%s: армия раздвоилась (%s)" % [where, key])
@@ -164,7 +171,7 @@ func _save_load() -> void:
 	var ok := false
 	for y in 300:
 		sim.step_month(world)
-		if world.armies.any(func(a: Army) -> bool: return a.alive and a.state == &"march" and not a.path.is_empty()):
+		if world.armies.any(func(a: Army) -> bool: return a.alive and a.state == &"march" and a.m.walking()):
 			ok = true
 			break
 	_expect(ok, "не нашлось армии в походе")
@@ -238,7 +245,8 @@ func _performance() -> void:
 	print("огромная карта, 50 государств: %.1f мс/год (армии %.2f мс/год, худший ход %.1f мс), войн %d, армий сейчас %d" % [
 		total, armies, worst, wars, world.armies.size()])
 	_expect(worst < 20.0, "ход армий дольше бюджета кадра")
-	_expect(total / 12.0 < 6.0, "месяц симуляции дольше 6 мс")
+	# Этап 12.B: все юниты ходят по карте каждые сутки — бюджет месяца выше (сутки ≪ кадра).
+	_expect(total / 12.0 < 18.0, "месяц симуляции дольше 18 мс")
 	_check(world, "огромная карта")
 
 

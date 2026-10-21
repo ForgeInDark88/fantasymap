@@ -120,7 +120,21 @@ func _deals() -> void:
 	var ws := _world(2024, 60)
 	var world: World = ws[0]
 	var sim: Simulation = ws[1]
-	# Продажа края: клетки и золото переходят.
+	# Продажа края: клетки и золото переходят. Подходящий край бывает не в каждый
+	# год (история мира своя) — ищем до 60 лет вперёд.
+	var sold := false
+	for attempt in 7:
+		if attempt > 0:
+			for y in 10:
+				sim.step(world)
+		sold = _try_sale(world)
+		if sold:
+			break
+	_expect(sold, "не нашлось края для продажи")
+	_deals_rest(world, sim)
+
+
+func _try_sale(world: World) -> bool:
 	var sold := false
 	for seller in world.nations:
 		if sold or not seller.alive:
@@ -141,7 +155,10 @@ func _deals() -> void:
 			_expect(is_equal_approx(seller.stock[Goods.GOLD], gold + 100.0), "продавец не получил золота")
 			sold = true
 			break
-	_expect(sold, "не нашлось края для продажи")
+	return sold
+
+
+func _deals_rest(world: World, sim: Simulation) -> void:
 	# Обмен товарами: общий запас не меняется.
 	var alive := world.nations.filter(func(n: Nation) -> bool: return n.alive and n.market_price.size() == MarketDB.size())
 	var a: Nation = alive[0]

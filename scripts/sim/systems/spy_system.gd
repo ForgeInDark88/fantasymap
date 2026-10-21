@@ -47,7 +47,8 @@ func tick(world: World, nation: Nation) -> void:
 		return
 	var op := _pick_op(world, nation, target)
 	if op != null:
-		run(world, nation, target, op)
+		# Лазутчик идёт к столице цели (AgentSystem); операция — по приходе.
+		AgentSystem.send(world, &"spy", nation, target, op.id)
 
 
 ## Враг на войне или недруг по соседству.

@@ -308,7 +308,7 @@ static func _execute(world: World, h: Hero, kind: StringName) -> void:
 		&"invite":
 			var c := _companion_candidate(world, h)
 			c.party_leader = h.id
-			c.cell = h.cell
+			c.follow = h.id  # идёт к отряду и дальше — за вожаком
 			c.add_bond(h, 0.1)
 			h.add_deed(world, "позвал в свой отряд героя %s" % c.name)
 			c.add_deed(world, "присоединился к отряду героя %s" % h.name)
@@ -408,20 +408,27 @@ static func tick_month(world: World, h: Hero) -> void:
 	world.player_cmd = {}
 
 
+## Путь героя игрока (этап 12.B): герой идёт по клеткам каждые сутки (HeroSystem._walk),
+## а здесь, раз в месяц, отмечаются пройденные края и выбирается следующая цель.
 static func _travel_step(world: World, h: Hero, cmd: Dictionary) -> void:
 	var path: Array = cmd.path
 	var costs: Array = cmd.costs
-	var budget := 1.0
-	while not path.is_empty() and budget > 0.0:
-		var need := float(costs[0])
-		if need > budget:
-			costs[0] = need - budget
-			return
-		budget -= need
-		var r: int = path.pop_front()
+	# Края, пройденные с прошлого хода (до нынешнего включительно), — позади.
+	var here := world.region_of[h.cell]
+	var idx := -1
+	for i in path.size():
+		if int(path[i]) == here:
+			idx = i
+	for i in idx + 1:
+		path.pop_front()
 		costs.pop_front()
-		var region := world.regions[r]
-		h.cell = region.cells[world.rng.randi_range(0, region.cells.size() - 1)]
+	if not path.is_empty():
+		var goal := world.regions[int(path[path.size() - 1])]
+		if not h.m.walking() and not goal.cells.is_empty():
+			if not MovementSystem.send(world, h.m, goal.center if goal.center >= 0 else goal.cells[0]):
+				path.clear()
+		if not path.is_empty():
+			return
 	if path.is_empty():
 		var region := world.region_at(h.cell)
 		world.ensure_region_name(region)

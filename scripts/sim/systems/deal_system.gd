@@ -105,7 +105,8 @@ func tick(world: World, nation: Nation) -> void:
 		if roll <= 0.0:
 			chosen = o[1]
 			break
-	propose(world, chosen)
+	# Посольство идёт по карте (AgentSystem); условия — на день прихода.
+	AgentSystem.send(world, &"envoy", nation, other, StringName(chosen.kind))
 
 
 ## Предложение: что, кто, кому, цена. Пусто — такой сделки сейчас не выйдет.

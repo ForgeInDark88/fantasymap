@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MoveProfileDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_profile_def.gd" id="1_mv"]
+
+[resource]
+script = ExtResource("1_mv")
+id = &"envoy"
+display_name = "Гонец"
+speed = 2.6
+biome_mult = {&"plains": 1.0, &"steppe": 1.05, &"forest": 0.75, &"jungle": 0.6, &"swamp": 0.55, &"desert": 0.8, &"tundra": 0.8, &"snow": 0.5, &"hills": 0.65, &"mountains": 0.45}
+road_mult = 1.5
+river_mult = 0.7
+winter_mult = 0.75
+enemy_mult = 0.9
+water_only = false
+can_sail = true
+sea_speed = 2.6
+scout_range = 2.0

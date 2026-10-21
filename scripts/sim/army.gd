@@ -18,12 +18,22 @@ var share := 1.0
 var own_strength := 0.0
 ## Отряды мелких союзников, влитые в армию вождя стороны (их армии в поле не выходят).
 var allied := 0.0
-## Где армия: регион и клетка для показа; путь — регионы впереди; eta — дней до следующего шага.
+## Положение и путь по клеткам (этап 12.B): армия идёт по карте со скоростью
+## профиля движения (армия — «army», флот и пираты — «fleet»); регион — тот, где
+## она сейчас стоит (последний сухопутный, пока плывёт).
+var m := Mover.new()
+var cell: int:
+	get:
+		return m.cell
+	set(v):
+		m.cell = v
+		m.prev_cell = v
 var region := -1
-var cell := -1
-var path := PackedInt32Array()
-var eta := 0
-## &"muster" (сбор), &"march", &"siege", &"retreat", &"sail" (десант морем), &"idle".
+## Клетка цели пути (-1 — нет) и цель, до которой не дойти (не искать путь каждый месяц).
+var goal := -1
+var unreachable := -1
+## &"muster" (сбор в столице), &"march", &"siege", &"retreat", &"idle",
+## &"home" (война кончилась — идёт домой и распускается).
 var state: StringName = &"muster"
 var state_until := 0
 ## Боевой дух и снабжение (0..1).
@@ -35,8 +45,17 @@ var alive := true
 var created_year := 0
 var battles := 0
 var wins := 0
-## Куда идёт (регион цели) — для показа.
+## Куда идёт (регион цели; у пиратов — город-порт).
 var target := -1
+## Стоит и не может пройти: рядом враг, а для новой битвы рано (не проходят мимо друг друга);
+## сколько суток подряд стоит так против врага (долгое противостояние — слабый отходит).
+var blocked := false
+var standoff := 0
+
+
+## На воде (плывёт на кораблях).
+func at_sea(world: World) -> bool:
+	return cell >= 0 and not world.map.is_land(cell)
 
 
 func strength(world: World) -> float:

@@ -14,9 +14,17 @@ var to_nation := -1
 var good := 0
 var amount := 0.0
 var price := 0.0
-## Месяцев в пути всего и пройдено.
-var months := 1
-var done := 0
+## Положение и путь по клеткам дороги (этап 12.B): караван идёт со скоростью
+## профиля «caravan» (дорогой быстрее), морской путь — под парусом.
+var m := Mover.new(-1, &"caravan")
+var cell: int:
+	get:
+		return m.cell
+	set(v):
+		m.cell = v
+		m.prev_cell = v
+## Клеток пути всего (для доли пройденного).
+var length := 1
 var alive := true
 var robbed := false
 ## Охрана: id героя игрока (-1 — без охраны); охраняемый караван грабят реже.
@@ -27,4 +35,4 @@ var day := 0
 
 ## Доля пройденного пути (для показа).
 func progress() -> float:
-	return clampf(float(done) / float(maxi(1, months)), 0.0, 1.0)
+	return clampf(1.0 - float(m.remaining()) / float(maxi(1, length)), 0.0, 1.0)

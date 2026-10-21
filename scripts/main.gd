@@ -86,7 +86,7 @@ func _on_map_clicked(pos: Vector2) -> void:
 	var wild: RefCounted = null
 	for l in world.lairs:
 		if l.alive:
-			var d := _renderer.cell_center(l.cell if l.region == l.home else world.regions[l.region].center).distance_to(pos)
+			var d := _renderer.cell_center(l.monster_cell()).distance_to(pos)
 			if d < wrad:
 				wrad = d
 				wild = l

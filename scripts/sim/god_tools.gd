@@ -134,6 +134,11 @@ static func set_elevation(world: World, i: int, e: float) -> bool:
 	if owner >= 0:
 		world.set_owner(i, -1)
 	map.elevation[i] = e
+	# Рельеф (и стоимость пути) сменился; суша ↔ вода — и морские пути (Pathfinder).
+	world.terrain_version += 1
+	if was_land != will_land:
+		world.coast_version += 1
+		world.coast_cells.append(i)
 	if will_land:
 		map.biome[i] = MapGenerator.classify_land(e, map.temperature[i], map.moisture[i])
 		if not was_land:
@@ -382,8 +387,10 @@ static func create_army(world: World, cell: int, kind: StringName = &"land") -> 
 	var n := world.nations[o]
 	var wars := world.diplomacy.wars_of(o)
 	n.army += 3000.0
-	var a := ArmySystem.create(world, n, wars[0].id if not wars.is_empty() else -1, kind, world.region_of[cell])
+	# Воля Бога: войско появляется прямо в выбранной клетке (допустимый телепорт — со вспышкой).
+	var a := ArmySystem.create(world, n, wars[0].id if not wars.is_empty() else -1, kind, world.region_of[cell], cell)
 	a.state = &"idle"
+	MovementSystem.log_teleport(world, MoveDB.teleport(&"god"), cell, a.cell)
 	world.log_event(&"battle", "По воле богов %s собирает %s в регионе %s." % [n.name, "флот" if kind == &"fleet" else "новое войско",
 		world.region_label(cell, "диких земель")], PackedInt32Array([o]))
 	return a

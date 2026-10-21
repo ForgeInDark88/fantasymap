@@ -52,6 +52,7 @@ var mercs := MercSystem.new()
 var credit := CreditSystem.new()
 var deals := DealSystem.new()
 var rumors := RumorSystem.new()
+var agents := AgentSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -103,6 +104,8 @@ func step_day(world: World) -> void:
 		_t("lairs", lairs.tick_day.bind(world))
 		_t("diseases", diseases.tick_day.bind(world))
 		_t("caravans", caravans.tick_day.bind(world))
+		_t("agents", agents.tick_day.bind(world))
+		_t("mercs", mercs.tick_day.bind(world))
 	else:
 		wars.tick_day(world)
 		armies.tick_day(world)
@@ -111,6 +114,8 @@ func step_day(world: World) -> void:
 		lairs.tick_day(world)
 		diseases.tick_day(world)
 		caravans.tick_day(world)
+		agents.tick_day(world)
+		mercs.tick_day(world)
 	world.cleanup_dead()
 
 
@@ -160,6 +165,8 @@ var _nation_systems: Array = []
 
 func _init() -> void:
 	armies.wars = wars
+	agents.deals = deals
+	agents.spies = spies
 	_nation_systems = [
 		["economy", economy.tick], ["market", market.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
 		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],

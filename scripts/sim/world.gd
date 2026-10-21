@@ -21,6 +21,7 @@ static func create(s: MapSettings) -> World:
 	TribeSystem.seed_world(world)
 	LairSystem.seed_world(world)
 	MarketSystem.region_goods(world)  # кэш товаров краёв — при создании, а не в первом ходе
+	Pathfinder.prepare(world)  # материки и грубая сетка моря для путей (этап 12.B)
 	return world
 
 

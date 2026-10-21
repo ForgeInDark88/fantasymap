@@ -7,9 +7,15 @@ var id := -1
 var def: TribeDef
 var name := ""
 var race: RaceDef
-## Край, где стоит племя, и клетка для значка.
+## Край, где стоит племя, и клетка; кочуя, племя идёт по карте (этап 12.B, профиль «tribe»).
 var region := -1
-var cell := -1
+var m := Mover.new(-1, &"tribe")
+var cell: int:
+	get:
+		return m.cell
+	set(v):
+		m.cell = v
+		m.prev_cell = v
 ## Воины.
 var strength := 0.0
 ## Кочевники, собравшиеся в орду.

@@ -206,7 +206,7 @@ static func choose(world: World, index: int) -> String:
 				if region != null and not region.neighbors.is_empty():
 					var nb := world.regions[region.neighbors[world.rng.randi_range(0, region.neighbors.size() - 1)]]
 					if not nb.cells.is_empty():
-						h.cell = nb.cells[world.rng.randi_range(0, nb.cells.size() - 1)]
+						MovementSystem.send(world, h.m, nb.cells[world.rng.randi_range(0, nb.cells.size() - 1)])
 				h.add_bond(o, -0.2)
 				result = "Вы скрылись от героя %s." % o.display_name()
 			else:

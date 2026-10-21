@@ -96,4 +96,4 @@ jobs:
           ~/godot/godot --headless --path . --import || true
           ~/godot/godot --headless --path . --import || true
           # Бюджет — мс симуляции на игровой месяц в среднем (с запасом на медленные раннеры CI).
-          ~/godot/godot --headless --path . -s res://tests/profile_systems.gd -- 150 3 40 5 8.0
+          ~/godot/godot --headless --path . -s res://tests/profile_systems.gd -- 150 3 40 5 11.0

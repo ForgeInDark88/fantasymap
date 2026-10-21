@@ -23,19 +23,21 @@ var _selected := -1
 var _world_dirty := false
 var _selected_hero := -1
 var _last_redraw_ms := 0
-## Плавное движение героев: id → видимая позиция (мировые координаты).
-var _hero_pos: Dictionary = {}
-## Скорость сглаживания движения героев (1/с) и дальность, после которой — скачок.
-const HERO_K := 3.0
-const HERO_JUMP := 400.0
+## Этап 12.B: юниты рисуются там, где они в симуляции (Mover); между сутками
+## при скоростях до INTERP_SPEED — линейно по пройденным за сутки клеткам.
+const INTERP_SPEED := 3
+## Следы армий (только отображение): объект → последние точки; сколько точек.
+var _trails: Dictionary = {}
+const TRAIL_POINTS := 6
+var _trail_day := -1
+## Вспышки допустимых телепортов: сколько уже показано.
+var _teleports_seen := -1
 ## Цели заданий героя игрока: заголовок → {pos, alpha} (плавно появляются и гаснут).
 var _marks: Dictionary = {}
 var _route_alpha := 0.0
 var _animating := false
-## Армии: видимая позиция (по объекту — id армий пересчитываются), выбранная армия.
-var _army_pos: Dictionary = {}
+## Выбранная армия.
 var _selected_army: Army = null
-const ARMY_K := 2.2
 ## Вспышки битв: {pos, t} (t — 0..1), сколько битв уже показано.
 var _flashes: Array = []
 var _battles_seen := -1
@@ -47,9 +49,9 @@ func _ready() -> void:
 	z_index = 1
 	EventBus.world_generated.connect(func(_w: World, _ms: int) -> void:
 		_selected = -1
-		_hero_pos.clear()
 		_marks.clear()
-		_army_pos.clear()
+		_trails.clear()
+		_teleports_seen = -1
 		_flashes.clear()
 		_battles_seen = -1
 		_selected_army = null
@@ -69,11 +71,23 @@ func _ready() -> void:
 		queue_redraw())
 
 
-## Видимая (плавно движущаяся) позиция героя — для значка и слежения камеры.
+## Видимая позиция юнита: клетка симуляции, а между сутками (при x1…x5 и
+## включённой плавности) — точка на отрезке от клетки начала суток к нынешней.
+func mover_pos(m: Mover) -> Vector2:
+	if renderer == null or renderer.map == null or m.cell < 0:
+		return Vector2.ZERO
+	var to := renderer.cell_center(m.cell)
+	if m.prev_cell < 0 or m.prev_cell == m.cell or not SmoothSettings.border_anim or WorldState.speed_index > INTERP_SPEED:
+		return to
+	var from := renderer.cell_center(m.prev_cell)
+	if from.distance_to(to) > MapRenderer.cell_size * 8.0:
+		return to  # допустимый телепорт — без «полёта» через карту
+	return from.lerp(to, WorldState.day_fraction())
+
+
+## Видимая позиция героя — для значка и слежения камеры.
 func hero_visual_pos(h: Hero) -> Vector2:
-	if _hero_pos.has(h.id):
-		return _hero_pos[h.id]
-	return renderer.cell_center(h.cell) if renderer != null and renderer.map != null and h.cell >= 0 else Vector2.ZERO
+	return mover_pos(h.m)
 
 
 func _process(delta: float) -> void:
@@ -101,27 +115,8 @@ func _animate(delta: float) -> void:
 	if world == null or renderer == null or renderer.map == null:
 		return
 	var smooth := SmoothSettings.border_anim
-	var moving := false
-	var alive := {}
-	for h in world.wandering_heroes():
-		if not h.alive or h.cell < 0:
-			continue
-		alive[h.id] = true
-		var target := renderer.cell_center(h.cell)
-		var cur: Vector2 = _hero_pos.get(h.id, target)
-		if not smooth or cur.distance_to(target) > HERO_JUMP:
-			cur = target
-		else:
-			cur = SmoothSettings.damp_v(cur, target, HERO_K, delta)
-			if cur.distance_to(target) < 0.3:
-				cur = target
-		if cur != target:
-			moving = true
-		_hero_pos[h.id] = cur
-	if _hero_pos.size() > alive.size() + 16:
-		for id in _hero_pos.keys():
-			if not alive.has(id):
-				_hero_pos.erase(id)
+	# Юниты идут по клеткам: пока мир идёт — перерисовка каждый кадр (сглаживание внутри суток).
+	var moving := WorldState.speed_index > 0 and WorldState.speed_index <= INTERP_SPEED and smooth
 	# Цели заданий и путь героя игрока: плавно появляются и гаснут.
 	var present := {}
 	if world.player >= 0:
@@ -141,28 +136,37 @@ func _animate(delta: float) -> void:
 			moving = true
 		elif goal == 0.0:
 			_marks.erase(title)
-	# Армии плавно идут между регионами.
-	var army_alive := {}
-	for a in world.armies:
-		if not a.alive or a.cell < 0:
-			continue
-		var key := a.get_instance_id()
-		army_alive[key] = true
-		var target := army_point(a)
-		var cur: Vector2 = _army_pos.get(key, target)
-		if not smooth or cur.distance_to(target) > HERO_JUMP * 1.5:
-			cur = target
-		else:
-			cur = SmoothSettings.damp_v(cur, target, ARMY_K, delta)
-			if cur.distance_to(target) < 0.3:
-				cur = target
-		if cur != target:
-			moving = true
-		_army_pos[key] = cur
-	if _army_pos.size() > army_alive.size() + 32:
-		for k in _army_pos.keys():
-			if not army_alive.has(k):
-				_army_pos.erase(k)
+	# Следы армий: раз в сутки запоминаем точку (только отображение).
+	var today := world.year * 360 + world.month * 30 + world.day
+	if today != _trail_day:
+		_trail_day = today
+		var alive_armies := {}
+		for a in world.armies:
+			if not a.alive or a.kind != &"land" or a.cell < 0:
+				continue
+			var key := a.get_instance_id()
+			alive_armies[key] = true
+			var tr: Array = _trails.get(key, [])
+			var p := renderer.cell_center(a.cell)
+			if tr.is_empty() or (tr[tr.size() - 1] as Vector2).distance_to(p) > 0.5:
+				tr.append(p)
+				if tr.size() > TRAIL_POINTS:
+					tr.remove_at(0)
+			_trails[key] = tr
+		for k in _trails.keys():
+			if not alive_armies.has(k):
+				_trails.erase(k)
+	# Вспышки допустимых телепортов (воля Бога, Судьба, портал…).
+	var tp := world.teleports.size()
+	if _teleports_seen < 0 or tp < _teleports_seen:
+		_teleports_seen = tp
+	if SmoothSettings.event_fx and tp > _teleports_seen:
+		for i in range(_teleports_seen, tp):
+			var e: Dictionary = world.teleports[i]
+			var def := MoveDB.teleport(StringName(e.kind))
+			if def != null and int(e.to) >= 0:
+				_flashes.append({"pos": renderer.cell_center(int(e.to)), "t": 0.0, "color": def.color})
+	_teleports_seen = tp
 	# Вспышки новых битв (только отображение).
 	var seen := world.recent_battles.size()
 	if _battles_seen < 0 or seen < _battles_seen:
@@ -170,7 +174,8 @@ func _animate(delta: float) -> void:
 	if SmoothSettings.event_fx and seen > _battles_seen:
 		for i in range(_battles_seen, seen):
 			var b: Dictionary = world.recent_battles[i]
-			_flashes.append({"pos": renderer.cell_center(world.regions[int(b.region)].center), "t": 0.0})
+			var bc := int(b.get("cell", -1))
+			_flashes.append({"pos": renderer.cell_center(bc if bc >= 0 else world.regions[int(b.region)].center), "t": 0.0})
 	_battles_seen = seen
 	for f in _flashes:
 		f.t = float(f.t) + delta / FLASH_TIME
@@ -187,19 +192,55 @@ func _animate(delta: float) -> void:
 
 
 ## Где стоит значок армии: центр региона; флот — у берега, со сдвигом; несколько армий в регионе — веером.
+## Положение армии на карте (клетка симуляции, сглаженная внутри суток).
 func army_point(a: Army) -> Vector2:
-	var p := renderer.cell_center(a.cell)
-	var offset := Vector2(((a.nation * 37) % 11 - 5) * 1.6, ((a.nation * 53) % 9 - 4) * 1.6)
-	if a.kind == &"fleet":
-		offset += Vector2(10, 8)
-	elif a.kind == &"pirates":
-		offset += Vector2(-10, 9)
-	return p + offset
+	return mover_pos(a.m)
 
 
-## Видимая позиция армии (для значка и клика).
+## Видимая позиция армии (для значка и клика): со сдвигом, если рядом другие
+## значки (группа раскрывается веером; см. _group_armies).
+var _army_offset: Dictionary = {}
+## Группы близких значков: центр → сколько (подпись «×N»).
+var _army_groups: Array = []
+
+
 func army_visual_pos(a: Army) -> Vector2:
-	return _army_pos.get(a.get_instance_id(), army_point(a))
+	return army_point(a) + (_army_offset.get(a.get_instance_id(), Vector2.ZERO) as Vector2)
+
+
+## Значки армий ближе GROUP_PX пикселей экрана — одна группа: веером вокруг
+## центра, с подписью числа (только отображение).
+const GROUP_PX := 14.0
+
+
+func _group_armies(world: World, zoom: float) -> void:
+	_army_offset.clear()
+	_army_groups.clear()
+	var list: Array = []
+	for a in world.armies:
+		if a.alive and a.cell >= 0:
+			list.append([a, army_point(a)])
+	var used := {}
+	var radius := GROUP_PX / zoom
+	for i in list.size():
+		if used.has(i):
+			continue
+		var group := [i]
+		for j in range(i + 1, list.size()):
+			if not used.has(j) and (list[i][1] as Vector2).distance_to(list[j][1]) < radius:
+				group.append(j)
+		if group.size() < 2:
+			continue
+		var center := Vector2.ZERO
+		for k in group:
+			used[k] = true
+			center += list[k][1]
+		center /= group.size()
+		for n in group.size():
+			var ang := TAU * n / group.size() - PI * 0.5
+			var a: Army = list[group[n]][0]
+			_army_offset[a.get_instance_id()] = center + Vector2(cos(ang), sin(ang)) * radius * 0.8 - (list[group[n]][1] as Vector2)
+		_army_groups.append([center, group.size()])
 
 
 ## Плавное проявление по зуму: 0 ниже from, 1 выше to.
@@ -231,6 +272,7 @@ func _draw() -> void:
 		_draw_ruins(world, zoom)
 		_draw_wild(world, zoom)
 		_draw_caravans(world, zoom)
+		_draw_agents(world, zoom)
 		_draw_titan(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
@@ -459,8 +501,7 @@ func _draw_wild(world: World, zoom: float) -> void:
 	for l in world.lairs:
 		if not l.alive:
 			continue
-		var cell := l.cell if l.region == l.home else world.regions[l.region].center
-		var pos := renderer.cell_center(cell)
+		var pos := mover_pos(l.m) if l.m.cell >= 0 else renderer.cell_center(l.cell)
 		if not view.has_point(pos):
 			continue
 		draw_set_transform(pos, 0.0, inv * (1.5 if l.def.great else 1.0))
@@ -478,7 +519,7 @@ func _draw_wild(world: World, zoom: float) -> void:
 	for t in world.tribes:
 		if not t.alive or t.cell < 0:
 			continue
-		var pos := renderer.cell_center(t.cell)
+		var pos := mover_pos(t.m)
 		if not view.has_point(pos):
 			continue
 		draw_set_transform(pos, 0.0, inv * (1.35 if t.horde else 1.0))
@@ -496,11 +537,8 @@ func _draw_wild(world: World, zoom: float) -> void:
 ## Караваны (этап 11.D) — повозка (на море — парус) с цветом товара, идёт от
 ## города к городу по ходу пути; вольные отряды наёмников — щит со стягом.
 ## В режимах «Торговля» и «Товары» — на любом зуме.
-func caravan_pos(world: World, c: Caravan) -> Vector2:
-	var a := renderer.cell_center(world.cities[c.from_city].cell)
-	var b := renderer.cell_center(world.cities[c.to_city].cell)
-	var month := float(posmod(world.day - c.day, 30)) / 30.0
-	return a.lerp(b, clampf((float(c.done) + month) / float(maxi(1, c.months)), 0.0, 1.0))
+func caravan_pos(_world: World, c: Caravan) -> Vector2:
+	return mover_pos(c.m)
 
 
 func _draw_caravans(world: World, zoom: float) -> void:
@@ -543,6 +581,32 @@ func _draw_caravans(world: World, zoom: float) -> void:
 		draw_colored_polygon(PackedVector2Array([Vector2(-3.8, -3.8), Vector2(3.8, -3.8), Vector2(3.8, 0.6), Vector2(0.0, 4.4), Vector2(-3.8, 0.6)]), c2)
 		draw_line(Vector2(-2.5, -2.5), Vector2(2.5, 2.0), Color(0.1, 0.1, 0.1, fade), 1.2)
 		draw_line(Vector2(2.5, -2.5), Vector2(-2.5, 2.0), Color(0.1, 0.1, 0.1, fade), 1.2)
+	draw_set_transform(Vector2.ZERO)
+
+
+## Гонцы (этап 12.B): посол — свиток с печатью цвета державы, лазутчик — тёмный кинжал.
+func _draw_agents(world: World, zoom: float) -> void:
+	var fade := zoom_fade(zoom, 0.9, 1.2)
+	if fade <= 0.0 or world.agents.is_empty():
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for a in world.agents:
+		if not a.alive or a.cell < 0:
+			continue
+		var pos := mover_pos(a.m)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var col := world.nations[a.from].color
+		col.a = fade
+		if a.kind == &"spy":
+			draw_colored_polygon(PackedVector2Array([Vector2(0, -6), Vector2(1.8, 2), Vector2(-1.8, 2)]), Color(0.15, 0.15, 0.18, fade))
+			draw_line(Vector2(-3.5, 2.5), Vector2(3.5, 2.5), col, 1.5)
+		else:
+			draw_rect(Rect2(-4.5, -3.0, 9.0, 6.0), Color(0.95, 0.9, 0.75, fade))
+			draw_rect(Rect2(-4.5, -3.0, 9.0, 6.0), Color(0.3, 0.2, 0.1, fade), false, 1.0)
+			draw_circle(Vector2(0, 0.5), 1.8, col)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -677,6 +741,12 @@ func _draw_heroes(world: World, zoom: float) -> void:
 	var inv := Vector2.ONE / zoom
 	var view := _visible_rect()
 	var scale := clampf(zoom, 0.7, 1.2)
+	# Путь выбранного героя — по его клеткам.
+	if _selected_hero >= 0 and _selected_hero < world.heroes.size():
+		var sh := world.heroes[_selected_hero]
+		if sh.alive and sh.m.walking():
+			draw_set_transform(Vector2.ZERO)
+			_draw_route(sh.m, hero_visual_pos(sh), Color(1.0, 0.9, 0.55, 0.8), zoom)
 	for hero in world.wandering_heroes():
 		if not hero.alive or hero.is_ruler or hero.cell < 0:
 			continue
@@ -772,21 +842,29 @@ func _draw_armies(world: World, zoom: float) -> void:
 		var t := float(f.t)
 		draw_set_transform(f.pos, 0.0, inv)
 		var r := (10.0 + 26.0 * t) * scale
-		draw_circle(Vector2.ZERO, r, Color(1.0, 0.75, 0.35, 0.28 * (1.0 - t)))
-		draw_arc(Vector2.ZERO, r, 0.0, TAU, 28, Color(1.0, 0.9, 0.6, 0.6 * (1.0 - t)), 2.0)
+		var fc: Color = f.get("color", Color(1.0, 0.75, 0.35))
+		draw_circle(Vector2.ZERO, r, Color(fc.r, fc.g, fc.b, 0.28 * (1.0 - t)))
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 28, Color(fc.r, fc.g, fc.b, 0.6 * (1.0 - t)), 2.0)
 	if fade <= 0.0:
 		draw_set_transform(Vector2.ZERO)
 		return
-	if _selected_army != null and _selected_army.alive and not _selected_army.path.is_empty():
+	_group_armies(world, zoom)
+	# Путь выбранной армии — по её настоящим клеткам (пунктиром).
+	if _selected_army != null and _selected_army.alive and _selected_army.m.walking():
 		draw_set_transform(Vector2.ZERO)
-		var prev := army_visual_pos(_selected_army)
 		var col := world.nations[_selected_army.nation].color.lightened(0.4) if _selected_army.nation >= 0 else Color.WHITE
 		col.a = 0.85
-		for rid in _selected_army.path:
-			var p := renderer.cell_center(world.regions[rid].center)
-			draw_dashed_line(prev, p, col, 2.0 / zoom, 6.0 / zoom)
-			prev = p
-		draw_circle(prev, 4.0 / zoom, col)
+		_draw_route(_selected_army.m, army_visual_pos(_selected_army), col, zoom)
+	# Пыль и следы армий на марше.
+	if SmoothSettings.event_fx:
+		draw_set_transform(Vector2.ZERO)
+		for a in world.armies:
+			if not a.alive or a.kind != &"land" or not a.m.walking():
+				continue
+			var tr: Array = _trails.get(a.get_instance_id(), [])
+			for i in tr.size():
+				var k := float(i + 1) / float(tr.size() + 1)
+				draw_circle(tr[i], (1.2 + 1.6 * k) / zoom * 1.5, Color(0.78, 0.68, 0.5, 0.25 * k * fade))
 	for a in world.armies:
 		if not a.alive or a.cell < 0:
 			continue
@@ -822,9 +900,44 @@ func _draw_armies(world: World, zoom: float) -> void:
 			draw_arc(Vector2.ZERO, s * 1.9, 0.0, TAU, 24, Color(1, 1, 1, fade), 2.0)
 		if a.state == &"siege":
 			draw_arc(Vector2.ZERO, s * 1.55, -PI * 0.5, PI * 1.5, 20, Color(0.95, 0.35, 0.25, 0.8 * fade), 1.5)
+		# Лагерь (стоит: осада, ожидание) — шатёр; на марше — стрелка направления.
+		if not a.m.walking() and (a.state == &"siege" or a.state == &"idle" or a.state == &"muster"):
+			var tent := PackedVector2Array([Vector2(s * 1.1, s * 0.9), Vector2(s * 1.6, s * 0.1), Vector2(s * 2.1, s * 0.9)])
+			draw_colored_polygon(tent, Color(0.85, 0.78, 0.6, 0.9 * fade))
+			draw_polyline(tent, dark, 1.0)
+		elif a.m.walking():
+			var dir := (renderer.cell_center(a.m.next_cell()) - renderer.cell_center(a.cell)).normalized()
+			if dir != Vector2.ZERO:
+				var tip := dir * s * 1.9
+				var side := Vector2(-dir.y, dir.x) * s * 0.45
+				draw_colored_polygon(PackedVector2Array([tip, dir * s * 1.3 + side, dir * s * 1.3 - side]), Color(1, 0.95, 0.8, 0.9 * fade))
 		if zoom >= 1.2:
 			var label := ArmySystem._num(a.strength(world))
 			var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
 			draw_string_outline(_font, Vector2(-w * 0.5, s * 1.25 + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0, 0, 0, 0.85 * fade))
 			draw_string(_font, Vector2(-w * 0.5, s * 1.25 + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 0.95, 0.85, fade))
+	# Число значков в группе.
+	for g in _army_groups:
+		draw_set_transform(g[0], 0.0, inv)
+		var text := "×%d" % int(g[1])
+		draw_string_outline(_font, Vector2(-8, -16), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0, 0, 0, 0.85 * fade))
+		draw_string(_font, Vector2(-8, -16), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.95, 0.8, fade))
 	draw_set_transform(Vector2.ZERO)
+
+
+## Пунктир пути юнита по его клеткам (не больше ~60 отрезков).
+func _draw_route(m: Mover, from: Vector2, col: Color, zoom: float) -> void:
+	var ahead := m.ahead()
+	if ahead.is_empty():
+		return
+	var stride := maxi(1, ahead.size() / 60)
+	var prev := from
+	var i := 0
+	while i < ahead.size():
+		var p := renderer.cell_center(ahead[i])
+		draw_dashed_line(prev, p, col, 2.0 / zoom, 6.0 / zoom)
+		prev = p
+		i += stride
+	var last := renderer.cell_center(ahead[ahead.size() - 1])
+	draw_dashed_line(prev, last, col, 2.0 / zoom, 6.0 / zoom)
+	draw_circle(last, 4.0 / zoom, col)

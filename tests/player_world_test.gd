@@ -64,7 +64,22 @@ func _to_trade_city() -> City:
 			if world.roads[rid].alive and other.alive and other.nation_id >= 0 and other.nation_id != c.nation_id:
 				h.cell = c.cell
 				return c
-	return null
+	# В этой истории ещё нет дорог к чужим городам — проложим ближайшую (как Бог).
+	var best_d := INF
+	var pair: Array = []
+	for x in world.cities:
+		for y in world.cities:
+			if x.alive and y.alive and x.nation_id >= 0 and y.nation_id >= 0 and x.nation_id != y.nation_id:
+				var d := Vector2(world.map.cell_pos(x.cell) - world.map.cell_pos(y.cell)).length()
+				if d < best_d and RoadSystem.measure(world, x.cell, y.cell).x > 0.0:
+					best_d = d
+					pair = [x, y]
+	if pair.is_empty():
+		return null
+	var line := RoadSystem.measure(world, pair[0].cell, pair[1].cell)
+	RoadSystem.build(world, pair[0], pair[1], false, line.x, int(line.y))
+	h.cell = (pair[0] as City).cell
+	return pair[0]
 
 
 func _data() -> void:
@@ -191,9 +206,12 @@ func _caravan() -> void:
 	if c == null:
 		return
 	_expect(PlayerWorld.escort_factor(world, c) < 1.0, "охрана не бережёт караван")
-	for m in c.months + 2:
+	# Этап 12.B: караван идёт по клеткам дороги — сутки за сутками до прихода.
+	for d in 720:
 		world.roads[c.road].safety = 1.0
-		sim.caravans._month(world, c)
+		MovementSystem.advance(world, c.m)
+		if c.m.arrived:
+			sim.caravans._arrive(world, c)
 		if not c.alive:
 			break
 	_expect(bool(world.player_quests[0].get("arrived", false)) if not world.player_quests.is_empty() else false, "караван не отметил прибытия")
@@ -210,6 +228,16 @@ func _quest_of_here(kind: StringName, city: City) -> Dictionary:
 func _army_and_captivity() -> void:
 	# Держава на войне с армией: присяга, вступление, битва.
 	var army: Army = null
+	# Нет соседей (история молода) — Бог создаёт державу в ничейном крае рядом с первой.
+	if not world.nations.any(func(n: Nation) -> bool: return n.alive and not n.borders.is_empty()):
+		var first := world.nations.filter(func(n: Nation) -> bool: return n.alive)[0] as Nation
+		for rid in first.region_counts:
+			for nb in world.regions[rid].neighbors:
+				if world.regions[nb].owner_counts.is_empty() and world.regions[nb].cells.size() >= 4:
+					if GodTools.create_nation(world, RaceDB.all()[0], world.regions[nb].center, false) != null:
+						break
+			if not first.borders.is_empty():
+				break
 	for x in world.nations:
 		if not x.alive:
 			continue

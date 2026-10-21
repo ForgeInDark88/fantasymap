@@ -59,6 +59,10 @@ var _stamp := 0
 var _maybe_dead := false
 ## Растёт при изменении рельефа (панель Бога) — рендер перерисовывает карту и регионы.
 var terrain_version := 0
+## Растёт, когда клетка становится сушей или водой (морские пути, Pathfinder; не сохраняется);
+## такие клетки — в coast_cells (Pathfinder пересчитывает только их блоки и очищает список).
+var coast_version := 0
+var coast_cells := PackedInt32Array()
 
 var diplomacy := Diplomacy.new()
 var heroes: Array[Hero] = []
@@ -101,6 +105,9 @@ var staged_effects: Array[Dictionary] = []
 ## Армии, флоты и пираты (ArmySystem), полководцы {id, name, nation, skill, born,
 ## alive, captured_by, hero, army, parent, wins}, последние битвы {region, year, month, day, war, winner, fallen}.
 var armies: Array[Army] = []
+## Последние допустимые телепорты {kind, from, to, day} (MovementSystem.teleport) —
+## для вспышек на карте и проверки в тестах; не сохраняются.
+var teleports: Array[Dictionary] = []
 var generals: Array[Dictionary] = []
 var recent_battles: Array[Dictionary] = []
 ## Дикий мир (этап 11.C): племена и орды, логова чудовищ, поветрия, языки и наречия.
@@ -113,6 +120,8 @@ var languages: Array[Language] = []
 ## дефолта государства ("id" → год), итоги рынка за всю историю (made, used,
 ## lost, robbed, delivered — для проверки учёта).
 var caravans: Array[Caravan] = []
+## Гонцы в пути: послы и лазутчики (AgentSystem, этап 12.B).
+var agents: Array[Agent] = []
 var mercs: Array[MercCompany] = []
 var loans: Array[Dictionary] = []
 var loan_serial := 0

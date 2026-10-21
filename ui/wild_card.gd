@@ -65,7 +65,7 @@ func _cell() -> int:
 		return (_entity as Tribe).cell
 	if _entity is Lair and world != null:
 		var l := _entity as Lair
-		return l.cell if l.region == l.home else world.regions[l.region].center
+		return l.monster_cell()
 	if _entity is MercCompany:
 		return (_entity as MercCompany).cell
 	if _entity is Caravan and world != null:
@@ -120,8 +120,8 @@ func refresh() -> void:
 		else:
 			lines.append("Груз: %s ед. · цена у отправителя %.2f, у получателя %.2f" % [ArmySystem._num(c.amount), c.price,
 				world.nations[c.to_nation].market_price[c.good] if world.nations[c.to_nation].market_price.size() > c.good else 0.0])
-			lines.append("В пути: месяц %d из %d · безопасность дороги %d%%" % [c.done + 1, c.months,
-				roundi(world.roads[c.road].safety * 100.0) if c.road < world.roads.size() else 0])
+			lines.append("В пути: пройдено %d%%, ещё %d кл.%s · безопасность дороги %d%%" % [roundi(c.progress() * 100.0), c.m.remaining() / world.grid_scale,
+				" · морем" if not world.map.is_land(c.cell) else "", roundi(world.roads[c.road].safety * 100.0) if c.road < world.roads.size() else 0])
 	elif _entity is MercCompany:
 		var m := _entity as MercCompany
 		lines.append("[font_size=16][b]%s[/b][/font_size]" % m.name)
