@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DiseaseDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/disease_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"marsh_fever"
+display_name = "Болотная лихорадка"
+description = "Трясучка низин: ползёт от болот к соседям, а не по дорогам."
+weight = 1.0
+lethality = 0.03
+road_spread = 0.1
+land_spread = 0.15
+sea_spread = 0.02
+months = 5
+immunity_years = 15
+immune_races = Array[StringName]([&"nagas"])
+immune_traits = Array[StringName]([&"no_food"])
+color = Color(0.6, 0.75, 0.35, 1)

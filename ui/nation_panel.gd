@@ -236,9 +236,30 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			var rc := world.cultures[region.culture]
 			lines.append("Культура: [color=#%s]%s[/color]%s" % [rc.color.to_html(false), rc.name,
 				(" · ассимиляция %d%%" % roundi(region.assim * 100.0)) if region.culture != nation.culture else ""])
+		if region.language >= 0:
+			var lang := world.languages[region.language]
+			lines.append("Язык: [color=#%s]%s[/color]%s" % [lang.color.to_html(false), LanguageSystem.title(world, region.language),
+				(" · переход на язык державы %d%%" % roundi(region.lang_assim * 100.0)) if region.language != nation.language else ""])
+		for w in wild_lines(world, region):
+			lines.append("[color=#e0a080]%s[/color]" % w)
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")
+
+
+## Дикий мир края (этап 11.C): логово, племя, поветрие — короткими строками.
+static func wild_lines(world: World, region: Region) -> Array[String]:
+	var res: Array[String] = []
+	for l in world.lairs:
+		if l.alive and (l.home == region.id or l.region == region.id):
+			res.append("%s%s: сила %s" % [l.label(), "" if l.home == region.id else " (бродит здесь)", ArmySystem._num(l.strength)])
+	var t := TribeSystem.tribe_in(world, region.id)
+	if t != null:
+		res.append("%s (%s): %s воинов" % [t.label(), t.race.display_name.to_lower(), ArmySystem._num(t.strength)])
+	var d := DiseaseSystem.region_text(world, region.id)
+	if not d.is_empty():
+		res.append("Болезнь: " + d)
+	return res
 
 
 ## Последние записи летописи о государстве.

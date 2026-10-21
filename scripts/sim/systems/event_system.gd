@@ -85,6 +85,9 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 			"id": e.id, "until": world.year + e.duration,
 			"army_mult": e.army_mult, "growth_mult": e.growth_mult, "science_mult": e.science_mult,
 		})
+	# Чума — частный случай болезни: идёт по дорогам «Чёрным мором» (DiseaseSystem).
+	if e.id == &"plague":
+		DiseaseSystem.start(world, DiseaseDB.find(DiseaseSystem.PLAGUE), region.id)
 	if e.spread_chance > 0.0:
 		for other in nation.borders:
 			if rng.randf() < e.spread_chance:

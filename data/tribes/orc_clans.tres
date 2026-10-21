@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TribeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tribe_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"orc_clans"
+display_name = "Орочьи кланы"
+description = "Вольные кланы орков, не признающие вождей-королей."
+race = &"orcs"
+nomad = true
+biomes = Array[StringName]([&"steppe", &"hills", &"tundra", &"desert"])
+weight = 1.3
+strength = Vector2(1500.0, 3500.0)
+growth = 0.06
+raid_chance = 0.1
+horde_strength = 5500.0
+found_strength = 8000.0
+tribe_name = "Клан {name}"
+horde_name = "Великая орда {name}"

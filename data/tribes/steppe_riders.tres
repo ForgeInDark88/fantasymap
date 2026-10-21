@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TribeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tribe_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"steppe_riders"
+display_name = "Степные всадники"
+description = "Конные кочевники людей: живут табунами, набегают на пашни соседей."
+race = &"humans"
+nomad = true
+biomes = Array[StringName]([&"steppe", &"plains", &"desert"])
+weight = 1.4
+strength = Vector2(1200.0, 3000.0)
+growth = 0.05
+raid_chance = 0.07
+horde_strength = 6000.0
+found_strength = 9000.0
+tribe_name = "Кочевье {name}"
+horde_name = "Орда {name}"

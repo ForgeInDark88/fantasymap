@@ -30,6 +30,12 @@ func _good_deed(world: World, hero: Hero) -> void:
 	var ids := PackedInt32Array([owner]) if owner >= 0 else PackedInt32Array()
 	hero.karma = minf(1.0, hero.karma + 0.03)
 	var roll := rng.randf()
+	# Логово чудовищ рядом (этап 11.C) — герой идёт на него.
+	if roll < 0.35 and region != null:
+		var lair := LairSystem.lair_near(world, region.id)
+		if lair != null and hero.dares(lair.strength * 0.4, rng):
+			LairSystem.hero_fight(world, hero, lair)
+			return
 	if roll < 0.35:
 		# Чудовище: опасно, но славно (в отряде и с опытом — безопаснее).
 		var risk := (0.035 if hero.level < 4 else 0.015) * (0.5 if hero.party_leader >= 0 else 1.0) \

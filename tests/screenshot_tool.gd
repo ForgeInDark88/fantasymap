@@ -36,7 +36,7 @@ func _run() -> void:
 	await _frames(3)
 	for mode in MapMode.NAMES.size():
 		bus.map_mode_changed.emit(mode)
-		await _frames(2)
+		await _frames(30)  # кроссфейд режимов (~0,25 с) — дождаться
 		_shot(out_dir, "mode%d.png" % mode)
 	bus.map_mode_changed.emit(0)
 

@@ -101,6 +101,11 @@ var staged_effects: Array[Dictionary] = []
 var armies: Array[Army] = []
 var generals: Array[Dictionary] = []
 var recent_battles: Array[Dictionary] = []
+## Дикий мир (этап 11.C): племена и орды, логова чудовищ, поветрия, языки и наречия.
+var tribes: Array[Tribe] = []
+var lairs: Array[Lair] = []
+var outbreaks: Array[Outbreak] = []
+var languages: Array[Language] = []
 var player := -1
 ## Наблюдатель за событиями мира (не сохраняется): интерфейс передаёт через него
 ## записи летописи и счётчики в EventBus — логика мира об EventBus не знает.

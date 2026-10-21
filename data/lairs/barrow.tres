@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"barrow"
+display_name = "Проклятый курган"
+monster = "умертвия"
+description = "Древний курган, откуда по ночам выходят мёртвые."
+biomes = Array[StringName]([&"plains", &"tundra", &"swamp", &"steppe"])
+weight = 0.9
+min_year = 30
+strength = Vector2(1200.0, 3500.0)
+raid_chance = 0.06
+raid_pop = 0.01
+raid_gold = 10.0
+loot = 200.0
+growth = 0.02
+color = Color(0.4, 0.55, 0.6, 1)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"spider_nest"
+display_name = "Паучье гнездо"
+monster = "гигантские пауки"
+description = "Чащоба, затянутая паутиной."
+biomes = Array[StringName]([&"jungle", &"forest", &"swamp"])
+weight = 1.0
+strength = Vector2(1000.0, 3000.0)
+raid_chance = 0.07
+raid_pop = 0.007
+raid_gold = 15.0
+loot = 90.0
+growth = 0.04
+color = Color(0.45, 0.35, 0.55, 1)

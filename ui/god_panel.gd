@@ -33,6 +33,11 @@ const TOOLS := [
 	[&"fleet", "Спустить флот", "Клик по приморскому государству: в его гавани спускается флот."],
 	[&"destroy_army", "Уничтожить армию", "Клик у армии: боги стирают её с лица земли."],
 	[&"mutiny", "Бунт армии", "Клик у армии: войско восстаёт, и его край провозглашает свою державу."],
+	[&"tribe", "Племя", "Клик по ничейной суше: здесь объявляется племя (вид — по местности)."],
+	[&"lair", "Логово чудовищ", "Клик по суше: в этом крае заводится логово чудовищ."],
+	[&"great_monster", "Великое чудовище", "Клик по суше: пробуждается великое чудовище — дракон, гидра или песчаный червь."],
+	[&"disease", "Поветрие", "Клик по краю: в нём начинается выбранная болезнь и пойдёт по дорогам."],
+	[&"dialect", "Новое наречие", "Клик по краю: его жители заговорят на своём наречии."],
 	[&"collector", "Собиратель земель", "Клик по государству-наследнику империи: оно провозглашает себя собирателем её земель."],
 	[&"raise", "Поднять землю", "Клик: земля поднимается (вода становится сушей, равнины — холмами и горами)."],
 	[&"lower", "Опустить землю", "Клик: земля опускается (может уйти под воду вместе с городами)."],
@@ -44,6 +49,7 @@ var _event: OptionButton
 var _op: OptionButton
 var _org: OptionButton
 var _crisis: OptionButton
+var _disease: OptionButton
 var _artifact: OptionButton
 var _god: OptionButton
 var _radius: HSlider
@@ -103,6 +109,12 @@ func _init() -> void:
 				_crisis.add_item(c.display_name)
 			_crisis.item_selected.connect(func(_i: int) -> void: _emit())
 			box.add_child(_crisis)
+		elif t[0] == &"disease":
+			_disease = OptionButton.new()
+			for dd in DiseaseDB.all():
+				_disease.add_item(dd.display_name)
+			_disease.item_selected.connect(func(_i: int) -> void: _emit())
+			box.add_child(_disease)
 		elif t[0] == &"artifact":
 			_artifact = OptionButton.new()
 			for a in LoreDB.artifacts():
@@ -180,6 +192,7 @@ func _emit() -> void:
 		"op": OrgDB.ops()[_op.selected],
 		"org": OrgDB.orgs()[_org.selected],
 		"crisis": CrisisDB.all()[_crisis.selected],
+		"disease": DiseaseDB.all()[_disease.selected],
 		"artifact": LoreDB.artifacts()[_artifact.selected],
 		"god": LoreDB.gods()[_god.selected],
 	}

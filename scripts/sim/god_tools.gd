@@ -427,3 +427,51 @@ static func mutiny(world: World, cell: int) -> Nation:
 	world.log_event(&"battle", "Войско государства %s подняло бунт и перешло на сторону мятежников — %s." % [n.name, rebels.name],
 			PackedInt32Array([n.id, rebels.id]))
 	return rebels
+
+
+## Дикий мир (этап 11.C): племя в ничейном крае клетки.
+static func spawn_tribe(world: World, cell: int) -> Tribe:
+	return TribeSystem.spawn(world, null, cell)
+
+
+## Логово (или великое чудовище) в крае клетки; вид — по биому края.
+static func spawn_lair(world: World, cell: int, great: bool) -> Lair:
+	var region := world.region_at(cell)
+	if region == null:
+		return null
+	var biome := BiomeDB.get_def(world.map.biome[region.center]).id
+	var pick: LairDef = null
+	for d in LairDB.all():
+		var def: LairDef = d
+		if def.great == great and def.biomes.has(biome):
+			pick = def
+			break
+	if pick == null:
+		for d in LairDB.all():
+			if (d as LairDef).great == great:
+				pick = d
+				break
+	return LairSystem.spawn(world, pick, cell)
+
+
+static func start_disease(world: World, cell: int, def: DiseaseDef) -> Outbreak:
+	if world.region_of[cell] < 0:
+		return null
+	return DiseaseSystem.start(world, def, world.region_of[cell])
+
+
+## Новое наречие языка края (и соседних краёв того же языка у того же владельца).
+static func split_dialect(world: World, cell: int) -> int:
+	var region := world.region_at(cell)
+	if region == null or region.language < 0:
+		return -1
+	var ids := PackedInt32Array([region.id])
+	for nb in region.neighbors:
+		var r := world.regions[nb]
+		if r.language == region.language and r.controller() == region.controller() and ids.size() < 4:
+			ids.append(nb)
+	var parent := region.language
+	var id := LanguageSystem.new_dialect(world, parent, ids)
+	world.log_event(&"language", "По воле богов в крае %s заговорили по-новому: %s (от: %s)." % [region.name,
+		LanguageSystem.title(world, id), LanguageSystem.title(world, parent)])
+	return id

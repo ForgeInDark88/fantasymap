@@ -100,15 +100,30 @@ func _front() -> void:
 		sim.step(world)
 	var a: Nation = null
 	var b: Nation = null
-	for n in world.nations:
-		if n.alive:
-			for o in n.borders:
-				if world.nations[o].alive and world.diplomacy.war_between(n.id, o) == null:
-					a = n
-					b = world.nations[o]
-					break
+	# Соседи в мире — не обязательно в этот год (все могут уже воевать): ищем несколько лет.
+	for attempt in 10:
+		for n in world.nations:
+			if n.alive:
+				for o in n.borders:
+					if world.nations[o].alive and world.diplomacy.war_between(n.id, o) == null:
+						a = n
+						b = world.nations[o]
+						break
+			if a != null:
+				break
 		if a != null:
 			break
+		sim.step(world)
+	if a == null:
+		# Соседей так и нет — Бог создаёт государство в ничейном крае рядом с первым.
+		var first := world.nations.filter(func(n: Nation) -> bool: return n.alive)[0] as Nation
+		for rid in first.region_counts:
+			for nb in world.regions[rid].neighbors:
+				if a == null and world.regions[nb].owner_counts.is_empty() and world.regions[nb].cells.size() >= 4:
+					var other := GodTools.create_nation(world, RaceDB.all()[0], world.regions[nb].center, false)
+					if other != null:
+						a = first
+						b = other
 	_expect(a != null, "нет соседей для войны")
 	if a == null:
 		return

@@ -17,6 +17,9 @@ static func create(s: MapSettings) -> World:
 	WorldSeeder.new().seed_world(world)
 	ClimateSystem.place_volcanoes(world)
 	UndergroundSystem.generate(world)
+	LanguageSystem.seed_world(world)
+	TribeSystem.seed_world(world)
+	LairSystem.seed_world(world)
 	return world
 
 

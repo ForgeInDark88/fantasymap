@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TribeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tribe_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"forest_folk"
+display_name = "Лесной народ"
+description = "Оседлые эльфийские общины глухих лесов: не воюют, но и чужих не пускают."
+race = &"elves"
+nomad = false
+biomes = Array[StringName]([&"forest", &"jungle"])
+weight = 1.0
+strength = Vector2(800.0, 2200.0)
+growth = 0.03
+raid_chance = 0.01
+horde_strength = 99999.0
+found_strength = 7000.0
+tribe_name = "Община {name}"
+horde_name = "Воинство {name}"

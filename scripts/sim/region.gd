@@ -33,6 +33,11 @@ var culture := -1
 var assim := 0.0
 ## Вера жителей: id религии → доля (сумма ≈ 1; пусто — регион не заселён).
 var faith: Dictionary[int, float] = {}
+## Язык жителей (id в World.languages, -1 — не заселён) и ход перехода на язык владельца (0..1).
+var language := -1
+var lang_assim := 0.0
+## Иммунитет к болезням: id болезни → год, до которого край её не принимает.
+var immune: Dictionary[StringName, int] = {}
 
 
 ## Самая распространённая вера (-1 — нет).

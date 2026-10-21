@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TribeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tribe_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"marsh_tribes"
+display_name = "Болотные племена"
+description = "Племена нагов в топях и мангровых лесах."
+race = &"nagas"
+nomad = false
+biomes = Array[StringName]([&"swamp", &"jungle"])
+weight = 0.9
+strength = Vector2(800.0, 2000.0)
+growth = 0.04
+raid_chance = 0.04
+horde_strength = 99999.0
+found_strength = 6500.0
+tribe_name = "Племя {name}"
+horde_name = "Воинство {name}"

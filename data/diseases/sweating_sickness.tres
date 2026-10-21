@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="DiseaseDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/disease_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"sweating_sickness"
+display_name = "Потливая горячка"
+description = "Быстрая и короткая: убивает за сутки, уходит за сезон."
+weight = 0.8
+lethality = 0.035
+road_spread = 0.45
+land_spread = 0.04
+sea_spread = 0.15
+months = 3
+immunity_years = 20
+immune_traits = Array[StringName]([&"no_food"])
+color = Color(0.9, 0.8, 0.4, 1)

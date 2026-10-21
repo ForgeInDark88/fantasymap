@@ -24,7 +24,7 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"stalled": n.stalled_years, "collapse": n.collapse_years,
 		"religion": n.state_religion, "unity": n.faith_unity, "effects": _effects_dict(n),
 		"techs": n.techs.keys().map(func(t: StringName) -> String: return str(t)), "researching": str(n.researching),
-		"research": n.research, "tech_seen": n.tech_seen, "culture": n.culture, "culture_level": n.culture_level,
+		"research": n.research, "tech_seen": n.tech_seen, "culture": n.culture, "culture_level": n.culture_level, "language": n.language,
 		"intel": n.intel, "legacy": n.legacy, "home": n.home_cell, "tdirty": n.territory_dirty,
 		"modifiers": n.modifiers.map(func(m: Dictionary) -> Dictionary:
 			var c := m.duplicate()
@@ -125,6 +125,7 @@ static func _load_techs_and_cultures(world: World, data: Dictionary) -> void:
 		n.tech_seen = nd.get("tech_seen", n.tech)
 		n.culture = int(nd.get("culture", -1))
 		n.culture_level = nd.get("culture_level", 0.0)
+		n.language = int(nd.get("language", -1))
 	for i in data.regions.size():
 		var region := world.regions[i]
 		var rd: Dictionary = data.regions[i]
@@ -491,3 +492,95 @@ static func _restore_war(wd: Dictionary) -> War:
 	w.siege_rate = float(wd.get("rate", 0.0))
 	w.siege_logged = int(wd.get("slog", -1))
 	return w
+
+
+## Дикий мир (этап 11.C): племена, логова, поветрия, языки.
+static func _wild_dict(world: World) -> Dictionary:
+	return {
+		"tribes": world.tribes.filter(func(t: Tribe) -> bool: return t.alive).map(func(t: Tribe) -> Dictionary: return {
+			"def": str(t.def.id), "name": t.name, "race": str(t.race.id), "region": t.region, "cell": t.cell, "str": t.strength,
+			"horde": t.horde, "hy": t.horde_year, "born": t.born, "day": t.day, "raids": t.raids, "target": t.target}),
+		"lairs": world.lairs.filter(func(l: Lair) -> bool: return l.alive).map(func(l: Lair) -> Dictionary: return {
+			"def": str(l.def.id), "name": l.name, "cell": l.cell, "home": l.home, "region": l.region, "str": l.strength,
+			"born": l.born, "day": l.day, "raids": l.raids}),
+		"outbreaks": world.outbreaks.filter(func(o: Outbreak) -> bool: return o.alive).map(func(o: Outbreak) -> Dictionary: return {
+			"def": str(o.def.id), "regions": _int_dict(o.regions), "origin": o.origin, "born": o.born, "day": o.day,
+			"deaths": o.deaths, "peak": o.peak, "nations": o.nations.keys()}),
+		"languages": world.languages.map(func(l: Language) -> Dictionary: return {"name": l.name, "race": str(l.race.id),
+			"parent": l.parent, "dialect": l.dialect, "born": l.born, "color": [l.color.r, l.color.g, l.color.b], "alive": l.alive, "regions": l.regions}),
+	}
+
+
+static func _load_wild(world: World, data: Dictionary) -> void:
+	if not data.has("wild"):
+		# Сохранение до этапа 11.C: дикий мир рождается при загрузке.
+		LanguageSystem.seed_world(world)
+		TribeSystem.seed_world(world)
+		LairSystem.seed_world(world)
+		return
+	var wild: Dictionary = data.wild
+	for ld in wild.get("languages", []):
+		var l := Language.new()
+		l.id = world.languages.size()
+		l.name = str(ld.name)
+		l.race = RaceDB.get_race(StringName(ld.race))
+		l.parent = int(ld.parent)
+		l.dialect = bool(ld.dialect)
+		l.born = int(ld.born)
+		l.color = Color(ld.color[0], ld.color[1], ld.color[2])
+		l.alive = bool(ld.alive)
+		l.regions = int(ld.regions)
+		world.languages.append(l)
+	for i in data.regions.size():
+		var rd: Dictionary = data.regions[i]
+		var region := world.regions[i]
+		region.language = int(rd.get("lang", -1))
+		region.lang_assim = rd.get("lassim", 0.0)
+		for k in rd.get("immune", {}):
+			region.immune[StringName(k)] = int(rd.immune[k])
+	for td in wild.get("tribes", []):
+		var t := Tribe.new()
+		t.id = world.tribes.size()
+		t.def = TribeDB.find(StringName(td.def))
+		t.name = str(td.name)
+		t.race = RaceDB.get_race(StringName(td.race))
+		t.region = int(td.region)
+		t.cell = int(td.cell)
+		t.strength = td.str
+		t.horde = bool(td.horde)
+		t.horde_year = int(td.get("hy", -1000))
+		t.born = int(td.born)
+		t.day = int(td.day)
+		t.raids = int(td.raids)
+		t.target = int(td.target)
+		if t.def != null and t.race != null:
+			world.tribes.append(t)
+	for ld in wild.get("lairs", []):
+		var l := Lair.new()
+		l.id = world.lairs.size()
+		l.def = LairDB.find(StringName(ld.def))
+		l.name = str(ld.name)
+		l.cell = int(ld.cell)
+		l.home = int(ld.home)
+		l.region = int(ld.region)
+		l.strength = ld.str
+		l.born = int(ld.born)
+		l.day = int(ld.day)
+		l.raids = int(ld.raids)
+		if l.def != null:
+			world.lairs.append(l)
+	for od in wild.get("outbreaks", []):
+		var o := Outbreak.new()
+		o.id = world.outbreaks.size()
+		o.def = DiseaseDB.find(StringName(od.def))
+		for k in od.regions:
+			o.regions[int(k)] = int(od.regions[k])
+		o.origin = int(od.origin)
+		o.born = int(od.born)
+		o.day = int(od.day)
+		o.deaths = od.deaths
+		o.peak = int(od.peak)
+		for nid in od.nations:
+			o.nations[int(nid)] = true
+		if o.def != null:
+			world.outbreaks.append(o)

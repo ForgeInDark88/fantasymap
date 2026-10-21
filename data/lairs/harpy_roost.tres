@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"harpy_roost"
+display_name = "Гнездовье гарпий"
+monster = "гарпии"
+description = "Утёсы, где визжат гарпии."
+biomes = Array[StringName]([&"hills", &"mountains"])
+weight = 0.8
+strength = Vector2(700.0, 2000.0)
+raid_chance = 0.09
+raid_pop = 0.004
+raid_gold = 50.0
+loot = 80.0
+growth = 0.03
+color = Color(0.75, 0.55, 0.35, 1)

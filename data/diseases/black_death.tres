@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="DiseaseDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/disease_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"black_death"
+display_name = "Чёрный мор"
+description = "Чума (событие «Чума» в каждом новом государстве): идёт по дорогам торговцев, опустошает города. Нежить её не знает."
+weight = 0.6
+min_year = 20
+lethality = 0.03
+road_spread = 0.35
+land_spread = 0.06
+sea_spread = 0.2
+months = 8
+immunity_years = 60
+immune_traits = Array[StringName]([&"no_food"])
+plague = true
+color = Color(0.35, 0.6, 0.25, 1)

@@ -73,4 +73,6 @@ signal achievements_window_requested
 signal follow_hero_requested(hero_id: int)
 
 ## Выбрана армия на карте (null — снять выбор).
+## Выбрано логово или племя (Lair / Tribe; null — снять выбор): карточка дикого края.
+signal wild_selected(entity: RefCounted)
 signal army_selected(army: Army)

@@ -81,6 +81,24 @@ func _on_map_clicked(pos: Vector2) -> void:
 		EventBus.army_selected.emit(army)
 		return
 	EventBus.army_selected.emit(null)
+	# Клик по логову или племени — карточка дикого края.
+	var wrad := 10.0 / _camera.zoom.x
+	var wild: RefCounted = null
+	for l in world.lairs:
+		if l.alive:
+			var d := _renderer.cell_center(l.cell if l.region == l.home else world.regions[l.region].center).distance_to(pos)
+			if d < wrad:
+				wrad = d
+				wild = l
+	for t in world.tribes:
+		if t.alive and t.cell >= 0:
+			var d := _renderer.cell_center(t.cell).distance_to(pos)
+			if d < wrad:
+				wrad = d
+				wild = t
+	EventBus.wild_selected.emit(wild)
+	if wild != null:
+		return
 	# Клик по значку героя — окно героя.
 	var radius := 9.0 / _camera.zoom.x
 	var best: Hero = null
@@ -145,6 +163,16 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.launch_fleet(world, cell)
 		&"destroy_army":
 			GodTools.destroy_army(world, cell)
+		&"tribe":
+			GodTools.spawn_tribe(world, cell)
+		&"lair":
+			GodTools.spawn_lair(world, cell, false)
+		&"great_monster":
+			GodTools.spawn_lair(world, cell, true)
+		&"disease":
+			GodTools.start_disease(world, cell, _tool_params.disease)
+		&"dialect":
+			GodTools.split_dialect(world, cell)
 		&"mutiny":
 			var rebels := GodTools.mutiny(world, cell)
 			if rebels != null:

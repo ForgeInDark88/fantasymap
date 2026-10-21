@@ -47,12 +47,15 @@ func _summary(world: World) -> String:
 	var battles := 0
 	for w in world.diplomacy.past_wars + world.diplomacy.wars:
 		battles += w.battles
-	return "государств %d (всего %d), население %s, вер %d, техн. %d, путей %d, руин %d, кризисов %d, эпох %d, героев %d, армий %d, битв %d, полководцев %d" % [
+	return ("государств %d (всего %d), население %s, вер %d, техн. %d, путей %d, руин %d, кризисов %d, эпох %d, героев %d, армий %d, битв %d, полководцев %d" +
+		", племён %d, логов %d, поветрий %d, языков %d") % [
 		alive.size(), world.nations.size(), "%.1f млн" % (pop / 1e6), ReligionSystem.alive_count(world),
 		alive.reduce(func(a: int, n: Nation) -> int: return maxi(a, n.techs.size()), 0),
 		world.roads.filter(func(r: Road) -> bool: return r.alive).size(), world.ruins.size(),
 		world.crisis_history.size() + (0 if world.crisis.is_empty() else 1), world.eras.size(), world.heroes.size(),
-		world.armies.filter(func(a: Army) -> bool: return a.alive).size(), battles, world.generals.size()]
+		world.armies.filter(func(a: Army) -> bool: return a.alive).size(), battles, world.generals.size(),
+		TribeSystem.alive_tribes(world).size(), LairSystem.alive_lairs(world).size(), world.counters.get(&"outbreaks", 0),
+		world.languages.filter(func(l: Language) -> bool: return l.alive).size()]
 
 
 ## Мир не выродился.

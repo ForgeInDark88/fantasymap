@@ -59,7 +59,8 @@ static func to_dict(world: World) -> Dictionary:
 		regions.append({"name": r.name, "center": r.center, "loyalty": r.loyalty, "unrest": r.unrest,
 			"conquered": r.conquered_year, "pacified": r.pacified_until, "claims": _int_dict(r.claims),
 			"owner_order": r.owner_counts.keys(), "neighbors": Array(r.neighbors), "coastal": r.coastal,
-			"faith": _int_dict(r.faith), "culture": r.culture, "assim": r.assim})
+			"faith": _int_dict(r.faith), "culture": r.culture, "assim": r.assim,
+			"lang": r.language, "lassim": r.lang_assim, "immune": r.immune})
 	var nations := []
 	for n in world.nations:
 		nations.append(_nation_dict(n))
@@ -135,6 +136,7 @@ static func to_dict(world: World) -> Dictionary:
 		"cultures": world.cultures.map(func(c: Culture) -> Dictionary: return {"id": c.id, "name": c.name, "race": c.race,
 			"color": _col(c.color), "customs": Array(c.customs), "origin": c.origin_nation, "founded": c.founded_year}),
 		"lore": _lore_dict(world),
+		"wild": _wild_dict(world),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -375,6 +377,7 @@ static func from_dict(data: Dictionary) -> World:
 		road.traffic = rd[7]
 		road.alive = rd[8]
 	_load_lore(world, data)
+	_load_wild(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])

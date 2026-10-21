@@ -115,6 +115,10 @@ func set_mode(new_mode: int) -> void:
 	redraw()
 
 
+const DANGER_LOW := Color(1.0, 0.85, 0.3)
+const DANGER_HIGH := Color(0.75, 0.05, 0.1)
+
+
 ## Цвет каждого региона в режимах по регионам: вера большинства (альфа — её доля).
 func refresh_region_palette() -> void:
 	if world == null:
@@ -122,6 +126,7 @@ func refresh_region_palette() -> void:
 	_region_palette_ms = Time.get_ticks_msec()
 	var colors := PackedColorArray()
 	colors.resize(world.regions.size())
+	var danger := LairSystem.danger_map(world) if mode == MapMode.DANGER else PackedFloat32Array()
 	for region in world.regions:
 		var c := Color(0, 0, 0, 0)
 		match mode:
@@ -136,6 +141,17 @@ func refresh_region_palette() -> void:
 					# Культура владельца — ярко, чужая (ассимилируется) — бледнее.
 					var ctrl := region.controller()
 					c.a = 0.9 if ctrl < 0 or world.nations[ctrl].culture == region.culture else 0.45 + 0.3 * region.assim
+			MapMode.DANGER:
+				# Тихо — прозрачно; опасно — от жёлтого к багровому.
+				var d := danger[region.id]
+				if d > 0.0:
+					c = DANGER_LOW.lerp(DANGER_HIGH, d)
+					c.a = 0.25 + 0.65 * d
+			MapMode.LANGUAGE:
+				if region.language >= 0:
+					c = world.languages[region.language].color
+					var ctrl := region.controller()
+					c.a = 0.9 if ctrl < 0 or world.nations[ctrl].language == region.language else 0.45 + 0.3 * region.lang_assim
 		colors[region.id] = c
 	_region_palette = _make_palette(colors, _region_palette)
 	_material.set_shader_parameter("region_palette_tex", _region_palette)

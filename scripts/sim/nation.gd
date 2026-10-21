@@ -117,6 +117,8 @@ var legacy := -1
 # --- Культура (CultureSystem) ---
 ## Культура государства (id в World.cultures) и её «вес» — престиж, мягкая сила.
 var culture := -1
+## Язык государства (id в World.languages; LanguageSystem): язык края столицы.
+var language := -1
 var culture_level := 0.0
 
 # --- Вера (ReligionSystem) ---

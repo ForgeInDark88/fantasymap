@@ -10,6 +10,7 @@ const FEED_LINES := 7
 ## Как часто (мс) обновлять карточку и легенду во время симуляции.
 const PANEL_REFRESH_MS := 300
 const LEGEND_REFRESH_MS := 1000
+const DANGER_HIGH_LEGEND := Color(0.75, 0.05, 0.1)
 const CHRONICLE_COLORS := {
 	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0",
 	&"ruler": "#d6b3ff", &"famine": "#ff9a7a",
@@ -18,6 +19,7 @@ const CHRONICLE_COLORS := {
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
 	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"battle": "#ff9a6a", &"pirates": "#9ab8d8",
+	&"tribe": "#d8b080", &"lair": "#e07a6a", &"disease": "#a8c860", &"language": "#c0c8f0",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -205,6 +207,7 @@ func _build_left_panels() -> void:
 	root.add_child(UnderworldWindow.new())
 	root.add_child(ChroniclesWindow.new())
 	root.add_child(ArmyCard.new())
+	root.add_child(WildCard.new())
 	root.add_child(HeroChoicePopup.new())
 	root.add_child(AchievementsWindow.new())
 	# Мягкие подсветки всех кнопок интерфейса (и тех, что появятся позже).
@@ -282,7 +285,7 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND, MapMode.DANGER, MapMode.LANGUAGE] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
 
@@ -423,6 +426,39 @@ func _rebuild_legend() -> void:
 					var race := RaceDB.by_index(c.race)
 					_legend_row(c.color, race.icon, "%s — регионов %d" % [c.name, regions[id]],
 						"Культура %s (%s), с %d г.\nОбычаи: %s" % [c.name, race.display_name.to_lower(), c.founded_year, ", ".join(c.customs)])
+		MapMode.DANGER:
+			_legend_title.text = "Опасности"
+			if world != null:
+				for l in LairSystem.alive_lairs(world):
+					if l.def.great:
+						_legend_row(l.def.color, null, "%s — край %s" % [l.label(), world.regions[l.region].name],
+							"%s: сила %s, набегов %d, с %d г." % [l.def.display_name, ArmySystem._num(l.strength), l.raids, l.born])
+				var lairs := LairSystem.alive_lairs(world).filter(func(l: Lair) -> bool: return not l.def.great).size()
+				_legend_row(Color(0.85, 0.35, 0.25), null, "Логова чудовищ: %d" % lairs, "Набегают на соседние края; их разоряют герои и войска")
+				var tribes := TribeSystem.alive_tribes(world)
+				var hordes := tribes.filter(func(t: Tribe) -> bool: return t.horde)
+				_legend_row(Color(0.85, 0.65, 0.35), null, "Племена: %d, орды: %d" % [tribes.size(), hordes.size()], "Кочевники грабят соседей; орда может основать государство")
+				for t in hordes:
+					_legend_row(Color(0.95, 0.5, 0.2), t.race.icon, "%s — %s воинов" % [t.label(), ArmySystem._num(t.strength)], t.def.description)
+				for o in DiseaseSystem.alive_outbreaks(world):
+					_legend_row(o.def.color, null, "%s — краёв %d" % [o.def.display_name, o.regions.size()],
+						"%s\nС %d г., погибло %s" % [o.def.description, o.born, ArmySystem._num(o.deaths)])
+				_legend_row(DANGER_HIGH_LEGEND, null, "Багровый — смертельно опасно", "Логово великого чудовища, орда, чума")
+		MapMode.LANGUAGE:
+			_legend_title.text = "Языки и наречия"
+			if world != null:
+				var regions := {}
+				for region in world.regions:
+					if region.language >= 0:
+						regions[region.language] = regions.get(region.language, 0) + 1
+				var ids := regions.keys()
+				ids.sort_custom(func(a: int, b: int) -> bool: return regions[a] > regions[b])
+				for id in ids.slice(0, 40):
+					var l := world.languages[id]
+					var tip := "%s (%s), с %d г." % [LanguageSystem.title(world, id), l.race.display_name.to_lower(), l.born]
+					if l.parent >= 0:
+						tip += "\nОт: %s" % LanguageSystem.title(world, l.parent)
+					_legend_row(l.color, l.race.icon, "%s — краёв %d" % [LanguageSystem.title(world, id), regions[id]], tip)
 		MapMode.TRADE:
 			_legend_title.text = "Торговые пути"
 			if world != null:
@@ -632,6 +668,10 @@ func _on_cell_hovered(cell: int) -> void:
 		if people != World.NO_RACE and nation != null and people != nation.race.index:
 			region_text += ", живут %s" % RaceDB.by_index(people).display_name.to_lower()
 		parts.append(region_text)
+	if region != null:
+		if region.language >= 0:
+			parts.append(LanguageSystem.title(world, region.language))
+		parts.append_array(NationPanel.wild_lines(world, region))
 	parts.append(BiomeDB.get_def(map.biome[cell]).display_name)
 	var dep := world.deposit_at(cell)
 	if dep != null:

@@ -51,6 +51,10 @@ func _init() -> void:
 		else:
 			visible = true
 			refresh())
+	EventBus.wild_selected.connect(func(e: RefCounted) -> void:
+		if e != null:
+			_army = null
+			visible = false)
 	EventBus.world_generated.connect(func(_w: World, _ms: int) -> void:
 		_army = null
 		visible = false)

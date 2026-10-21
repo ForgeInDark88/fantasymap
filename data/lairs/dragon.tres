@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"dragon"
+display_name = "Логово дракона"
+monster = "дракон"
+description = "Великий змей на груде золота; его тень — смерть для пашен."
+biomes = Array[StringName]([&"mountains", &"snow"])
+weight = 0.35
+min_year = 40
+great = true
+great_range = 4
+strength = Vector2(9000.0, 16000.0)
+raid_chance = 0.12
+raid_pop = 0.02
+raid_gold = 200.0
+loot = 1500.0
+growth = 0.01
+color = Color(0.9, 0.25, 0.15, 1)
