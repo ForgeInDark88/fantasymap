@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="468" font-family="serif">
+<rect width="420" height="468" fill="#f1e4c3" stroke="#6b4f2a" stroke-width="3"/>
+<text x="20" y="34" font-size="20" fill="#3b2a14">Державы мира — 1 морозень, 150 г.</text>
+<rect x="20" y="56" width="18" height="14" fill="#826df2" stroke="#3b2a14"/>
+<text x="46" y="68" font-size="14" fill="#3b2a14">Каганат Голзуг (Орки, 1016 кл.)</text>
+<rect x="20" y="80" width="18" height="14" fill="#34d153" stroke="#3b2a14"/>
+<text x="46" y="92" font-size="14" fill="#3b2a14">Орда Макгор (Орки, 989 кл.)</text>
+<rect x="20" y="104" width="18" height="14" fill="#a255f2" stroke="#3b2a14"/>
+<text x="46" y="116" font-size="14" fill="#3b2a14">Ковен Шадукрипт (Нежить, 945 кл.)</text>
+<rect x="20" y="128" width="18" height="14" fill="#497ed1" stroke="#3b2a14"/>
+<text x="46" y="140" font-size="14" fill="#3b2a14">Холмы Пиптон (Полурослики, 945 кл.)</text>
+<rect x="20" y="152" width="18" height="14" fill="#f26d7a" stroke="#3b2a14"/>
+<text x="46" y="164" font-size="14" fill="#3b2a14">Шайка Зикрак (Гоблины, 921 кл.)</text>
+<rect x="20" y="176" width="18" height="14" fill="#b8f23d" stroke="#3b2a14"/>
+<text x="46" y="188" font-size="14" fill="#3b2a14">Королевство Валран (Люди, 857 кл.)</text>
+<rect x="20" y="200" width="18" height="14" fill="#d1b85e" stroke="#3b2a14"/>
+<text x="46" y="212" font-size="14" fill="#3b2a14">Подгорное царство Трабар (Дворфы, 749 кл.)</text>
+<rect x="20" y="224" width="18" height="14" fill="#5eb1d1" stroke="#3b2a14"/>
+<text x="46" y="236" font-size="14" fill="#3b2a14">Герцогство Гармар (Люди, 727 кл.)</text>
+<rect x="20" y="248" width="18" height="14" fill="#5cd149" stroke="#3b2a14"/>
+<text x="46" y="260" font-size="14" fill="#3b2a14">Кланы Гримагрот (Дворфы, 716 кл.)</text>
+<rect x="20" y="272" width="18" height="14" fill="#d17a34" stroke="#3b2a14"/>
+<text x="46" y="284" font-size="14" fill="#3b2a14">Вольный край Дробург (Полурослики, 703 кл.)</text>
+<rect x="20" y="296" width="18" height="14" fill="#55f2c9" stroke="#3b2a14"/>
+<text x="46" y="308" font-size="14" fill="#3b2a14">Ковен Золмат (Нежить, 695 кл.)</text>
+<rect x="20" y="320" width="18" height="14" fill="#f2f055" stroke="#3b2a14"/>
+<text x="46" y="332" font-size="14" fill="#3b2a14">Королевство Эанэондэ (Эльфы, 625 кл.)</text>
+<rect x="20" y="344" width="18" height="14" fill="#6df2a3" stroke="#3b2a14"/>
+<text x="46" y="356" font-size="14" fill="#3b2a14">Племена Угогмор (Орки, 569 кл.)</text>
+<rect x="20" y="368" width="18" height="14" fill="#f23d8b" stroke="#3b2a14"/>
+<text x="46" y="380" font-size="14" fill="#3b2a14">Торговая лига Краикзик (Гоблины, 545 кл.)</text>
+<rect x="20" y="392" width="18" height="14" fill="#d15ece" stroke="#3b2a14"/>
+<text x="46" y="404" font-size="14" fill="#3b2a14">Звёздный предел Элтеларис (Эльфы, 489 кл.)</text>
+<rect x="20" y="416" width="18" height="14" fill="#a134d1" stroke="#3b2a14"/>
+<text x="46" y="428" font-size="14" fill="#3b2a14">Проклятые земли Келакрипт (Нежить, 292 кл.)</text>
+<rect x="20" y="440" width="18" height="14" fill="#d15849" stroke="#3b2a14"/>
+<text x="46" y="452" font-size="14" fill="#3b2a14">Ковен Улукрипт (Нежить, 20 кл.)</text>
+</svg>

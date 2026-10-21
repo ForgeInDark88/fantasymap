@@ -56,6 +56,18 @@ func _run() -> void:
 		await _frames(3)
 	bus.nation_selected.emit(0)
 	await _frames(5)
+	# Интерфейс действительно собран (скрипт HUD разобран, а не пуст).
+	var hud: Node = main.get_node("HUD")
+	_expect(hud.get_script() != null and hud.has_method("_on_menu"), "скрипт интерфейса не загрузился")
+	# Меню «☰»: справочник, история, уведомления, миникарта, обучение (экспорт — в usability_test).
+	if hud.has_method("_on_menu"):
+		var dummy := PopupMenu.new()
+		for id in [0, 1, 2, 6, 6, 7]:
+			hud.call("_on_menu", id, dummy)
+			await _frames(3)
+		dummy.free()
+	bus.toast_requested.emit("проверка")
+	await _frames(3)
 	print("интерфейс: сцена, %d режимов карты, окна и карточки — без падений" % 15)
 	_finish()
 

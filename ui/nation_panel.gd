@@ -20,6 +20,18 @@ var _cell := -1
 
 func _ready() -> void:
 	%CloseButton.pressed.connect(close_requested.emit)
+	# Уведомления (этап 11.F): следить за державой.
+	_watch = Button.new()
+	_watch.text = "🔔"
+	_watch.tooltip_text = "Следить: уведомления о событиях этой державы"
+	_watch.toggle_mode = true
+	_watch.focus_mode = Control.FOCUS_NONE
+	_watch.toggled.connect(func(on: bool) -> void:
+		var world := WorldState.world
+		if world != null and _nation_id >= 0 and world.watch_nations.has(_nation_id) != on:
+			Notices.toggle_nation(world, _nation_id))
+	%CloseButton.add_sibling(_watch)
+	%CloseButton.get_parent().move_child(_watch, %CloseButton.get_index())
 	_body.scroll_active = true
 	_body.meta_underlined = false
 	_body.fit_content = false
@@ -32,10 +44,15 @@ func _ready() -> void:
 			EventBus.nation_selected.emit(id))
 
 
+var _watch: Button
+
+
 func show_nation(world: World, nation: Nation, cell: int = -1) -> void:
 	if nation.id != _nation_id or cell >= 0:
 		_cell = cell
 	_nation_id = nation.id
+	if _watch != null:
+		_watch.set_pressed_no_signal(world.watch_nations.has(nation.id))
 	refresh(world)
 	show()
 

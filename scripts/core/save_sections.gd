@@ -679,7 +679,8 @@ static func _load_market(world: World, data: Dictionary) -> void:
 
 ## Дипломатия и ИИ (этап 11.E): журнал и слухи.
 static func _diplo_dict(world: World) -> Dictionary:
-	return {"journal": world.diplo_journal, "rumors": world.rumors, "serial": world.rumor_serial}
+	return {"journal": world.diplo_journal, "rumors": world.rumors, "serial": world.rumor_serial,
+		"branch": world.branch, "branch_from": world.branch_from, "watch": [Array(world.watch_nations), Array(world.watch_heroes)]}
 
 
 static func _load_diplo(world: World, data: Dictionary) -> void:
@@ -691,3 +692,10 @@ static func _load_diplo(world: World, data: Dictionary) -> void:
 		world.rumors.append({"id": int(r.id), "year": int(r.year), "kind": StringName(r.kind), "about": int(r.about), "target": int(r.target),
 			"source": int(r.source), "truth": bool(r.truth), "cred": float(r.cred), "until": int(r.until), "text": str(r.text)})
 	world.rumor_serial = int(d.get("serial", 0))
+	world.branch = int(d.get("branch", 0))
+	var bf: Dictionary = d.get("branch_from", {})
+	if not bf.is_empty():
+		world.branch_from = {"branch": int(bf.branch), "year": int(bf.year)}
+	var watch: Array = d.get("watch", [[], []])
+	world.watch_nations = PackedInt32Array(watch[0])
+	world.watch_heroes = PackedInt32Array(watch[1])

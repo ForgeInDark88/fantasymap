@@ -121,6 +121,12 @@ var market_totals: Dictionary = {}
 var diplo_journal: Array[Dictionary] = []
 var rumors: Array[Dictionary] = []
 var rumor_serial := 0
+## Удобство (этап 11.F): ветвь истории (Snapshots) и откуда она пошла
+## {branch, year}; за кем следит игрок (уведомления): державы и герои.
+var branch := 0
+var branch_from: Dictionary = {}
+var watch_nations := PackedInt32Array()
+var watch_heroes := PackedInt32Array()
 ## Товары краёв (MarketSystem.region_goods; производное от карты, не сохраняется).
 var region_goods: Array = []
 ## Края, чьи товары надо пересчитать (смена биома, рельеф).
@@ -192,6 +198,6 @@ func log_event(kind: StringName, text: String, nation_ids: PackedInt32Array = Pa
 	chronicle.append({"year": year, "month": month, "day": day, "kind": kind, "text": text, "nations": nation_ids})
 	chronicle_total += 1
 	if observer.is_valid():
-		observer.call(&"log", {"kind": kind, "text": text})
+		observer.call(&"log", {"kind": kind, "text": text, "nations": nation_ids})
 	if chronicle.size() > CHRONICLE_LIMIT:
 		chronicle = chronicle.slice(chronicle.size() - CHRONICLE_LIMIT)

@@ -1,0 +1,167 @@
+# Перевод интерфейса на английский (этап 11.F): строка интерфейса по-русски<TAB>по-английски.
+Политика	Politics
+Расы	Races
+Население	Population
+Ресурсы	Resources
+Биомы	Biomes
+Высоты	Elevation
+Темп.	Temp.
+Влажн.	Moist.
+Религии	Religions
+Культура	Culture
+Торговля	Trade
+Подземелья	Underground
+Опасности	Dangers
+Языки	Languages
+Товары	Goods
+Создать государство	Create state
+Вызвать событие	Trigger event
+Объявить войну	Declare war
+Поднять мятеж	Raise rebellion
+Призвать героя	Summon hero
+Источник силы	Source of power
+Открыть Врата бездны	Open Abyss Gate
+Основать религию	Found religion
+Вызвать ересь	Cause heresy
+Озарение	Insight
+Слияние культур	Merge cultures
+Тайная операция	Covert operation
+Тайное общество	Secret society
+Созвать организацию	Convene organization
+Извержение	Eruption
+Засуха	Drought
+Нашествие из глубин	Invasion from the deep
+Древние руины	Ancient ruins
+Мировой кризис	World crisis
+Проложить дорогу	Build road
+Даровать артефакт	Grant artifact
+Милость бога	Divine favour
+Избранник бога	God's chosen
+Дитя героев	Child of heroes
+Основать орден	Found order
+Создать армию	Create army
+Спустить флот	Launch fleet
+Уничтожить армию	Destroy army
+Бунт армии	Army mutiny
+Племя	Tribe
+Логово чудовищ	Monster lair
+Великое чудовище	Great monster
+Поветрие	Epidemic
+Новое наречие	New dialect
+Караван	Caravan
+Наёмный отряд	Mercenary company
+Золотая лихорадка	Gold rush
+Рабство: ввести или отменить	Slavery: introduce or abolish
+Простить долги	Forgive debts
+Сменить нрав	Change character
+Пустить слух	Spread rumour
+Перенести столицу	Move capital
+Предложить сделку	Propose deal
+Собиратель земель	Gatherer of lands
+Поднять землю	Raise land
+Опустить землю	Lower land
+Идти в регион	Travel to region
+Охота на чудовищ	Hunt monsters
+Исследовать руины и пещеры	Explore ruins and caves
+Доброе деяние	Good deed
+Злое деяние	Evil deed
+Присягнуть державе края	Swear to local state
+Вступить в орден	Join order
+Принять веру края	Adopt local faith
+Искать друзей	Seek friends
+Предложить брак	Propose marriage
+Наставничество	Mentorship
+Наняться на войну	Hire out for war
+Великое деяние	Great deed
+Отдыхать и лечиться	Rest and heal
+Рынок и лекарь	Market and healer
+Доска заданий	Quest board
+Позвать в отряд	Invite to party
+К цели задания	To quest target
+Вступить в войско	Join army
+Покинуть войско	Leave army
+Выкупиться из плена	Pay ransom
+Бежать из плена	Escape captivity
+Войны	Wars
+Дипломатия	Diplomacy
+Государства	States
+Правители	Rulers
+Города	Cities
+Бедствия	Disasters
+Герои	Heroes
+Великое	Great
+Вера	Faith
+Знания	Knowledge
+Тайны	Secrets
+Союзы	Unions
+Климат	Climate
+Подземье	Underworld
+Руины	Ruins
+Кризисы и эпохи	Crises and eras
+Роды и ордена	Lineages and orders
+Битвы, флоты, пираты	Battles, fleets, pirates
+Боги и реликвии	Gods and relics
+Дикие земли	Wild lands
+Болезни	Diseases
+Рынок и казна	Market and treasury
+Общество	Society
+Сделки и слухи	Deals and rumours
+Население рас	Race population
+Площадь государств	State area
+Население государств	State population
+Открытия по расам	Discoveries by race
+Цены товаров	Goods prices
+Пауза	Pause
+Мир	World
+Бог	God
+Летопись	Annals
+Статистика	Statistics
+Мой герой	My hero
+Сохранения	Saves
+Судьба	Fate
+Хроники	Chronicles
+Рынок	Market
+Закрыть	Close
+Показать правду	Show truth
++день	+day
++мес.	+month
++год	+year
+Хроники мира	World chronicles
+Летопись мира	World annals
+Панель Бога	God panel
+Плавность	Smoothness
+Звук	Sound
+Камера	Camera
+Анимации интерфейса	Interface animations
+Анимации границ и значков	Border and icon animations
+Эффекты событий (оттенок эпох, вспышки)	Event effects (era tint, flashes)
+Общая громкость	Master volume
+Музыка	Music
+Эффекты	Effects
+Справочник	Reference
+История мира	World history
+Обучение	Tutorial
+Уведомления	Notifications
+Язык интерфейса	Interface language
+Меню	Menu
+Далее	Next
+Назад	Back
+Пропустить	Skip
+Сделать снимок	Take snapshot
+Вернуться в это время	Return to this time
+Следить	Watch
+Экспорт PNG	Export PNG
+Экспорт PNG (пергамент)	Export PNG (parchment)
+Легенда SVG	SVG legend
+Сгенерировать	Generate
+Все державы	All states
+Все сделки	All deals
+К армии	To army
+К месту	Go to
+Уйти	Leave
+Миникарта	Minimap
+Нравы держав	State characters
+Сохранить	Save
+Загрузить	Load
+🔔 Уведомлять	🔔 Notify
+Поиск по справочнику	Search the reference

@@ -14,6 +14,11 @@ func _run() -> void:
 	var years := int(args[3]) if args.size() > 3 else 150
 	var bus := root.get_node("/root/EventBus")
 	var ws: Node = root.get_node("/root/WorldState")
+	# Обучение при первом запуске — не в кадр (показывается отдельно ниже).
+	var cfg := ConfigFile.new()
+	cfg.load("user://settings.cfg")
+	cfg.set_value("ui", "tutorial_done", true)
+	cfg.save("user://settings.cfg")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await bus.world_generated
@@ -49,6 +54,20 @@ func _run() -> void:
 	bus.nation_selected.emit(biggest.id)
 	await _frames(3)
 	_shot(out_dir, "nation_card.png")
+
+	# Обучение и меню «☰»: первый шаг тура, справочник.
+	bus.tutorial_requested.emit()
+	await _frames(10)
+	_shot(out_dir, "tutorial.png")
+	for c in hud.get_node("Root").get_children():
+		if c.has_method("finish"):
+			c.call("finish")
+	bus.reference_window_requested.emit()
+	await _frames(10)
+	_shot(out_dir, "reference.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_sections") != null:
+			c.visible = false
 
 	# Окно «Рынок» крупнейшего государства.
 	bus.market_window_requested.emit(biggest.id)

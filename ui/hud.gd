@@ -116,6 +116,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		EventBus.nation_selected.emit(-1)
 	elif key.keycode == KEY_SPACE:
 		WorldState.toggle_pause()
+	elif key.keycode == KEY_M:
+		EventBus.minimap_toggled.emit()
 	elif key.keycode == KEY_F5:
 		_saves_panel.save_game(SavesPanel.QUICK_SAVE)
 		_status.text = "Быстрое сохранение: " + WorldState.world.date_text() if WorldState.world != null else ""
@@ -266,6 +268,99 @@ func _build_left_panels() -> void:
 		else:
 			audio.visible = true)
 	_panel_buttons.add_child(sound)
+	_build_extras(root)
+
+
+## Удобство (этап 11.F): меню «☰» (справочник, история и ветви, экспорт карты,
+## уведомления, обучение, миникарта, язык), всплывающие сообщения, миникарта
+## (легенда — над ней), обучение, совет после создания мира.
+func _build_extras(root: Control) -> void:
+	root.add_child(ReferenceWindow.new())
+	root.add_child(HistoryWindow.new())
+	root.add_child(NoticesPanel.new())
+	var minimap := Minimap.new()
+	root.add_child(minimap)
+	var legend: Control = root.get_node_or_null("Legend")
+	if legend != null:
+		minimap.resized.connect(func() -> void: legend.offset_bottom = -8.0 - (minimap.size.y + 8.0 if minimap.visible else 0.0))
+		minimap.visibility_changed.connect(func() -> void: legend.offset_bottom = -8.0 - (minimap.size.y + 8.0 if minimap.visible else 0.0))
+	_toasts = VBoxContainer.new()
+	_toasts.anchor_left = 0.5
+	_toasts.anchor_right = 0.5
+	_toasts.offset_left = -260.0
+	_toasts.offset_right = 260.0
+	_toasts.offset_top = 56.0
+	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_toasts)
+	EventBus.toast_requested.connect(_toast)
+	var tutorial := Tutorial.new()
+	root.add_child(tutorial)
+	tutorial.setup(self)
+	EventBus.world_generated.connect(func(_w: World, _ms: int) -> void:
+		_toast(Loc.t(Tutorial.TIPS[randi() % Tutorial.TIPS.size()])))
+	var menu := MenuButton.new()
+	menu.text = "☰"
+	menu.tooltip_text = "Меню: справочник, история, экспорт карты, уведомления, обучение, язык"
+	menu.focus_mode = Control.FOCUS_NONE
+	var pm := menu.get_popup()
+	for item in [["Справочник", 0], ["История мира", 1], ["Уведомления", 2], ["Экспорт PNG", 3], ["Экспорт PNG (пергамент)", 4],
+			["Легенда SVG", 5], ["Миникарта", 6], ["Обучение", 7]]:
+		pm.add_item(item[0], item[1])
+	pm.add_separator(Loc.t("Язык интерфейса"))
+	for i in Loc.LOCALES.size():
+		pm.add_radio_check_item(Loc.LOCALE_NAMES[Loc.LOCALES[i]], 100 + i)
+		pm.set_item_checked(pm.get_item_index(100 + i), Loc.locale == Loc.LOCALES[i])
+	pm.id_pressed.connect(_on_menu.bind(pm))
+	_panel_buttons.add_child(menu)
+
+
+func _on_menu(id: int, pm: PopupMenu) -> void:
+	var world := WorldState.world
+	match id:
+		0:
+			EventBus.reference_window_requested.emit()
+		1:
+			EventBus.history_window_requested.emit()
+		2:
+			EventBus.notices_requested.emit()
+		3, 4:
+			if world != null:
+				var path := MapExport.save_png(world, id == 4)
+				_toast("Карта сохранена: %s" % ProjectSettings.globalize_path(path) if not path.is_empty() else "Не удалось сохранить карту")
+		5:
+			if world != null:
+				var path := MapExport.save_svg(world)
+				_toast("Легенда сохранена: %s" % ProjectSettings.globalize_path(path) if not path.is_empty() else "Не удалось сохранить легенду")
+		6:
+			EventBus.minimap_toggled.emit()
+		7:
+			EventBus.tutorial_requested.emit()
+		_:
+			if id >= 100:
+				Loc.set_locale(Loc.LOCALES[id - 100])
+				for i in Loc.LOCALES.size():
+					pm.set_item_checked(pm.get_item_index(100 + i), i == id - 100)
+
+
+var _toasts: VBoxContainer
+
+
+func _toast(text: String) -> void:
+	if _toasts == null:
+		return
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(500, 0)
+	l.add_theme_font_size_override("font_size", 13)
+	panel.add_child(l)
+	_toasts.add_child(panel)
+	while _toasts.get_child_count() > 4:
+		_toasts.get_child(0).queue_free()
+		_toasts.remove_child(_toasts.get_child(0))
+	UiAnim.toast(panel, 5.0)
 
 
 func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
