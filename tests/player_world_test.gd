@@ -14,6 +14,8 @@ var h: Hero
 
 
 func _initialize() -> void:
+	# Режим героя скрыт в игре (Features.HERO_PLAY), но его тесты идут с включённым флагом.
+	Features.HERO_PLAY = true
 	_setup()
 	_data()
 	_quests()

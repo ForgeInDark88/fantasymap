@@ -10,6 +10,8 @@ var _failures := 0
 
 
 func _initialize() -> void:
+	# Режим героя скрыт в игре (Features.HERO_PLAY), но его тесты идут с включённым флагом.
+	Features.HERO_PLAY = true
 	var s := MapSettings.new()
 	s.world_seed = 4242
 	s.apply_size_preset(1)

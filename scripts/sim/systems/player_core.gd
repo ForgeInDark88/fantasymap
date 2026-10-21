@@ -50,7 +50,7 @@ static func note(world: World, text: String) -> void:
 
 ## Взять под управление героя-странника.
 static func take_control(world: World, hero_id: int) -> bool:
-	if hero_id < 0 or hero_id >= world.heroes.size():
+	if not Features.HERO_PLAY or hero_id < 0 or hero_id >= world.heroes.size():
 		return false
 	var h := world.heroes[hero_id]
 	if not h.alive or h.is_ruler:
@@ -68,7 +68,7 @@ static func take_control(world: World, hero_id: int) -> bool:
 
 ## Создать своего героя: раса, класс, имя, стартовый регион.
 static func create_hero(world: World, race: RaceDef, cls: HeroClassDef, name: String, region_id: int) -> Hero:
-	if race == null or cls == null or region_id < 0 or region_id >= world.regions.size() or world.regions[region_id].cells.is_empty():
+	if not Features.HERO_PLAY or race == null or cls == null or region_id < 0 or region_id >= world.regions.size() or world.regions[region_id].cells.is_empty():
 		return null
 	var region := world.regions[region_id]
 	world.ensure_region_name(region)

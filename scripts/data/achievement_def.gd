@@ -17,6 +17,8 @@ extends Resource
 @export var title: String = ""
 @export_multiline var description: String = ""
 @export var hidden: bool = false
+## Достижение режима «Сыграй за героя» — скрыто, пока режим выключен (Features.HERO_PLAY).
+@export var hero_play: bool = false
 @export var cond: StringName = &"count"
 @export var key: StringName = &""
 @export var kind: StringName = &""

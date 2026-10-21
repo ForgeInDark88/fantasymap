@@ -7,6 +7,7 @@ script = ExtResource("1_ach")
 id = &"play_hero"
 title = "Сам себе герой"
 description = "Вы впервые сыграли за героя."
+hero_play = true
 hidden = false
 cond = &"count"
 key = &"player_heroes"

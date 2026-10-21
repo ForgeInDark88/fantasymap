@@ -181,12 +181,17 @@ func _build_left_panels() -> void:
 		["Летопись", "Полная летопись с фильтрами", ChroniclePanel.new()],
 		["Статистика", "Графики по эпохам", StatsPanel.new()],
 		["Герои", "Герои мира", HeroesPanel.new()],
-		["Мой герой", "Сыграй за героя: команды, журнал, миникарта", MyHeroPanel.new()],
+		["Мой герой", "Сыграй за героя: команды, журнал, миникарта", null],
 		["Руины", "Руины и древности мира", RuinsPanel.new()],
 		["Сохранения", "Сохранить или загрузить мир (F5 / F9)", _saves_panel],
 	]
 	var root: Control = _gen_panel.get_parent()
 	for d in defs:
+		# Режим «Сыграй за героя» скрыт (Features.HERO_PLAY): панели нет вовсе.
+		if d[0] == "Мой герой":
+			if not Features.HERO_PLAY:
+				continue
+			d[2] = MyHeroPanel.new()
 		var panel: Control = d[2]
 		if panel.get_parent() == null:
 			panel.position = _gen_panel.position
@@ -222,7 +227,8 @@ func _build_left_panels() -> void:
 		if n is BaseButton:
 			UiAnim.hover(n as BaseButton))
 	EventBus.my_hero_requested.connect(func(mine: bool) -> void:
-		_left_panels["Мой герой" if mine else "Герои"][0].button_pressed = true)
+		var key := "Мой герой" if mine and _left_panels.has("Мой герой") else "Герои"
+		_left_panels[key][0].button_pressed = true)
 	_fate_button = Button.new()
 	_fate_button.text = "Судьба"
 	_fate_button.tooltip_text = "Чертоги Судьбы: суд над павшими героями"
@@ -378,7 +384,8 @@ func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
 			entry[1].visible = false
 	# Полная летопись и «Мой герой» заменяют ленту.
 	var open_full := (on and (panel_name == "Летопись" or panel_name == "Мой герой")) \
-			or (_left_panels["Летопись"][0] as Button).button_pressed or (_left_panels["Мой герой"][0] as Button).button_pressed
+			or (_left_panels["Летопись"][0] as Button).button_pressed \
+			or (_left_panels.has("Мой герой") and (_left_panels["Мой герой"][0] as Button).button_pressed)
 	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not open_full
 
 

@@ -29,7 +29,8 @@ static func sections() -> Array:
 		return "%s %s." % [t.description, "Кочевники (собираются в орды)" if t.nomad else "Оседлые"]))
 	res.append(_section("Нравы держав", PersonalityDB.all(), func(p: PersonalityDef) -> String:
 		return "%s Воинственность ×%.2f, охота к сделкам ×%.1f." % [p.description, p.aggression, p.deal_rate]))
-	res.append(_section("Задания героя", QuestDB.all(), func(q: QuestDef) -> String: return q.description if not q.description.is_empty() else q.title))
+	if Features.HERO_PLAY:
+		res.append(_section("Задания героя", QuestDB.all(), func(q: QuestDef) -> String: return q.description if not q.description.is_empty() else q.title))
 	res.append(_section("Классы героев", PoliticsDB.hero_classes(), func(c: HeroClassDef) -> String: return c.description))
 	res.append(_section("Черты правителей", PoliticsDB.ruler_traits(), func(t: RulerTraitDef) -> String: return t.description))
 	res.append(_section("Мировые кризисы", CrisisDB.all(), func(c: Resource) -> String: return str(c.get("description"))))
@@ -45,10 +46,11 @@ static func sections() -> Array:
 	for t in GodToolList.TOOLS:
 		tools.append({"name": t[1], "text": t[2]})
 	res.append({"title": "Инструменты Бога", "entries": tools})
-	var cmds: Array = []
-	for c in PlayerSystem.COMMANDS:
-		cmds.append({"name": c[1], "text": ("Занимает месяцев: %d." % c[2]) if int(c[2]) > 0 else "Сразу."})
-	res.append({"title": "Команды героя", "entries": cmds})
+	if Features.HERO_PLAY:
+		var cmds: Array = []
+		for c in PlayerSystem.COMMANDS:
+			cmds.append({"name": c[1], "text": ("Занимает месяцев: %d." % c[2]) if int(c[2]) > 0 else "Сразу."})
+		res.append({"title": "Команды героя", "entries": cmds})
 	return res
 
 

@@ -25,6 +25,8 @@ func _init(file: String = PATH) -> void:
 	path = file
 	var reg := Registry.new("res://data/achievements/", AchievementDef)
 	for d in reg.items:
+		if (d as AchievementDef).hero_play and not Features.HERO_PLAY:
+			continue
 		defs.append(d as AchievementDef)
 	load_profile()
 
