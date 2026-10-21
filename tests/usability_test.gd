@@ -64,7 +64,9 @@ func _localization() -> void:
 	Loc.set_locale("en", false)
 	_expect(TranslationServer.translate("Политика") == "Politics" and Loc.t("Политика") == "Politics", "английский не включается")
 	Loc.set_locale("ru", false)
-	_expect(Loc.t("Политика") == "Политика", "русский не возвращается")
+	# Надписи Godot переводит сам (auto_translate) — по-русски без перевода
+	# не должно подставляться запасное английское.
+	_expect(Loc.t("Политика") == "Политика" and TranslationServer.translate("Политика") == "Политика", "русский не возвращается")
 	print("перевод: %d строк" % n)
 
 

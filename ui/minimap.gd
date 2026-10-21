@@ -92,11 +92,15 @@ func _draw_frame() -> void:
 	if r == null or cam == null:
 		return
 	var map_rect: Rect2 = r.call("get_map_rect")
+	# До построения карты прямоугольник пуст — рамку не рисуем.
+	if map_rect.size.x <= 0.0 or map_rect.size.y <= 0.0 or _frame.size.x <= 0.0:
+		return
 	var view_size := get_viewport().get_visible_rect().size / cam.zoom
 	var view := Rect2(cam.get_screen_center_position() - view_size / 2.0, view_size)
 	var k := _frame.size / map_rect.size
 	var box := Rect2((view.position - map_rect.position) * k, view.size * k).intersection(Rect2(Vector2.ZERO, _frame.size))
-	_frame.draw_rect(box, Color(1.0, 1.0, 1.0, 0.9), false, 1.5)
+	if box.size.x > 0.0 and box.size.y > 0.0:
+		_frame.draw_rect(box, Color(1.0, 1.0, 1.0, 0.9), false, 1.5)
 
 
 func _gui_input(event: InputEvent) -> void:

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Дым-проверка интерфейса без экрана: главная сцена загружается (все скрипты
 ## интерфейса разбираются), мир создаётся, проходит год, открываются окна
-## (Хроники, Рынок, Дипломатия, Достижения, карточки) и режимы карты.
+## (Хроники, Рынок, Дипломатия, Достижения, карточки), режимы карты и F5/F9.
 ## Ошибки скриптов видны в выводе как SCRIPT ERROR (CI их ловит).
 ##   godot --headless --path . -s res://tests/ui_smoke_test.gd
 
@@ -68,8 +68,28 @@ func _run() -> void:
 		dummy.free()
 	bus.toast_requested.emit("проверка")
 	await _frames(3)
+	# F5 — быстрое сохранение, F9 — его загрузка: мир возвращается в ту же дату
+	# (на паузе, чтобы часы не шли между проверками).
+	ws.call("set_speed", 0)
+	var date: String = ws.world.call("date_text")
+	var nations: int = ws.world.get("nations").size()
+	hud.call("_unhandled_input", _key(KEY_F5))
+	_expect(FileAccess.file_exists(SaveSystem.save_path("быстрое")), "F5 не создал быстрое сохранение")
+	ws.call("step_month")
+	hud.call("_unhandled_input", _key(KEY_F9))
+	await bus.world_generated
+	await _frames(3)
+	_expect(ws.world.call("date_text") == date and ws.world.get("nations").size() == nations, "F9 не вернул мир к быстрому сохранению")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.save_path("быстрое")))
 	print("интерфейс: сцена, %d режимов карты, окна и карточки — без падений" % 15)
 	_finish()
+
+
+func _key(code: Key) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.keycode = code
+	e.pressed = true
+	return e
 
 
 func _finish() -> void:
