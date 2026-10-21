@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"caravan_reward"
+title = "Благодарность купцов"
+text = "Купеческая гильдия разыскала вас: спасённый караван дошёл до места."
+where = &""
+terrain = &""
+weight = 1.0
+chained = true
+options = Array[Dictionary]([{"text": "Взять награду золотом", "gold": 50.0, "xp": 0.5, "result": "Гильдия держит слово."}, {"text": "Взять тюк шёлка", "cargo": "silk", "amount": 5, "result": "Тюк дорогого шёлка — в ваш мешок."}])

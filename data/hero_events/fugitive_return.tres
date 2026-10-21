@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"fugitive_return"
+title = "Долг беглеца"
+text = "Тот самый беглец находит вас: теперь он купец и помнит добро."
+where = &""
+terrain = &""
+weight = 1.0
+chained = true
+options = Array[Dictionary]([{"text": "Принять подарок", "gold": 60.0, "xp": 0.5, "result": "Тяжёлый кошель — честный долг."}, {"text": "Попросить товар в дорогу", "cargo": "spices", "amount": 5, "result": "Он нагружает ваш мешок пряностями."}])

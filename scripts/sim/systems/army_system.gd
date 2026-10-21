@@ -763,6 +763,7 @@ func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], re
 	war.battles += 1
 	war.last_battle = today(world)
 	var fallen := 0.0
+	_player_battle(world, winners, losers)
 	for x in losers:
 		var n := world.nations[x.nation]
 		var loss := n.army * x.share * rng.randf_range(0.06, 0.14) * (1.5 if n.race.has_trait(&"cowardly") else 1.0)
@@ -837,11 +838,28 @@ func _retreat(world: World, a: Army) -> void:
 	a.eta = _step_cost(world, a.region, a.path[0], a.nation) if not a.path.is_empty() else 0
 
 
+## Герой игрока служит в одной из армий битвы (PlayerWorld решает его судьбу).
+func _player_battle(world: World, winners: Array[Army], losers: Array[Army]) -> void:
+	var pa := world.player_army
+	if world.player < 0 or pa.is_empty():
+		return
+	for x in winners:
+		if x.kind == &"land" and x.war == int(pa.war) and x.nation == int(pa.nation):
+			PlayerWorld.on_battle(world, x, true)
+			return
+	for x in losers:
+		if x.kind == &"land" and x.war == int(pa.war) and x.nation == int(pa.nation):
+			PlayerWorld.on_battle(world, x, false)
+			return
+
+
 ## Судьба полководца разбитой армии: гибель или плен.
 func _general_fate(world: World, a: Army, captor: int) -> void:
 	if a.general < 0:
 		return
 	var g: Dictionary = world.generals[a.general]
+	if int(g.hero) >= 0 and int(g.hero) == world.player:
+		return  # судьбу героя игрока решает PlayerWorld.on_battle
 	var roll := world.rng.randf()
 	if roll < 0.08:
 		if int(g.hero) >= 0:

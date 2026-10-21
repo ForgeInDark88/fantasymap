@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"epidemic"
+display_name = "Поветрие"
+title = "Остановить поветрие в краю {region}"
+description = "Лечить больных и жечь заразу — опасное, но святое дело."
+handler = &"epidemic"
+weight = 0.9
+gold_base = 30.0
+xp_base = 2.5
+danger = 1.3

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"treasure"
+display_name = "Клад"
+title = "Найти клад в краю {region} (по слухам)"
+description = "Слухи о кладе — бывают правдой, бывают вымыслом."
+handler = &"treasure"
+weight = 0.0
+gold_base = 0.0
+gold_per_step = 0.0
+xp_base = 1.0
+board = false
+years = 3

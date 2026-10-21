@@ -183,6 +183,21 @@ func refresh() -> void:
 		"Сила: %.0f · ум: %s (%.2f) · натура: %s (%+.2f)" % [h.power(), h.intellect_name(), h.wits(), h.alignment_name(), h.karma],
 		"Где: %s%s" % [world.region_label(h.cell, "дикие земли"), (" · служит: " + world.nations[h.nation_id].short_name) if h.nation_id >= 0 else ""],
 	]
+	# Живой мир (этап 11.H): плен, войско, груз, язык края.
+	if h.captive_by >= 0:
+		lines.append("[color=#ff8a6a]В плену у государства %s до %d г. — выкуп %d зол. или побег.[/color]" % [world.nations[h.captive_by].short_name,
+			h.captive_until, int(PlayerWorld.ransom_price(h))])
+	if not world.player_army.is_empty():
+		var a := PlayerWorld.player_army(world)
+		lines.append("[color=#ffd24a]%s в войске государства %s%s[/color]" % ["Полководец" if world.player_army.role == "general" else "Офицер",
+			world.nations[int(world.player_army.nation)].short_name, (" · " + world.region_label(a.cell, "")) if a != null else ""])
+	if not h.cargo.is_empty():
+		var items: Array[String] = []
+		for gi in h.cargo:
+			items.append("%s %d" % [(MarketDB.all()[int(gi)] as GoodDef).display_name.to_lower(), roundi(float(h.cargo[gi]))])
+		lines.append("Груз (%d/%d): %s" % [int(PlayerWorld.cargo_total(h)), int(PlayerWorld.cargo_cap(h)), ", ".join(items)])
+	if not PlayerWorld.speaks_here(world, h):
+		lines.append("[color=#c0c8f0]Здесь говорят на чужом языке: цены выше, заданий меньше.[/color]")
 	if not h.artifact.is_empty():
 		lines.append("Предмет: %s (×%.2f)" % [h.artifact, h.artifact_mult])
 	if h.patron_god != &"" and LoreDB.god(h.patron_god) != null:

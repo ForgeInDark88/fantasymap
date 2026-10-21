@@ -19,6 +19,8 @@ const COMMANDS := [
 	[&"great", "Великое деяние", 3], [&"rest", "Отдыхать и лечиться", 1],
 	[&"shop", "Рынок и лекарь", 0], [&"board", "Доска заданий", 0], [&"invite", "Позвать в отряд", 0],
 	[&"quest_go", "К цели задания", 0],
+	[&"join_army", "Вступить в войско", 0], [&"leave_army", "Покинуть войско", 0],
+	[&"ransom", "Выкупиться из плена", 0], [&"escape", "Бежать из плена", 1],
 ]
 
 
@@ -36,6 +38,15 @@ static func why_not(world: World, kind: StringName) -> String:
 		return "нет героя"
 	if not world.player_choice.is_empty():
 		return "ждёт вашего решения"
+	# Плен: только выкуп или побег; в войске — только служба (покинуть, отдохнуть).
+	if h.captive_by >= 0:
+		if kind == &"ransom":
+			return "" if h.gold >= PlayerWorld.ransom_price(h) else "выкуп — %d золотых" % int(PlayerWorld.ransom_price(h))
+		return "" if kind == &"escape" else "вы в плену"
+	if kind == &"ransom" or kind == &"escape":
+		return "вы не в плену"
+	if not world.player_army.is_empty() and kind not in [&"leave_army", &"rest", &"friends", &"invite"]:
+		return "вы в войске — сначала покиньте его"
 	var owner := world.owner[h.cell] if h.cell >= 0 else -1
 	var rid := world.region_of[h.cell] if h.cell >= 0 else -1
 	match kind:
@@ -78,6 +89,12 @@ static func why_not(world: World, kind: StringName) -> String:
 		&"quest_go":
 			if world.player_quests.is_empty():
 				return "нет заданий"
+		&"join_army":
+			if PlayerWorld.army_near(world, h) == null:
+				return "рядом нет войска вашей державы (нужна присяга или наём)"
+		&"leave_army":
+			if world.player_army.is_empty():
+				return "вы не в войске"
 	return ""
 
 
@@ -274,6 +291,20 @@ static func _execute(world: World, h: Hero, kind: StringName) -> void:
 			PlayerQuests.open_shop(world, h)
 		&"board":
 			PlayerQuests.open_board(world, h)
+		&"join_army":
+			var why := PlayerWorld.join_army(world, h)
+			if why.is_empty():
+				note(world, "Вы %s." % ("ведёте войско как полководец" if world.player_army.role == "general" else "служите в войске офицером"))
+		&"leave_army":
+			PlayerWorld.leave_army(world, h, "Вы покинули войско.")
+		&"ransom":
+			var why := PlayerWorld.ransom(world, h)
+			if not why.is_empty():
+				note(world, why)
+		&"escape":
+			var why := PlayerWorld.escape(world, h)
+			if not why.is_empty():
+				note(world, why)
 		&"invite":
 			var c := _companion_candidate(world, h)
 			c.party_leader = h.id
@@ -353,6 +384,11 @@ static func tick_month(world: World, h: Hero) -> void:
 		if not cmd.is_empty() and cmd.kind == "rest":
 			heal = HEAL_CITY if PlayerQuests.city_here(world, h) != null else HEAL_REST
 		h.wounds = maxf(0.0, h.wounds - heal)
+	# Живой мир: плен, служба в войске, болезни, цепочки событий.
+	if PlayerWorld.monthly(world, h) or not h.alive or not world.player_choice.is_empty():
+		if world.player_choice.is_empty() and world.player_cmd.get("kind", "") in ["ransom", "escape", "leave_army", "join_army"]:
+			world.player_cmd = {}
+		return
 	PlayerQuests.check(world, h, &"month")
 	if not h.alive:
 		return

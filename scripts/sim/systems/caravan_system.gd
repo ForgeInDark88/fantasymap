@@ -34,9 +34,9 @@ static func launch(world: World, road: Road, from_city: int, to_city: int, good:
 	return c
 
 
-## Товары в пути (для учёта рынка).
+## Товары в пути (для учёта рынка): караваны и мешок героя игрока.
 static func in_transit(world: World) -> float:
-	var sum := 0.0
+	var sum := PlayerWorld.carried(world)
 	for c in world.caravans:
 		if c.alive:
 			sum += c.amount
@@ -74,7 +74,7 @@ func _month(world: World, c: Caravan) -> void:
 	if road == null or not road.alive or to == null or not to.alive or world.diplomacy.war_between(c.from_nation, c.to_nation) != null:
 		_lose(world, c, false)
 		return
-	if world.rng.randf() < (1.0 - road.safety) * ROB_CHANCE:
+	if world.rng.randf() < (1.0 - road.safety) * ROB_CHANCE * PlayerWorld.escort_factor(world, c):
 		_lose(world, c, true)
 		return
 	c.done += 1
@@ -87,6 +87,8 @@ func _month(world: World, c: Caravan) -> void:
 	to.stock[Goods.GOLD] += c.amount * c.price * MarketSystem.IMPORT_DUTY
 	world.market_totals["delivered"] = float(world.market_totals.get("delivered", 0.0)) + c.amount
 	world.count(&"caravans_arrived")
+	if c.escort >= 0:
+		PlayerWorld.on_caravan(world, c, true)
 
 
 static func _lose(world: World, c: Caravan, robbed: bool) -> void:
@@ -94,6 +96,8 @@ static func _lose(world: World, c: Caravan, robbed: bool) -> void:
 	c.robbed = robbed
 	world.market_totals["robbed"] = float(world.market_totals.get("robbed", 0.0)) + c.amount
 	world.count(&"caravans_robbed")
+	if c.escort >= 0:
+		PlayerWorld.on_caravan(world, c, false)
 	var value := c.amount * c.price
 	if robbed and value > 150.0 and world.rng.randf() < 0.3:
 		var g: GoodDef = MarketDB.all()[c.good]

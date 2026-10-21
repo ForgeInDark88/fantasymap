@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"plague_doctor"
+title = "Чумной лекарь"
+text = "Лекарь в клювастой маске ищет помощников: в краю {where} мор."
+where = &""
+terrain = &""
+weight = 1.5
+requires = &"outbreak"
+options = Array[Dictionary]([{"text": "Помочь лечить больных", "karma": 0.1, "xp": 2.0, "faith": 0.05, "wound": 0.1, "result": "Тяжёлые недели среди больных — но многие выжили."}, {"text": "Купить у лекаря снадобье", "gold": -15.0, "heal": 0.3, "result": "Горькое снадобье, но раны затягиваются."}, {"text": "Бежать из проклятого края", "result": "Вы уходите, закрыв лицо платком."}])

@@ -205,6 +205,7 @@ static func _hero_dict(h: Hero) -> Dictionary:
 		"parents": Array(h.parents), "children": Array(h.children), "lineage": h.lineage, "artifact_id": h.artifact_id,
 		"order": h.order, "god": str(h.patron_god), "chosen": h.chosen, "awits": h._artifact_wits,
 		"pl": [h.wounds, h.gold, h.gear, h.guards, h.guards_until, h.perk_points, h.strength, h.wit, h.charm],
+		"cargo": _int_dict(h.cargo), "captive": [h.captive_by, h.captive_until], "immune": h.immune,
 	}
 
 
@@ -220,7 +221,8 @@ static func _lore_dict(world: World) -> Dictionary:
 			"members": Array(o.members), "alive": o.alive, "total": o.total}),
 		"boons": world.nations.map(func(n: Nation) -> Array: return [str(n.god_boon), n.god_boon_until]),
 		"player": {"hero": world.player, "cmd": world.player_cmd, "choice": world.player_choice,
-			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle},
+			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle,
+			"army": world.player_army, "chain": world.player_chain},
 		"bookmarks": world.bookmarks,
 		"staged": world.staged_effects,
 		"armies": world.armies.filter(func(a: Army) -> bool: return a.alive).map(_army_dict),
@@ -340,6 +342,11 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		for j in pl.journal:
 			world.player_journal.append({"year": int(j.year), "month": int(j.month), "text": str(j.text)})
 		world.player_rep = pl.rep
+		var pa: Dictionary = pl.get("army", {})
+		if not pa.is_empty():
+			world.player_army = {"war": int(pa.war), "nation": int(pa.nation), "role": str(pa.role), "since": int(pa.get("since", 0))}
+		for c in pl.get("chain", []):
+			world.player_chain.append({"event": str(c.event), "at": int(c.at)})
 		world.player_idle = int(pl.idle)
 	for i in mini(lore.boons.size(), world.nations.size()):
 		world.nations[i].god_boon = StringName(lore.boons[i][0])
@@ -485,6 +492,13 @@ static func _restore_hero(hd: Dictionary) -> Hero:
 		h.strength = int(pl[6])
 		h.wit = int(pl[7])
 		h.charm = int(pl[8])
+	for k in hd.get("cargo", {}):
+		h.cargo[int(k)] = float(hd.cargo[k])
+	var cap: Array = hd.get("captive", [-1, -1])
+	h.captive_by = int(cap[0])
+	h.captive_until = int(cap[1])
+	for k in hd.get("immune", {}):
+		h.immune[str(k)] = int(hd.immune[k])
 	return h
 
 
@@ -613,7 +627,7 @@ static func _market_dict(world: World) -> Dictionary:
 	return {
 		"caravans": world.caravans.filter(func(c: Caravan) -> bool: return c.alive).map(func(c: Caravan) -> Dictionary: return {
 			"road": c.road, "from": c.from_city, "to": c.to_city, "fn": c.from_nation, "tn": c.to_nation, "good": c.good,
-			"amount": c.amount, "price": c.price, "months": c.months, "done": c.done, "day": c.day}),
+			"amount": c.amount, "price": c.price, "months": c.months, "done": c.done, "day": c.day, "escort": c.escort}),
 		"mercs": world.mercs.filter(func(m: MercCompany) -> bool: return m.alive).map(func(m: MercCompany) -> Dictionary: return {
 			"name": m.name, "race": str(m.race.id), "str": m.strength, "wage": m.wage, "employer": m.employer, "cell": m.cell,
 			"born": m.born, "unpaid": m.unpaid, "battles": m.battles}),
@@ -637,6 +651,7 @@ static func _load_market(world: World, data: Dictionary) -> void:
 		c.months = int(cd.months)
 		c.done = int(cd.done)
 		c.day = int(cd.day)
+		c.escort = int(cd.get("escort", -1))
 		world.caravans.append(c)
 	for md in m.get("mercs", []):
 		var x := MercCompany.new()

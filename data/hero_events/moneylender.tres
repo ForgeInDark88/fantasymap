@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"moneylender"
+title = "Ростовщик"
+text = "Ростовщик в городе края {where} предлагает заём: «Вернёте через полгода — вдвое»."
+where = &""
+terrain = &"city"
+weight = 0.8
+options = Array[Dictionary]([{"text": "Взять 80 золотых", "gold": 80.0, "karma": -0.02, "result": "Монеты звенят в кошеле. Долг ждёт.", "next": "moneylender_due", "delay": 6}, {"text": "Отказаться", "result": "Ростовщик пожимает плечами."}])

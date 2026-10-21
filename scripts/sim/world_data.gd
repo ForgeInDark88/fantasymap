@@ -139,6 +139,10 @@ var player_idle := 0
 ## Задания героя игрока (PlayerQuests) и предложения доски заданий, ждущие выбора.
 var player_quests: Array[Dictionary] = []
 var player_offers: Array[Dictionary] = []
+## Служба героя игрока в войске {war, nation, role: "general"/"officer", since}
+## и отложенные события цепочек {event, at: год·12 + месяц}.
+var player_army: Dictionary = {}
+var player_chain: Array[Dictionary] = []
 ## Руины (RuinSystem).
 var ruins: Array[Ruin] = []
 ## Подземный мир: граф пещер (UndergroundSystem).

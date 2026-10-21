@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"envoy_lost"
+title = "Посол без охраны"
+text = "Посол державы {owner} лишился охраны и просит проводить его ко двору соседей."
+where = &"nation"
+terrain = &""
+weight = 0.8
+options = Array[Dictionary]([{"text": "Проводить", "xp": 1.0, "rep": 0.06, "quest": "embassy", "result": "Посол вручает грамоты — дорога ваша."}, {"text": "Отказать", "result": "Посол вздыхает и ищет других."}])

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"well_voice"
+title = "Голос из колодца"
+text = "В заброшенном колодце у дороги в краю {where} кто-то зовёт на помощь."
+where = &""
+terrain = &""
+weight = 0.8
+options = Array[Dictionary]([{"text": "Спуститься", "power": 0.4, "risk": 0.1, "xp": 1.5, "result": "На дне — старик-отшельник; он клянётся отблагодарить и просит прийти позже.", "fail": "Верёвка оборвалась.", "next": "well_depths", "delay": 3}, {"text": "Бросить верёвку и уйти", "karma": 0.03, "xp": 0.3, "result": "Голос благодарит и стихает."}])

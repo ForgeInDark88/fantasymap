@@ -19,6 +19,8 @@ var months := 1
 var done := 0
 var alive := true
 var robbed := false
+## Охрана: id героя игрока (-1 — без охраны); охраняемый караван грабят реже.
+var escort := -1
 ## «Свой» день месяца для хода.
 var day := 0
 

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HeroEventDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/hero_event_def.gd" id="1_ev"]
+
+[resource]
+script = ExtResource("1_ev")
+id = &"false_rumor"
+title = "Слух на площади"
+text = "На площади шепчутся о войнах, кладах и чужих замыслах — правда ли?"
+where = &""
+terrain = &"city"
+weight = 1.0
+requires = &"rumor"
+options = Array[Dictionary]([{"text": "Поверить в слух о кладе", "xp": 0.3, "quest": "treasure", "result": "Вы запоминаете приметы места."}, {"text": "Не верить болтовне", "xp": 0.5, "result": "Умный не слушает базарных сплетен."}])
