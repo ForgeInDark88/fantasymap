@@ -210,7 +210,7 @@ static var _ports_key := Vector3i(-1, -1, -1)
 
 
 static func _ports(world: World) -> PackedInt32Array:
-	var key := Vector3i(world.year, world.cities.size(), world.get_instance_id() & 0x7fffffff)
+	var key := Vector3i(world.year, world.cities.size(), _wid(world))
 	if key != _ports_key:
 		_ports_key = key
 		_ports_cache.clear()
@@ -267,3 +267,9 @@ static func rob_roads(world: World, city_id: int, amount: float) -> void:
 	for rid in world.city_roads.get(city_id, PackedInt32Array()):
 		var r := world.roads[rid]
 		r.safety = maxf(0.05, r.safety - amount)
+
+
+## Ключ мира для кэшей (Vector3i — 32-битный): весь id объекта, свёрнутый хэшем
+## (младших 31 бита мало — у двух миров в одном процессе они могут совпасть).
+static func _wid(world: World) -> int:
+	return hash(world.get_instance_id()) & 0x7fffffff

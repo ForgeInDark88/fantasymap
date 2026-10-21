@@ -8,6 +8,8 @@ const NO_RACE := 255
 const CHRONICLE_LIMIT := 4000
 ## Минимальное расстояние между городами (в базовых клетках, по Чебышёву; × grid_scale).
 const CITY_SPACING := 6
+## «Влияние не дотягивается» (World.infl).
+const INFL_FAR := 1.0e6
 
 var map: WorldMap
 var settings: MapSettings
@@ -122,6 +124,12 @@ var languages: Array[Language] = []
 var caravans: Array[Caravan] = []
 ## Гонцы в пути: послы и лазутчики (AgentSystem, этап 12.B).
 var agents: Array[Agent] = []
+## Освоение (этап 12.C): поселения (деревни, форты, аванпосты) и поселенцы в
+## пути; infl[c] — запас влияния своего хозяина в клетке (≤ 0 — в пределах его
+## влияния, INFL_FAR — не дотягивается; InfluenceSystem).
+var settlements: Array[Settlement] = []
+var settlers: Array[Settler] = []
+var infl := PackedFloat32Array()
 var mercs: Array[MercCompany] = []
 var loans: Array[Dictionary] = []
 var loan_serial := 0

@@ -34,7 +34,7 @@ func _run() -> void:
 	for m in 12:
 		ws.call("step_month")
 	await _frames(3)
-	for mode in 15:
+	for mode in MapMode.NAMES.size():
 		bus.map_mode_changed.emit(mode)
 		await _frames(2)
 	bus.map_mode_changed.emit(0)
@@ -87,7 +87,7 @@ func _run() -> void:
 	await _frames(3)
 	_expect(ws.world.call("date_text") == date and ws.world.get("nations").size() == nations, "F9 не вернул мир к быстрому сохранению")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.save_path("быстрое")))
-	print("интерфейс: сцена, %d режимов карты, окна и карточки — без падений" % 15)
+	print("интерфейс: сцена, %d режимов карты, окна и карточки — без падений" % MapMode.NAMES.size())
 	_finish()
 
 

@@ -66,6 +66,7 @@ var wars: WarSystem
 ## загруженный мир продолжает историю так же).
 var _road_pairs := {}
 var _road_tick := -1
+var _road_world := 0
 ## Есть ли у государства гавань (кэш на месяц).
 var _ports := {}
 ## Армии по войнам на текущий ход (строится раз за ход) и число войн государств.
@@ -75,6 +76,7 @@ var _war_count := {}
 var _power := {}
 ## Город у ворот на войну и день (кэш «врага у ворот»; пересобирается — результат тот же).
 var _gate_city := {}
+var _gate_world := 0
 
 
 static func today(world: World) -> int:
@@ -530,9 +532,10 @@ func _road_between_any(world: World, rid: int, others: PackedInt32Array) -> bool
 
 
 func _refresh_roads(world: World) -> void:
-	if _road_tick == world.road_version:
+	if _road_tick == world.road_version and _road_world == world.get_instance_id():
 		return
 	_road_tick = world.road_version
+	_road_world = world.get_instance_id()
 	_road_pairs.clear()
 	for road in world.roads:
 		if not road.alive or road.sea:
@@ -745,6 +748,14 @@ static func _scout_range() -> float:
 
 ## Встречи армий одной войны: в пределах CONTACT клеток — битва (если пора);
 ## в пределах дозора — идут навстречу; рано для битвы — стоят, мимо не проходят.
+static func _cheb(map: WorldMap, a: int, b: int) -> int:
+	if a < 0 or b < 0:
+		return 1 << 20
+	var pa := map.cell_pos(a)
+	var pb := map.cell_pos(b)
+	return maxi(absi(pa.x - pb.x), absi(pa.y - pb.y))
+
+
 func _contacts(world: World, by_war: Dictionary, day: int) -> void:
 	var lists := {}
 	for a in world.armies:
@@ -809,7 +820,9 @@ func _contacts(world: World, by_war: Dictionary, day: int) -> void:
 						var foe: Army = pair[1]
 						if me.state == &"retreat" or (me.state == &"siege" and war.side_of(me.nation) == war.siege_side):
 							continue
-						if not me.m.walking() or me.m.dest != foe.cell:
+						# Путь — заново, только если враг ушёл от прежней цели дальше клетки
+						# (иначе — каждые сутки поиск пути на каждую пару в дозоре).
+						if not me.m.walking() or _cheb(map, me.m.dest, foe.cell) > world.gd(1):
 							# Враг рядом — прямо по суше; не выходит — общий путь.
 							var p := Pathfinder.line(world, me.cell, foe.cell, -1)
 							if p.is_empty():
@@ -881,14 +894,21 @@ func _gates(world: World, a: Army, war: War) -> void:
 	if war.side_of(a.nation) != war.siege_side or war.siege_region < 0 or war.gates == war.siege_region:
 		return
 	# Город цели — один на войну за сутки (кэш), а не поиск для каждой армии.
+	# Кэш — id города, а не сам город, и только для своего мира: одна Simulation может
+	# вести два мира (тесты сохранения), и чужой город менял бы чужую историю.
+	if _gate_world != world.get_instance_id():
+		_gate_world = world.get_instance_id()
+		_gate_city.clear()
 	var key := Vector2i(war.id, ArmySystem.today(world))
 	if not _gate_city.has(key):
 		if _gate_city.size() > 64:
 			_gate_city.clear()
-		_gate_city[key] = wars._region_city(world, war.siege_region, war.members(-war.siege_side))
-	var city: City = _gate_city[key]
-	if city == null:
+		var found: City = wars._region_city(world, war.siege_region, war.members(-war.siege_side))
+		_gate_city[key] = found.id if found != null else -1
+	var cid: int = _gate_city[key]
+	if cid < 0:
 		return
+	var city := world.cities[cid]
 	var pa := world.map.cell_pos(a.cell)
 	var pc := world.map.cell_pos(city.cell)
 	if maxi(absi(pa.x - pc.x), absi(pa.y - pc.y)) > world.gd(GATES_RANGE):

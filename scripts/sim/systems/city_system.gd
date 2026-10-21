@@ -71,7 +71,9 @@ func _maybe_found_city(world: World, nation: Nation) -> void:
 		return
 	# Руины на своей земле — готовое место: город возрождается.
 	var ruin := RuinSystem.revive_site(world, nation)
-	var site := ruin.cell if ruin != null else find_city_site(world, nation, 40)
+	# Выросшая деревня поселенцев — следующее место под город (этап 12.C).
+	var village := InfluenceSystem.town_site(world, nation) if ruin == null and not Features.CLASSIC_EXPANSION else null
+	var site := ruin.cell if ruin != null else (village.cell if village != null else find_city_site(world, nation, 40))
 	if site < 0:
 		return
 	nation.stock[Goods.WOOD] -= FOUND_COST_WOOD
@@ -82,6 +84,11 @@ func _maybe_found_city(world: World, nation: Nation) -> void:
 		ruin.revived = true
 		world.log_event(&"ruins", "«%s»: %s возрождает здесь город — %s." % [ruin.name, nation.name, city.name], PackedInt32Array([nation.id]))
 	city.population = world.rng.randf_range(200.0, 600.0)
+	InfluenceSystem.add_source(world, nation, city.cell, InfluenceSystem.city_reach(world, nation, city))
+	if village != null:
+		village.alive = false
+		world.log_event(&"settle", "Деревня %s выросла в город %s (%s)." % [village.name, city.name, nation.short_name], PackedInt32Array([nation.id]))
+		return
 	world.log_event(&"city", "%s основывает город %s." % [nation.name, city.name], PackedInt32Array([nation.id]))
 
 

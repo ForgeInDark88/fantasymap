@@ -17,6 +17,7 @@ const DAYS := 30
 var economy := EconomySystem.new()
 var population := PopulationSystem.new()
 var expansion := ExpansionSystem.new()
+var influence := InfluenceSystem.new()
 var cities := CitySystem.new()
 var rulers := RulerSystem.new()
 var unrest := UnrestSystem.new()
@@ -106,6 +107,8 @@ func step_day(world: World) -> void:
 		_t("caravans", caravans.tick_day.bind(world))
 		_t("agents", agents.tick_day.bind(world))
 		_t("mercs", mercs.tick_day.bind(world))
+		_t("settlers", influence.settlers.tick_day.bind(world))
+		_t("influence", influence.tick_day.bind(world))
 	else:
 		wars.tick_day(world)
 		armies.tick_day(world)
@@ -116,6 +119,8 @@ func step_day(world: World) -> void:
 		caravans.tick_day(world)
 		agents.tick_day(world)
 		mercs.tick_day(world)
+		influence.settlers.tick_day(world)
+		influence.tick_day(world)
 	world.cleanup_dead()
 
 
@@ -140,6 +145,7 @@ func _new_year(world: World) -> void:
 	_t("mercs", mercs.tick_year.bind(world))
 	_t("credit", credit.tick_year.bind(world))
 	_t("rumors", rumors.tick_year.bind(world))
+	influence.tick_year(world)
 	_portals(world)
 	world.record_history()
 
@@ -169,11 +175,19 @@ func _init() -> void:
 	agents.spies = spies
 	_nation_systems = [
 		["economy", economy.tick], ["market", market.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
-		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
+		["expansion", _expand], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
 		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
 		["diplomacy", diplomacy.tick_nation], ["deals", deals.tick], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],
 		["languages", languages.tick],
 	]
+
+
+## Освоение земли: влияние и поселенцы (этап 12.C) или прежняя экспансия по клеткам.
+func _expand(world: World, nation: Nation) -> void:
+	if Features.CLASSIC_EXPANSION:
+		expansion.tick(world, nation)
+	else:
+		influence.tick(world, nation)
 
 
 func _record(system: String, dt: int) -> void:

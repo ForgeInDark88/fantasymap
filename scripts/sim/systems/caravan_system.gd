@@ -101,7 +101,12 @@ func _month(world: World, c: Caravan) -> void:
 
 ## Засада там, где идёт караван: чудовище или кочевники рядом с дорогой.
 static func _ambush(world: World, c: Caravan) -> float:
-	var p := world.map.cell_pos(c.cell)
+	return danger_at(world, c.cell)
+
+
+## Опасность клетки для обоза: чудовища и кочевники ближе AMBUSH_RANGE (и поселенцам).
+static func danger_at(world: World, cell: int) -> float:
+	var p := world.map.cell_pos(cell)
 	var reach := world.gd(AMBUSH_RANGE)
 	var chance := 0.0
 	for l in world.lairs:

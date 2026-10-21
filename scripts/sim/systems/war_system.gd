@@ -181,6 +181,8 @@ func _city_defense(world: World, region: Region, city: City) -> float:
 	var center_owner := world.owner[region.center]
 	if center_owner >= 0:
 		defense += world.nations[center_owner].effect(&"defense")
+	if center_owner >= 0:
+		defense += InfluenceSystem.region_defense(world, region, center_owner)
 	if center_owner >= 0 and world.nations[center_owner].race.has_trait(&"forest_bond"):
 		var biome := world.map.biome[region.center]
 		if biome == Biome.FOREST or biome == Biome.JUNGLE:
@@ -252,6 +254,9 @@ func _capture(world: World, war: War, region: Region, winner: int) -> void:
 			world.log_event(&"conquest", "%s захватывает регион %s и город %s." % [conqueror.short_name, region.name, city.name], ids)
 	else:
 		world.log_event(&"conquest", "%s захватывает регион %s." % [conqueror.short_name, region.name], ids)
+	# Край без города держит гарнизон-аванпост новой власти.
+	if not Features.CLASSIC_EXPANSION and conqueror.alive and (city == null or not city.alive):
+		InfluenceSystem.on_capture(world, conqueror, region)
 	if capital_lost != null:
 		ArtifactSystem.on_capital_taken(world, capital_lost, world.nations[war.leader(winner)])
 	if capital_lost != null and capital_lost.alive:

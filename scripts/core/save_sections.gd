@@ -756,3 +756,70 @@ static func _load_diplo(world: World, data: Dictionary) -> void:
 	var watch: Array = d.get("watch", [[], []])
 	world.watch_nations = PackedInt32Array(watch[0])
 	world.watch_heroes = PackedInt32Array(watch[1])
+
+
+## Освоение (этап 12.C): поселения, поселенцы в пути, влияние и фронты держав.
+static func _settle_dict(world: World) -> Dictionary:
+	var fronts := []
+	for n in world.nations:
+		if n.frontier == null:
+			fronts.append(null)
+		else:
+			var f := {"i": _zb64(n.frontier.raw_items().to_byte_array()),
+				"p": _zb64(n.frontier.raw_priorities().to_byte_array()), "dirty": n.infl_dirty}
+			if n.infl_work != null:
+				f["wi"] = _zb64(n.infl_work.raw_items().to_byte_array())
+				f["wp"] = _zb64(n.infl_work.raw_priorities().to_byte_array())
+			fronts.append(f)
+	return {
+		"infl": _zb64(world.infl.to_byte_array()),
+		"fronts": fronts,
+		"settlements": world.settlements.filter(func(s: Settlement) -> bool: return s.alive).map(func(s: Settlement) -> Array:
+			return [str(s.kind), s.name, s.cell, s.nation, s.founded]),
+		"settlers": world.settlers.filter(func(s: Settler) -> bool: return s.alive).map(func(s: Settler) -> Dictionary: return {
+			"nation": s.nation, "from": s.from_city, "target": s.target, "kind": str(s.kind), "people": s.people,
+			"reason": str(s.reason), "m": s.m.to_dict(), "born": s.born}),
+	}
+
+
+static func _load_settle(world: World, data: Dictionary) -> void:
+	var d: Dictionary = data.get("settle", {})
+	if d.is_empty():
+		return  # старое сохранение: влияние соберётся заново в год каждой державы
+	var infl := _raw(d.infl).to_float32_array()
+	if infl.size() == world.infl.size():
+		world.infl = infl
+	var fronts: Array = d.get("fronts", [])
+	for k in mini(fronts.size(), world.nations.size()):
+		var f: Variant = fronts[k]
+		if f is Dictionary:
+			var n := world.nations[k]
+			n.frontier = MinHeap.from_raw(_raw(f.i).to_int32_array(), _raw(f.p).to_float32_array())
+			n.infl_dirty = bool(f.dirty)
+			if f.has("wi"):
+				n.infl_work = MinHeap.from_raw(_raw(f.wi).to_int32_array(), _raw(f.wp).to_float32_array())
+	for sd in d.get("settlements", []):
+		var def := SettlementDB.find(StringName(sd[0]))
+		if def == null:
+			continue
+		var s := Settlement.new()
+		s.id = world.settlements.size()
+		s.def = def
+		s.kind = def.id
+		s.name = str(sd[1])
+		s.cell = int(sd[2])
+		s.nation = int(sd[3])
+		s.founded = int(sd[4])
+		world.settlements.append(s)
+	for sd in d.get("settlers", []):
+		var s := Settler.new()
+		s.id = world.settlers.size()
+		s.nation = int(sd.nation)
+		s.from_city = int(sd.from)
+		s.target = int(sd.target)
+		s.kind = StringName(sd.kind)
+		s.people = float(sd.people)
+		s.reason = StringName(sd.reason)
+		s.m = Mover.from_dict(sd.m)
+		s.born = int(sd.born)
+		world.settlers.append(s)

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SettlementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/settlement_def.gd" id="1_st"]
+
+[resource]
+script = ExtResource("1_st")
+id = &"village"
+display_name = "Деревня"
+description = "Поселенцы из тесного города осели на новой земле; через годы деревня может вырасти в город."
+reach = 4.0
+cost_pop = 200.0
+cost_gold = 30.0
+cost_wood = 20.0
+cost_stone = 0.0
+defense = 0.0
+town_after = 60
+color = Color(0.88, 0.78, 0.5, 1)

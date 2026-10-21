@@ -34,6 +34,8 @@ func _init(world_map: WorldMap, generate: bool = true) -> void:
 	var n := map.cell_count()
 	owner.resize(n)
 	owner.fill(-1)
+	infl.resize(n)
+	infl.fill(INFL_FAR)
 	cell_slot.resize(n)
 	cell_slot.fill(-1)
 	city_cell.resize(n)

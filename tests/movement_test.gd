@@ -54,6 +54,9 @@ static func units(world: World) -> Array:
 	for x in world.mercs:
 		if x.alive:
 			res.append([x, x.m, "наёмники"])
+	for x in world.settlers:
+		if x.alive:
+			res.append([x, x.m, "поселенцы"])
 	return res
 
 
@@ -161,7 +164,7 @@ func _save_mid_march() -> void:
 	var world := World.create(s)
 	var sim := Simulation.new()
 	var found := false
-	for m in 600:
+	for m in 2400:
 		sim.step_month(world)
 		var walking := 0
 		for u in units(world):
@@ -221,7 +224,10 @@ func _performance() -> void:
 	print("огромная карта, 50 государств, %d войн: месяц %.1f мс, худшие сутки %.1f мс, юнитов в пути %d" % [world.diplomacy.wars.size(),
 		total / 1000.0 / (days / 30.0), worst / 1000.0, walking])
 	_expect(worst < 50000, "сутки симуляции дольше 50 мс")
-	_expect(total / 1000.0 / (days / 30.0) < 30.0, "месяц симуляции дольше 30 мс")
+	# Этап 12.C: державы растут цельными пятнами — общих границ больше, и из 20
+	# объявленных войн к концу идут ~25 (было ~8), армий в поле ~60: бюджет месяца
+	# 45 мс (≈8 мкс на армию в сутки; ускорение армий — этап 12.F).
+	_expect(total / 1000.0 / (days / 30.0) < 45.0, "месяц симуляции дольше 45 мс")
 
 
 func _expect(ok: bool, msg: String) -> void:

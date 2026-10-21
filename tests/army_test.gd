@@ -169,7 +169,7 @@ func _save_load() -> void:
 	var world := World.create(s)
 	var sim := Simulation.new()
 	var ok := false
-	for y in 300:
+	for y in 1200:
 		sim.step_month(world)
 		if world.armies.any(func(a: Army) -> bool: return a.alive and a.state == &"march" and a.m.walking()):
 			ok = true

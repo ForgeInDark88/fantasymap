@@ -38,6 +38,7 @@ static func sections() -> Array:
 	res.append(_section("Артефакты", LoreDB.artifacts(), func(a: Resource) -> String: return str(a.get("description"))))
 	res.append(_section("Боги", LoreDB.gods(), func(g: Resource) -> String: return str(g.get("description"))))
 	res.append(_section("Организации", OrgDB.orgs(), func(o: Resource) -> String: return str(o.get("description"))))
+	res.append(_section("Поселения", SettlementDB.all(), func(d: Resource) -> String: return str(d.get("description"))))
 	var modes: Array = []
 	for i in MapMode.NAMES.size():
 		modes.append({"name": MapMode.NAMES[i], "text": "Клавиша %s." % MapMode.hotkey_label(i)})

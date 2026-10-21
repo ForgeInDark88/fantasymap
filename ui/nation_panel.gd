@@ -84,6 +84,9 @@ func refresh(world: World) -> void:
 		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(UiAnim.roll("n%d.army" % nation.id, nation.army)), nation.tech],
 		"[b]Стабильность:[/b] %s" % _stability_text(nation.stability),
 	])
+	var settle := settle_line(world, nation)
+	if not settle.is_empty():
+		lines.append(settle)
 	var researching := TechDB.find(nation.researching) if nation.researching != &"" else null
 	lines.append("[b]Знания:[/b] %d из %d технологий%s · [url=techs][color=#a8e0ff]окно технологий[/color][/url]" % [
 		nation.techs.size(), TechDB.all().size(),
@@ -214,6 +217,32 @@ func refresh(world: World) -> void:
 	_body.custom_minimum_size = Vector2(300, clampf(get_viewport_rect().size.y - 190.0, 280.0, 680.0))
 
 
+## Освоение (этап 12.C): поселения державы, поселенцы в пути, доля земли в
+## пределах влияния. Пусто — ничего такого нет.
+static func settle_line(world: World, nation: Nation) -> String:
+	var counts := {}
+	for s in world.settlements:
+		if s.alive and s.nation == nation.id:
+			counts[s.def.display_name.to_lower()] = counts.get(s.def.display_name.to_lower(), 0) + 1
+	var going := 0
+	for s in world.settlers:
+		if s.alive and s.nation == nation.id:
+			going += 1
+	if counts.is_empty() and going == 0 and nation.frontier == null:
+		return ""
+	var held := 0
+	for c in nation.cells:
+		if world.infl[c] <= 0.0:
+			held += 1
+	var parts: Array[String] = []
+	for k in counts:
+		parts.append("%s: %d" % [k, counts[k]])
+	if going > 0:
+		parts.append("поселенцев в пути: %d" % going)
+	var share := roundi(100.0 * held / maxf(1.0, nation.cells.size()))
+	return "[b]Освоение:[/b] %s%sв пределах влияния — %d%% земли" % [", ".join(parts), " · " if not parts.is_empty() else "", share]
+
+
 ## Место клика: регион (народ, лояльность, претензии) и город (уровень, специализация, постройки).
 func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 	if _cell < 0 or world.owner[_cell] != nation.id:
@@ -248,6 +277,12 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 				here.append("%s (%s%s)" % [r.name, r.kind_name(), ", исчерпаны" if r.depleted() else ""])
 		if not here.is_empty():
 			lines.append("[color=#b8a8a0]Руины: %s[/color]" % ", ".join(here))
+		var posts: Array[String] = []
+		for s in world.settlements:
+			if s.alive and world.region_of[s.cell] == region.id:
+				posts.append("%s %s (%s, с %d г.)" % [s.def.display_name.to_lower(), s.name, world.nations[s.nation].short_name, s.founded])
+		if not posts.is_empty():
+			lines.append("[color=#d8c48a]Поселения: %s[/color]" % ", ".join(posts))
 		for s in world.societies:
 			if s.alive and s.influence.has(region.id):
 				lines.append("[color=#c8a0e0]%s «%s»: влияние %d%%[/color]" % [s.kind_name().capitalize(), s.name, roundi(s.influence[region.id] * 100.0)])

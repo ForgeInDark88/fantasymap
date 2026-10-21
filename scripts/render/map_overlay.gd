@@ -262,7 +262,7 @@ func _draw() -> void:
 	if political:
 		_draw_nation_labels(world, zoom)
 	var map_like := political or _mode == MapMode.BIOMES or _mode == MapMode.POPULATION or _mode == MapMode.RESOURCES \
-			or MapMode.is_region_mode(_mode) or _mode == MapMode.TRADE
+			or MapMode.is_region_mode(_mode) or _mode == MapMode.TRADE or _mode == MapMode.INFLUENCE
 	if _mode == MapMode.UNDERGROUND:
 		_draw_caves(world, zoom)
 		_draw_cities(world, zoom)
@@ -273,9 +273,11 @@ func _draw() -> void:
 		_draw_wild(world, zoom)
 		_draw_caravans(world, zoom)
 		_draw_agents(world, zoom)
+		_draw_settlers(world, zoom)
 		_draw_titan(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
+		_draw_settlements(world, zoom)
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
 		_draw_landmarks(world, zoom)
@@ -607,6 +609,72 @@ func _draw_agents(world: World, zoom: float) -> void:
 			draw_rect(Rect2(-4.5, -3.0, 9.0, 6.0), Color(0.95, 0.9, 0.75, fade))
 			draw_rect(Rect2(-4.5, -3.0, 9.0, 6.0), Color(0.3, 0.2, 0.1, fade), false, 1.0)
 			draw_circle(Vector2(0, 0.5), 1.8, col)
+	draw_set_transform(Vector2.ZERO)
+
+
+## Поселения (этап 12.C): деревня — домик, колония — домик с парусом, форт —
+## башенка, аванпост — флажок; в режиме «Влияние» видны и на общем плане.
+func _draw_settlements(world: World, zoom: float) -> void:
+	var fade := 1.0 if _mode == MapMode.INFLUENCE else zoom_fade(zoom, 0.8, 1.05)
+	if fade <= 0.0 or world.settlements.is_empty():
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for s in world.settlements:
+		if not s.alive:
+			continue
+		var pos := renderer.cell_center(s.cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var col := world.nations[s.nation].color if s.nation >= 0 else Color.GRAY
+		col.a = fade
+		var ink := Color(0.15, 0.12, 0.1, fade)
+		var body := s.def.color
+		body.a = fade
+		match s.kind:
+			&"fort":
+				draw_rect(Rect2(-3.5, -4.0, 7.0, 7.0), body)
+				draw_rect(Rect2(-3.5, -4.0, 7.0, 7.0), ink, false, 1.0)
+				for k in 3:
+					draw_rect(Rect2(-3.5 + k * 2.75, -5.5, 1.5, 1.5), body)
+				draw_rect(Rect2(-1.0, -1.0, 2.0, 4.0), col)
+			&"outpost":
+				draw_line(Vector2(-2.0, 4.0), Vector2(-2.0, -5.0), ink, 1.2)
+				draw_colored_polygon(PackedVector2Array([Vector2(-2.0, -5.0), Vector2(4.0, -3.0), Vector2(-2.0, -1.0)]), col)
+			_:
+				draw_colored_polygon(PackedVector2Array([Vector2(-4.0, -0.5), Vector2(0.0, -4.5), Vector2(4.0, -0.5)]), col)
+				draw_rect(Rect2(-3.0, -0.5, 6.0, 4.0), body)
+				draw_rect(Rect2(-3.0, -0.5, 6.0, 4.0), ink, false, 1.0)
+				if s.kind == &"colony":
+					draw_line(Vector2(4.5, 3.5), Vector2(4.5, -3.0), ink, 1.0)
+	draw_set_transform(Vector2.ZERO)
+
+
+## Поселенцы в пути: повозка цвета державы и пунктир к месту будущей деревни.
+func _draw_settlers(world: World, zoom: float) -> void:
+	var fade := zoom_fade(zoom, 0.8, 1.1)
+	if fade <= 0.0 or world.settlers.is_empty():
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for s in world.settlers:
+		if not s.alive or s.cell < 0:
+			continue
+		var pos := mover_pos(s.m)
+		if not view.has_point(pos):
+			continue
+		var col := world.nations[s.nation].color
+		col.a = fade
+		if _mode == MapMode.INFLUENCE:
+			draw_set_transform(Vector2.ZERO)
+			draw_dashed_line(pos, renderer.cell_center(s.target), Color(col, 0.6 * fade), 1.0 / zoom, 4.0 / zoom)
+		draw_set_transform(pos, 0.0, inv)
+		draw_rect(Rect2(-4.0, -3.0, 8.0, 4.0), Color(0.85, 0.75, 0.55, fade))
+		draw_rect(Rect2(-4.0, -3.0, 8.0, 4.0), Color(0.3, 0.2, 0.1, fade), false, 1.0)
+		draw_circle(Vector2(-2.5, 2.0), 1.4, Color(0.3, 0.2, 0.1, fade))
+		draw_circle(Vector2(2.5, 2.0), 1.4, Color(0.3, 0.2, 0.1, fade))
+		draw_circle(Vector2(0, -1.0), 1.3, col)
 	draw_set_transform(Vector2.ZERO)
 
 

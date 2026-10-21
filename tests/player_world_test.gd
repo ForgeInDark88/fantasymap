@@ -298,11 +298,13 @@ func _disease_and_language() -> void:
 	if o == null:
 		o = DiseaseSystem.outbreak_in(world, rid)
 	_expect(o != null, "поветрие не началось")
-	if o != null:
+	# Народ героя может быть невосприимчив к этой хвори от природы — тогда проверять нечего.
+	var born_immune := o != null and (o.def.immune_races.has(h.race.id) or o.def.immune_traits.any(func(t: StringName) -> bool: return h.race.has_trait(t)))
+	if o != null and not born_immune:
 		for k in 100:
 			h.wounds = 0.0
 			PlayerWorld.risk_disease(world, h, o, 5.0)
-			if h.immune.has(String(o.def.id)):
+			if h.immune.has(String(o.def.id)) or not h.alive:
 				break
 		_expect(h.immune.has(String(o.def.id)), "болезнь не оставила иммунитета")
 	# Чужой язык: в краю иной семьи языков всё дороже.

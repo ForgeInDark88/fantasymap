@@ -179,6 +179,10 @@ func _scripted_economy(world: World, sim: Simulation) -> void:
 						c.alive = false
 						PlayerWorld.on_caravan(world, c, true)
 				PlayerQuests.check(world, h, &"arrive")
+			"trade":
+				# Торговое поручение: товар в обозе героя — сдаётся в городе назначения.
+				h.cargo[int(q.good)] = float(q.amount)
+				PlayerQuests.check(world, h, &"arrive")
 			_:
 				PlayerQuests.check(world, h, &"arrive")
 		_expect(world.player_quests.is_empty() and h.gold > gold, "задание %s не выполнено" % q.kind)

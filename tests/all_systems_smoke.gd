@@ -48,7 +48,7 @@ func _summary(world: World) -> String:
 	for w in world.diplomacy.past_wars + world.diplomacy.wars:
 		battles += w.battles
 	return ("государств %d (всего %d), население %s, вер %d, техн. %d, путей %d, руин %d, кризисов %d, эпох %d, героев %d, армий %d, битв %d, полководцев %d" +
-		", племён %d, логов %d, поветрий %d, языков %d, караванов дошло %d, займов %d, наёмников %d, послов %d, лазутчиков %d, телепортов %d") % [
+		", племён %d, логов %d, поветрий %d, языков %d, караванов дошло %d, займов %d, наёмников %d, послов %d, лазутчиков %d, телепортов %d, деревень %d, фортов %d, поселенцев перебито %d") % [
 		alive.size(), world.nations.size(), "%.1f млн" % (pop / 1e6), ReligionSystem.alive_count(world),
 		alive.reduce(func(a: int, n: Nation) -> int: return maxi(a, n.techs.size()), 0),
 		world.roads.filter(func(r: Road) -> bool: return r.alive).size(), world.ruins.size(),
@@ -57,7 +57,8 @@ func _summary(world: World) -> String:
 		TribeSystem.alive_tribes(world).size(), LairSystem.alive_lairs(world).size(), world.counters.get(&"outbreaks", 0),
 		world.languages.filter(func(l: Language) -> bool: return l.alive).size(), world.counters.get(&"caravans_arrived", 0),
 		world.counters.get(&"loans", 0), world.counters.get(&"mercs_hired", 0), world.counters.get(&"envoys", 0),
-		world.counters.get(&"spies_sent", 0), world.counters.get(&"teleports", 0)]
+		world.counters.get(&"spies_sent", 0), world.counters.get(&"teleports", 0), world.counters.get(&"settle_village", 0),
+		world.counters.get(&"settle_fort", 0), world.counters.get(&"settlers_ambush", 0) + world.counters.get(&"settlers_caught", 0)]
 
 
 ## Мир не выродился.
@@ -98,6 +99,11 @@ func _check_alive(world: World, where: String) -> void:
 		var prof := MoveDB.profile(m.profile)
 		if prof.water_only == world.map.is_land(m.cell) and (prof.water_only or not prof.can_sail):
 			_expect(false, "%s: %s в непроходимой клетке" % [where, u[2]])
+			return
+	# Этап 12.C: поселения — на суше и чьи-то (хозяин сверяется раз в год).
+	for st in world.settlements:
+		if st.alive and (not world.map.is_land(st.cell) or st.nation < 0 or st.nation >= world.nations.size()):
+			_expect(false, "%s: поселение %s вне своей земли" % [where, st.name])
 			return
 	for n in alive:
 		if n.stability < 0.0 or n.stability > 1.0 or is_nan(n.population) or n.army < 0.0:

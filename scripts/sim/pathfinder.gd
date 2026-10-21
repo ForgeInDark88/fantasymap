@@ -71,7 +71,7 @@ static func _note(kind: String, t0: int) -> void:
 
 
 static func _ensure(world: World) -> void:
-	var key := Vector3i(world.get_instance_id() & 0x7fffffff, world.terrain_version, world.map.cell_count())
+	var key := Vector3i(_wid(world), world.terrain_version, world.map.cell_count())
 	if key == _key:
 		return
 	# Рельеф сменился — все пути (их стоимость) пересчитываются заново: кэш не должен
@@ -114,7 +114,7 @@ static var _water_key := Vector3i(-1, -1, -1)
 
 
 static func _ensure_water(world: World) -> void:
-	var key := Vector3i(world.get_instance_id() & 0x7fffffff, world.coast_version, world.map.cell_count())
+	var key := Vector3i(_wid(world), world.coast_version, world.map.cell_count())
 	if key == _water_key:
 		return
 	var t0 := Time.get_ticks_usec() if profile else 0
@@ -887,3 +887,9 @@ static func _max_mult(prof: MoveProfileDef) -> float:
 	for v in prof.biome_mult.values():
 		m = maxf(m, float(v))
 	return m
+
+
+## Ключ мира для кэшей (Vector3i — 32-битный): весь id объекта, свёрнутый хэшем
+## (младших 31 бита мало — у двух миров в одном процессе они могут совпасть).
+static func _wid(world: World) -> int:
+	return hash(world.get_instance_id()) & 0x7fffffff

@@ -43,6 +43,19 @@ func top_priority() -> float:
 	return _prio[0]
 
 
+func top_item() -> int:
+	return _items[0]
+
+
+## i-й элемент внутреннего массива (0 ≤ i < size(); порядок — кучи, не сортировки).
+func item_at(i: int) -> int:
+	return _items[i]
+
+
+func priority_at(i: int) -> float:
+	return _prio[i]
+
+
 func pop() -> int:
 	var top := _items[0]
 	_size -= 1
@@ -65,3 +78,22 @@ func pop() -> int:
 		_items[i] = item
 		_prio[i] = priority
 	return top
+
+
+
+## Внутреннее состояние (для сохранения: порядок извлечения при равных приоритетах
+## должен остаться тем же после загрузки).
+func raw_items() -> PackedInt32Array:
+	return _items.slice(0, _size)
+
+
+func raw_priorities() -> PackedFloat32Array:
+	return _prio.slice(0, _size)
+
+
+static func from_raw(items: PackedInt32Array, prio: PackedFloat32Array) -> MinHeap:
+	var h := MinHeap.new()
+	h._items = items
+	h._prio = prio
+	h._size = mini(items.size(), prio.size())
+	return h
