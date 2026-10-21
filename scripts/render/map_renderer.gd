@@ -9,8 +9,12 @@ extends Node2D
 ## один раз, а смена границ — это загрузка одной текстуры owner_tex
 ## (World.owner_texels) без циклов в GDScript. Заливку и контуры считает шейдер.
 
-## Размер клетки в мировых единицах.
-const CELL_SIZE := 4.0
+## Размер базовой клетки в мировых единицах и текущей клетки сетки: при
+## масштабе сетки (GridScale) клетка мельче, а мир на экране тот же.
+const BASE_CELL_SIZE := 4.0
+## Порог появления границ регионов (пикселей на базовую клетку; шейдер, region_min_px).
+const REGION_MIN_PX := 2.5
+static var cell_size := BASE_CELL_SIZE
 const SHADER := preload("res://scripts/render/political_map.gdshader")
 const PALETTE_WIDTH := 256
 
@@ -68,7 +72,7 @@ const ASH_TINT := Color(0.7, 0.75, 0.85, 0.22)
 func _ready() -> void:
 	_sprite = Sprite2D.new()
 	_sprite.centered = false
-	_sprite.scale = Vector2.ONE * CELL_SIZE
+	_sprite.scale = Vector2.ONE * cell_size
 	# Пиксельная чёткость при приближении, мип-карты — без «ряби» при отдалении.
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 	_material = ShaderMaterial.new()
@@ -246,14 +250,14 @@ func refresh_palettes() -> void:
 func get_map_rect() -> Rect2:
 	if map == null:
 		return Rect2()
-	return Rect2(global_position, Vector2(map.width, map.height) * CELL_SIZE)
+	return Rect2(global_position, Vector2(map.width, map.height) * cell_size)
 
 
 ## Индекс клетки под точкой мира или -1.
 func cell_at(world_pos: Vector2) -> int:
 	if map == null:
 		return -1
-	var p := (to_local(world_pos) / CELL_SIZE).floor()
+	var p := (to_local(world_pos) / cell_size).floor()
 	if not map.in_bounds(int(p.x), int(p.y)):
 		return -1
 	return map.index_of(int(p.x), int(p.y))
@@ -262,7 +266,7 @@ func cell_at(world_pos: Vector2) -> int:
 ## Центр клетки в мировых координатах.
 func cell_center(cell: int) -> Vector2:
 	var p := map.cell_pos(cell)
-	return global_position + (Vector2(p) + Vector2(0.5, 0.5)) * CELL_SIZE
+	return global_position + (Vector2(p) + Vector2(0.5, 0.5)) * cell_size
 
 
 func _apply_mode_uniforms() -> void:
@@ -302,6 +306,11 @@ func _on_world_generated(new_world: World, _elapsed_ms: int) -> void:
 	_tint_target = _tint
 	_material.set_shader_parameter("tint", _tint)
 	map = new_world.map
+	cell_size = BASE_CELL_SIZE / new_world.grid_scale
+	_sprite.scale = Vector2.ONE * cell_size
+	_fade_sprite.scale = _sprite.scale
+	# Границы регионов появляются при том же зуме, что и на ×1 (порог — в пикселях на базовую клетку).
+	_material.set_shader_parameter("region_min_px", REGION_MIN_PX / new_world.grid_scale)
 	selected_nation = -1
 	_painted_base_mode = -1
 	_terrain_version = world.terrain_version

@@ -59,6 +59,12 @@ func _run() -> void:
 	# Интерфейс действительно собран (скрипт HUD разобран, а не пуст).
 	var hud: Node = main.get_node("HUD")
 	_expect(hud.get_script() != null and hud.has_method("_on_menu"), "скрипт интерфейса не загрузился")
+	# Режим «Сыграй за героя» скрыт (Features.HERO_PLAY): в дереве нет его узлов.
+	for n in _all_nodes(main):
+		var path: String = n.get_script().resource_path if n.get_script() != null else ""
+		var text: String = (n as Button).text if n is Button else ""
+		_expect(not path.ends_with("my_hero_panel.gd") and text != "Мой герой" and text != "Играть за героя"
+				and not text.begins_with("Создать своего героя"), "узел скрытого режима героя: %s «%s»" % [n.name, text])
 	# Меню «☰»: справочник, история, уведомления, миникарта, обучение (экспорт — в usability_test).
 	if hud.has_method("_on_menu"):
 		var dummy := PopupMenu.new()
@@ -83,6 +89,13 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.save_path("быстрое")))
 	print("интерфейс: сцена, %d режимов карты, окна и карточки — без падений" % 15)
 	_finish()
+
+
+func _all_nodes(n: Node) -> Array[Node]:
+	var res: Array[Node] = [n]
+	for c in n.get_children():
+		res.append_array(_all_nodes(c))
+	return res
 
 
 func _key(code: Key) -> InputEventKey:

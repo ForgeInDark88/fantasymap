@@ -50,12 +50,12 @@ static func generate(world: World) -> void:
 				highlands.append(i)
 	if land.is_empty():
 		return
-	var entrances := maxi(4, land.size() / LAND_PER_ENTRANCE)
-	_scatter(world, rng, highlands if highlands.size() > entrances * 4 else land, entrances, 1, 15.0)
+	var entrances := maxi(4, world.gbi(land.size()) / LAND_PER_ENTRANCE)
+	_scatter(world, rng, highlands if highlands.size() > entrances * 4 else land, entrances, 1, world.gd(15.0))
 	var deep := entrances * DEEP_PER_ENTRANCE
 	var half := deep / 2
-	_scatter(world, rng, land, half, 2, 10.0)
-	_scatter(world, rng, land, deep - half, 3, 10.0)
+	_scatter(world, rng, land, half, 2, world.gd(10.0))
+	_scatter(world, rng, land, deep - half, 3, world.gd(10.0))
 	for c in world.caves:
 		c.entrance = c.depth == 1
 		_assign_kind(c, rng)
@@ -126,7 +126,7 @@ static func _connect(world: World) -> void:
 			if o == c or absi(o.depth - c.depth) > 1:
 				continue
 			var d := p.distance_to(Vector2(map.cell_pos(o.cell)))
-			if d <= 45.0:
+			if d <= world.gd(45.0):
 				near.append([d, o.id])
 		near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		for k in mini(2, near.size()):

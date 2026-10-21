@@ -238,7 +238,7 @@ static func road_from(world: World, cell: int) -> Road:
 		return null
 	var path := RoadSystem.measure(world, from.cell, to.cell)
 	var sea := path.x < 0.0
-	var length := fp.distance_to(Vector2(world.map.cell_pos(to.cell))) * 1.2 if sea else path.x
+	var length := (fp.distance_to(Vector2(world.map.cell_pos(to.cell))) * 1.2 if sea else path.x) / world.grid_scale
 	var road := RoadSystem.build(world, from, to, sea, length, 0 if sea else int(path.y))
 	world.log_event(&"trade", "По воле богов %s связала %s и %s." % ["морская тропа" if sea else "дорога", from.name, to.name],
 			PackedInt32Array([from.nation_id, to.nation_id]))
@@ -250,7 +250,7 @@ static func eruption(world: World, cell: int) -> bool:
 	var pos := Vector2(world.map.cell_pos(cell))
 	var best := -1
 	for v in world.volcanoes:
-		if Vector2(world.map.cell_pos(v)).distance_to(pos) <= 15.0 and (best < 0 or Vector2(world.map.cell_pos(v)).distance_to(pos) < Vector2(world.map.cell_pos(best)).distance_to(pos)):
+		if Vector2(world.map.cell_pos(v)).distance_to(pos) <= world.gd(15.0) and (best < 0 or Vector2(world.map.cell_pos(v)).distance_to(pos) < Vector2(world.map.cell_pos(best)).distance_to(pos)):
 			best = v
 	if best < 0:
 		if world.map.biome[cell] != Biome.MOUNTAINS and world.map.biome[cell] != Biome.HILLS:

@@ -220,7 +220,8 @@ static func _lore_dict(world: World) -> Dictionary:
 			"leader": o.leader, "founded": o.founded_year, "ended": o.ended_year, "karma": o.karma, "hall": o.hall_cell,
 			"members": Array(o.members), "alive": o.alive, "total": o.total}),
 		"boons": world.nations.map(func(n: Nation) -> Array: return [str(n.god_boon), n.god_boon_until]),
-		"player": {"hero": world.player, "cmd": world.player_cmd, "choice": world.player_choice,
+		# Скрытый режим (Features.HERO_PLAY) хранит героя игрока — он вернётся при включении флага.
+		"player": {"hero": world.player if world.player >= 0 else world.player_dormant, "cmd": world.player_cmd, "choice": world.player_choice,
 			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle,
 			"army": world.player_army, "chain": world.player_chain},
 		"bookmarks": world.bookmarks,
@@ -230,6 +231,21 @@ static func _lore_dict(world: World) -> Dictionary:
 		"battles": world.recent_battles,
 		"quests": world.player_quests, "offers": world.player_offers,
 	}
+
+
+## Режим героя скрыт: герой игрока становится обычным странником (без команд,
+## выбора и плена), id запоминается в player_dormant.
+static func hide_player(world: World) -> void:
+	var id := world.player
+	world.player_dormant = id
+	world.player = -1
+	world.player_cmd = {}
+	world.player_choice = {}
+	if id >= 0 and id < world.heroes.size():
+		var h := world.heroes[id]
+		h.captive_by = -1
+		h.captive_until = -1
+		h.goal_cell = -1
 
 
 static func _load_lore(world: World, data: Dictionary) -> void:
@@ -348,6 +364,8 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		for c in pl.get("chain", []):
 			world.player_chain.append({"event": str(c.event), "at": int(c.at)})
 		world.player_idle = int(pl.idle)
+		if world.player >= 0 and not Features.HERO_PLAY:
+			hide_player(world)
 	for i in mini(lore.boons.size(), world.nations.size()):
 		world.nations[i].god_boon = StringName(lore.boons[i][0])
 		world.nations[i].god_boon_until = int(lore.boons[i][1])

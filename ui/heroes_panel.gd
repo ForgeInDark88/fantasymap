@@ -48,16 +48,28 @@ func _init() -> void:
 	_details.visible = false
 	_details.pressed.connect(func() -> void: EventBus.hero_window_requested.emit(_selected))
 	box.add_child(_details)
-	_play = Button.new()
-	_play.text = "Играть за героя"
-	_play.tooltip_text = "Сыграй за героя: управляйте им сами, мир живёт дальше"
-	_play.focus_mode = Control.FOCUS_NONE
-	_play.visible = false
-	_play.pressed.connect(func() -> void:
-		if WorldState.world != null and PlayerSystem.take_control(WorldState.world, _selected):
-			EventBus.my_hero_requested.emit(true))
-	box.add_child(_play)
-	# Свой герой: раса, класс, имя, затем клик по стартовому региону.
+	# Режим «Сыграй за героя» скрыт (Features.HERO_PLAY) — без кнопок режима.
+	if Features.HERO_PLAY:
+		_play = Button.new()
+		_play.text = "Играть за героя"
+		_play.tooltip_text = "Сыграй за героя: управляйте им сами, мир живёт дальше"
+		_play.focus_mode = Control.FOCUS_NONE
+		_play.visible = false
+		_play.pressed.connect(func() -> void:
+			if WorldState.world != null and PlayerSystem.take_control(WorldState.world, _selected):
+				EventBus.my_hero_requested.emit(true))
+		box.add_child(_play)
+		_build_player_row(box)
+	visibility_changed.connect(func() -> void:
+		if visible:
+			_refresh())
+	EventBus.hero_selected.connect(func(id: int) -> void:
+		_selected = id
+		_refresh())
+
+
+## Свой герой: раса, класс, имя, затем клик по стартовому региону.
+func _build_player_row(box: Container) -> void:
 	var row := HBoxContainer.new()
 	_new_race = OptionButton.new()
 	for race in RaceDB.all():
@@ -79,12 +91,6 @@ func _init() -> void:
 		EventBus.god_tool_changed.emit(&"player_create", {"race": RaceDB.all()[_new_race.selected],
 			"cls": PoliticsDB.hero_classes()[_new_class.selected], "name": _new_name.text}))
 	box.add_child(create)
-	visibility_changed.connect(func() -> void:
-		if visible:
-			_refresh())
-	EventBus.hero_selected.connect(func(id: int) -> void:
-		_selected = id
-		_refresh())
 
 
 func _process(_delta: float) -> void:
@@ -146,7 +152,8 @@ func _status(world: World, h: Hero) -> String:
 
 func _show_card(world: World) -> void:
 	_details.visible = _selected >= 0 and _selected < world.heroes.size()
-	_play.visible = _details.visible and world.heroes[_selected].alive and not world.heroes[_selected].is_ruler and world.player != _selected
+	if _play != null:
+		_play.visible = _details.visible and world.heroes[_selected].alive and not world.heroes[_selected].is_ruler and world.player != _selected
 	if not _details.visible:
 		_card.text = "[color=#8a90a0]Выберите героя, чтобы увидеть его историю (двойной клик — окно героя).[/color]"
 		return

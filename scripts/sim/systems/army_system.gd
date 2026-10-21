@@ -162,7 +162,7 @@ static func assign_general(world: World, a: Army) -> void:
 			world.generals[a.general].army = a.id
 			return
 	# Обученный командир (у больших держав и с казармами — чаще).
-	if world.rng.randf() < 0.5 + (0.3 if nation.cell_count > 200 else 0.0):
+	if world.rng.randf() < 0.5 + (0.3 if nation.base_area > 200 else 0.0):
 		a.general = new_general(world, nation, NameGenerator.person_name(nation.race, world.rng), world.rng.randf_range(0.15, 0.6), -1)
 		world.generals[a.general].army = a.id
 

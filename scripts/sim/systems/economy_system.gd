@@ -113,8 +113,9 @@ func _target_stability(nation: Nation) -> float:
 			var relation := race.relation_to(RaceDB.by_index(r))
 			target -= share * (0.35 - relation * 0.25)
 	var comfortable := 450.0 * race.expansion
-	if nation.cell_count > comfortable:
-		target -= minf(0.3, (nation.cell_count - comfortable) / 2500.0)
+	var area := nation.base_area
+	if area > comfortable:
+		target -= minf(0.3, (area - comfortable) / 2500.0)
 	if nation.famine_years > 0:
 		target -= 0.15
 	if nation.stock[Goods.GOLD] < 0.0:

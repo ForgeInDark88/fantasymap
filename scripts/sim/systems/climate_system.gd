@@ -43,12 +43,12 @@ static func place_volcanoes(world: World) -> void:
 			if map.biome[i] == Biome.MOUNTAINS:
 				peaks.append(Vector2(map.elevation[i], i))
 	peaks.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x > b.x)
-	var count := maxi(2, land / LAND_PER_VOLCANO)
+	var count := maxi(2, world.gbi(land) / LAND_PER_VOLCANO)
 	for p in peaks:
 		var cell := int(p.y)
 		var far := true
 		for v in world.volcanoes:
-			if Vector2(map.cell_pos(v)).distance_to(Vector2(map.cell_pos(cell))) < 25.0:
+			if Vector2(map.cell_pos(v)).distance_to(Vector2(map.cell_pos(cell))) < world.gd(25.0):
 				far = false
 				break
 		if far:
@@ -108,7 +108,7 @@ static func erupt(world: World, cell: int) -> void:
 	var region := world.region_label(cell, "диких горах")
 	var lost: Array[String] = []
 	for city in world.cities:
-		if city.alive and not city.is_capital and Vector2(map.cell_pos(city.cell)).distance_to(pos) <= 5.0 and rng.randf() < 0.5:
+		if city.alive and not city.is_capital and Vector2(map.cell_pos(city.cell)).distance_to(pos) <= world.gd(5.0) and rng.randf() < 0.5:
 			lost.append(city.name)
 			world.destroy_city(city)
 	var hit := {}

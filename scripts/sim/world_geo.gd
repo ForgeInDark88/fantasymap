@@ -76,8 +76,9 @@ func site_score(race: RaceDef, cell: int) -> float:
 	var p := map.cell_pos(cell)
 	var around := 0.0
 	var samples := 0
-	for dy in range(-3, 4, 3):
-		for dx in range(-3, 4, 3):
+	var r := 3 * grid_scale
+	for dy in range(-r, r + 1, r):
+		for dx in range(-r, r + 1, r):
 			if map.in_bounds(p.x + dx, p.y + dy):
 				around += race.affinity_by_biome[map.biome[map.index_of(p.x + dx, p.y + dy)]]
 				samples += 1
@@ -98,7 +99,8 @@ func cell_capacity(race: RaceDef, cell: int) -> float:
 		cap *= 1.3
 	if race.has_trait(&"farmers"):
 		cap *= 1.0 + def.fertility * 0.3
-	return cap
+	# Клетка мелкой сетки — 1/scale² базовой: и кормит во столько же раз меньше.
+	return GridScale.per_cell(grid_scale, cap)
 
 
 func is_coastal(cell: int) -> bool:
@@ -135,7 +137,7 @@ func _place_deposits() -> void:
 		for d in defs.size():
 			var def := defs[d]
 			var weight: float = def.biome_weights.get(biome_id, 0.0)
-			if weight > 0.0 and rng.randf() < def.chance * weight:
+			if weight > 0.0 and rng.randf() < GridScale.per_cell(grid_scale, def.chance * weight):
 				deposit[i] = d + 1
 				break
 
@@ -143,7 +145,7 @@ func _place_deposits() -> void:
 func refresh_cell_yield(i: int) -> void:
 	var def := BiomeDB.get_def(map.biome[i])
 	for g in Goods.COUNT:
-		cell_yield[i * Goods.COUNT + g] = def.yield_of(g)
+		cell_yield[i * Goods.COUNT + g] = GridScale.per_cell(grid_scale, def.yield_of(g))
 	var dep := deposit_at(i)
 	if dep != null:
 		cell_yield[i * Goods.COUNT + Goods.index_of(dep.goods)] += dep.amount
@@ -155,7 +157,7 @@ func _compute_cell_yields() -> void:
 	for i in n:
 		var def := BiomeDB.get_def(map.biome[i])
 		for g in Goods.COUNT:
-			cell_yield[i * Goods.COUNT + g] = def.yield_of(g)
+			cell_yield[i * Goods.COUNT + g] = GridScale.per_cell(grid_scale, def.yield_of(g))
 		var dep := deposit_at(i)
 		if dep != null:
 			cell_yield[i * Goods.COUNT + Goods.index_of(dep.goods)] += dep.amount

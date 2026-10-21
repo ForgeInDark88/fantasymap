@@ -6,11 +6,13 @@ extends RefCounted
 const NO_RACE := 255
 ## Сколько записей летописи хранить.
 const CHRONICLE_LIMIT := 4000
-## Минимальное расстояние между городами (в клетках, по Чебышёву).
+## Минимальное расстояние между городами (в базовых клетках, по Чебышёву; × grid_scale).
 const CITY_SPACING := 6
 
 var map: WorldMap
 var settings: MapSettings
+## Масштаб сетки (GridScale; из MapSettings, сохраняется): клетка = 1/scale базовой по оси.
+var grid_scale := 1
 var year := 0
 ## Месяц текущего года: 0..11; день месяца: 0..29.
 var month := 0
@@ -65,7 +67,7 @@ var heroes: Array[Hero] = []
 var counters: Dictionary[StringName, int] = {}
 
 # --- Климат (ClimateSystem) ---
-## Вулканы (клетки гор), следы бедствий на карте {cell, radius, kind, until},
+## Вулканы (клетки гор), следы бедствий на карте {cell, radius (в базовых клетках), kind, until},
 ## медленные сдвиги климата (температура и влажность) и урожайность поясов
 ## (север, умеренный, юг) в текущем году.
 var volcanoes := PackedInt32Array()
@@ -132,6 +134,9 @@ var region_goods: Array = []
 ## Края, чьи товары надо пересчитать (смена биома, рельеф).
 var goods_dirty: Dictionary = {}
 var player := -1
+## Герой игрока из сохранения, пока режим скрыт (Features.HERO_PLAY выключен):
+## он живёт сам, а id хранится, чтобы режим вернулся при включении флага.
+var player_dormant := -1
 ## Наблюдатель за событиями мира (не сохраняется): интерфейс передаёт через него
 ## записи летописи и счётчики в EventBus — логика мира об EventBus не знает.
 var observer: Callable
@@ -186,6 +191,35 @@ var chronicle_total := 0
 
 ## Уже выданные имена (города, государства, правители) — чтобы не повторялись.
 var used_names: Dictionary = {}
+
+
+# --- Масштаб сетки (GridScale): короткие помощники для систем ---
+
+## Расстояние или радиус n базовых клеток — в клетках сетки.
+func gd(n: float) -> float:
+	return n * grid_scale
+
+
+func gdi(n: int) -> int:
+	return n * grid_scale
+
+
+## Площадь n базовых клеток — в клетках сетки.
+func ga(n: float) -> float:
+	return n * (grid_scale * grid_scale)
+
+
+func gai(n: int) -> int:
+	return n * grid_scale * grid_scale
+
+
+## Число клеток сетки — в базовых («условных») клетках (интерфейс, летопись, пороги).
+func gb(cells: float) -> float:
+	return GridScale.base(grid_scale, cells)
+
+
+func gbi(cells: int) -> int:
+	return GridScale.base_i(grid_scale, cells)
 
 
 func count(key: StringName, amount: int = 1) -> void:

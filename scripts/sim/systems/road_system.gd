@@ -14,7 +14,8 @@ extends RefCounted
 
 ## Шанс в год заняться дорогами.
 const BUILD_CHANCE := 0.35
-## Дальше этого (в клетках по прямой) дорогу не тянут; морской путь — дальше.
+## Дальше этого (в базовых клетках по прямой; × grid_scale) дорогу не тянут; морской путь — дальше.
+## Длина дороги (Road.length) — тоже в базовых клетках.
 const MAX_LAND := 34
 const MAX_SEA := 70
 ## Не больше стольких дорог у одного города.
@@ -83,14 +84,14 @@ func tick(world: World, nation: Nation) -> void:
 		var d := Vector2(world.map.cell_pos(c.cell) - fp).length()
 		# Морские пути — к любому мирному порту; сухопутные — к своим и торговым партнёрам.
 		var foreign := c.nation_id != nation.id
-		var by_sea := port and c.buildings.has(&"harbor") and d <= MAX_SEA \
-				and (not foreign or world.diplomacy.war_between(nation.id, c.nation_id) == null)
-		if by_sea and d > 8.0 and d < sea_d:
+		var by_sea := port and c.buildings.has(&"harbor") \
+				and (not foreign or world.diplomacy.war_between(nation.id, c.nation_id) == null) and d <= world.gd(MAX_SEA)
+		if by_sea and d > world.gd(8.0) and d < sea_d:
 			sea_d = d
 			sea_best = c
 		if full or (foreign and not nation.trade_partners.has(c.nation_id)):
 			continue
-		if d > MAX_LAND:
+		if d > world.gd(MAX_LAND):
 			continue
 		if d < best_d:
 			best_d = d
@@ -106,7 +107,7 @@ func tick(world: World, nation: Nation) -> void:
 		if not (port and best.buildings.has(&"harbor")):
 			return
 		sea = true
-	var length := best_d * 1.2 if sea else path.x
+	var length := (best_d * 1.2 if sea else path.x) / world.grid_scale
 	var bridges := 0 if sea else int(path.y)
 	var gold := length * GOLD_PER_LEN
 	var stone := (0.0 if sea else length * STONE_PER_LEN) + bridges * BRIDGE_STONE

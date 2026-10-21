@@ -72,7 +72,8 @@ func _localization() -> void:
 
 func _reference() -> void:
 	var sections := Reference.sections()
-	_expect(sections.size() >= 20, "мало разделов справочника")
+	# Разделы режима героя скрыты вместе с ним (Features.HERO_PLAY) — без них 19.
+	_expect(sections.size() >= (20 if Features.HERO_PLAY else 18), "мало разделов справочника")
 	for s in sections:
 		_expect(not (s.entries as Array).is_empty(), "пустой раздел справочника «%s»" % s.title)
 	var doc := FileAccess.get_file_as_string(Reference.DOC)

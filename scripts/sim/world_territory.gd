@@ -317,7 +317,7 @@ func add_city(nation: Nation, cell: int, race: RaceDef, is_capital: bool) -> Cit
 	city.coastal = is_coastal(cell)
 	city.weight = clampf(site_score(race, cell) * 0.5, 0.5, 2.0)
 	city.luck = clampf(exp(rng.randfn(0.0, 0.6)), 0.25, 5.0)
-	city.near_biomes = biome_mask_near(cell, 2)
+	city.near_biomes = biome_mask_near(cell, 2 * grid_scale)
 	cities.append(city)
 	city_cell[cell] = city.id
 	_mark_city_area(cell, 1)
@@ -340,7 +340,7 @@ func can_place_city(cell: int) -> bool:
 
 func _mark_city_area(cell: int, delta: int) -> void:
 	var p := map.cell_pos(cell)
-	var r := CITY_SPACING
+	var r := CITY_SPACING * grid_scale
 	for y in range(maxi(0, p.y - r), mini(map.height, p.y + r + 1)):
 		for x in range(maxi(0, p.x - r), mini(map.width, p.x + r + 1)):
 			var i := y * map.width + x

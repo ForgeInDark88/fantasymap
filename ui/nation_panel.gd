@@ -79,7 +79,7 @@ func refresh(world: World) -> void:
 		"[b]Правление:[/b] %s, род %s" % [gov_name, nation.dynasty],
 		"[b]Правитель:[/b] %s (%d лет)%s" % [nation.ruler_display(), nation.ruler_age, trait_text],
 		"[b]Столица:[/b] %s (%s жит.)" % [capital.name, fmt(capital.population)] if capital != null else "[b]Столица:[/b] —",
-		"[b]Территория:[/b] %d клеток · [b]городов:[/b] %d" % [nation.cell_count, nation.city_ids.size()],
+		"[b]Территория:[/b] %d клеток · [b]городов:[/b] %d" % [roundi(nation.base_area), nation.city_ids.size()],
 		"[b]Население:[/b] %s из %s возможных" % [fmt(UiAnim.roll("n%d.pop" % nation.id, nation.population)), fmt(nation.total_capacity())],
 		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(UiAnim.roll("n%d.army" % nation.id, nation.army)), nation.tech],
 		"[b]Стабильность:[/b] %s" % _stability_text(nation.stability),
@@ -238,7 +238,7 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 		var people_name := RaceDB.by_index(people).display_name.to_lower() if people != World.NO_RACE else "—"
 		var claims := Array(region.claims.keys()).filter(func(id: int) -> bool: return id != nation.id and world.nations[id].alive)
 		lines.append("[color=#e8d9a0][b]Регион %s[/b][/color] — %d кл., народ: %s, %s жит.; лояльность %d%%, недовольство %d%%" % [
-			region.name, region.cells.size(), people_name, fmt(world.region_population(region, nation.id)),
+			region.name, world.gbi(region.cells.size()), people_name, fmt(world.region_population(region, nation.id)),
 			roundi(region.loyalty * 100.0), roundi(minf(region.unrest, 1.0) * 100.0)])
 		if not region.faith.is_empty():
 			lines.append("Вера: " + faith_text(world, region.faith, 3))

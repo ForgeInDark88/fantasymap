@@ -58,8 +58,20 @@ static func unexact(v: Variant) -> Variant:
 	return v
 
 
+## Сжимать большие массивы клеток (zstd) — включается для карт ×2 и крупнее
+## (SaveSystem.to_dict): сохранения ×1 остаются байт в байт прежними.
+static var compress_cells := false
+## Сжимать массивы не меньше этого размера (байт).
+const COMPRESS_MIN := 4096
+
+
 static func _b64(bytes: PackedByteArray) -> String:
-	return Marshalls.raw_to_base64(bytes) if not bytes.is_empty() else ""
+	if bytes.is_empty():
+		return ""
+	if compress_cells and bytes.size() >= COMPRESS_MIN:
+		# «z:<размер>:<base64 сжатого>» — _raw узнаёт формат по префиксу.
+		return "z:%d:%s" % [bytes.size(), Marshalls.raw_to_base64(bytes.compress(FileAccess.COMPRESSION_ZSTD))]
+	return Marshalls.raw_to_base64(bytes)
 
 
 static func _int_dict(d: Dictionary) -> Dictionary:
@@ -98,4 +110,10 @@ static func _to_col(v: Variant) -> Color:
 
 
 static func _raw(text: String) -> PackedByteArray:
-	return Marshalls.base64_to_raw(text) if not text.is_empty() else PackedByteArray()
+	if text.is_empty():
+		return PackedByteArray()
+	if text.begins_with("z:"):
+		var sep := text.find(":", 2)
+		var size := int(text.substr(2, sep - 2))
+		return Marshalls.base64_to_raw(text.substr(sep + 1)).decompress(size, FileAccess.COMPRESSION_ZSTD)
+	return Marshalls.base64_to_raw(text)

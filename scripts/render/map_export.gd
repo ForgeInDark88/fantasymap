@@ -73,7 +73,7 @@ static func legend_svg(world: World) -> String:
 		var n: Nation = alive[i]
 		var y := 56 + i * 24
 		lines.append('<rect x="20" y="%d" width="18" height="14" fill="#%s" stroke="#3b2a14"/>' % [y, n.color.to_html(false)])
-		lines.append('<text x="46" y="%d" font-size="14" fill="#3b2a14">%s (%s, %d кл.)</text>' % [y + 12, _xml(n.name), _xml(n.race.display_name), n.cell_count])
+		lines.append('<text x="46" y="%d" font-size="14" fill="#3b2a14">%s (%s, %d кл.)</text>' % [y + 12, _xml(n.name), _xml(n.race.display_name), roundi(n.base_area)])
 	lines.append("</svg>")
 	return "\n".join(lines)
 

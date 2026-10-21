@@ -201,12 +201,12 @@ static func _titan(world: World, def: CrisisDef) -> void:
 	var pos := Vector2(map.cell_pos(cell))
 	if target != null:
 		var goal := Vector2(map.cell_pos(target.cell))
-		pos = pos.move_toward(goal, TITAN_STEP)
+		pos = pos.move_toward(goal, world.gd(TITAN_STEP))
 		var p := Vector2i(roundi(pos.x), roundi(pos.y))
 		cell = map.index_of(clampi(p.x, 0, map.width - 1), clampi(p.y, 0, map.height - 1))
 		world.crisis.titan_cell = cell
 	for city in world.cities:
-		if city.alive and Vector2(map.cell_pos(city.cell)).distance_to(Vector2(map.cell_pos(cell))) <= TITAN_RADIUS:
+		if city.alive and Vector2(map.cell_pos(city.cell)).distance_to(Vector2(map.cell_pos(cell))) <= world.gd(TITAN_RADIUS):
 			world.log_event(&"crisis", "%s растоптал город %s." % [world.crisis.titan_name, city.name],
 					PackedInt32Array([city.nation_id]) if city.nation_id >= 0 else PackedInt32Array())
 			world.destroy_city(city)
@@ -248,7 +248,7 @@ static func _star_strike(world: World) -> void:
 			continue
 		var hit := ""
 		for city in world.cities:
-			if city.alive and not city.is_capital and Vector2(map.cell_pos(city.cell)).distance_to(Vector2(map.cell_pos(cell))) <= 2.5:
+			if city.alive and not city.is_capital and Vector2(map.cell_pos(city.cell)).distance_to(Vector2(map.cell_pos(cell))) <= world.gd(2.5):
 				hit = city.name
 				world.destroy_city(city)
 				break
