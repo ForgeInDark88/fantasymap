@@ -20,6 +20,7 @@ static func create(s: MapSettings) -> World:
 	LanguageSystem.seed_world(world)
 	TribeSystem.seed_world(world)
 	LairSystem.seed_world(world)
+	MarketSystem.region_goods(world)  # кэш товаров краёв — при создании, а не в первом ходе
 	return world
 
 
@@ -168,7 +169,8 @@ func record_history() -> void:
 		var f := region.main_faith()
 		if f >= 0:
 			faiths[f] = faiths.get(f, 0) + 1
-	history.append({"year": year, "races": races, "nations": snapshot, "techs": techs, "faiths": faiths})
+	history.append({"year": year, "races": races, "nations": snapshot, "techs": techs, "faiths": faiths,
+		"prices": MarketSystem.world_prices(self)})
 
 
 ## Дата для интерфейса и летописи.

@@ -2,7 +2,7 @@ class_name StatsPanel
 extends PanelContainer
 ## Статистика мира: сводка и графики по эпохам (World.history).
 
-const VIEWS: Array[String] = ["Население рас", "Площадь государств", "Население государств", "Открытия по расам", "Религии"]
+const VIEWS: Array[String] = ["Население рас", "Площадь государств", "Население государств", "Открытия по расам", "Религии", "Цены товаров"]
 const TOP := 8
 
 var _summary: RichTextLabel
@@ -103,6 +103,17 @@ func _refresh() -> void:
 				pts.append(Vector2(snap.year, snap.get("faiths", {}).get(id, 0)))
 			var faith := world.religions[id]
 			series.append({"name": faith.name, "color": faith.color, "points": pts})
+	elif _view == 5:
+		# Средние по миру цены товаров (к базовой: 1 — как «в норме»).
+		var goods := MarketDB.all()
+		for i in goods.size():
+			var g: GoodDef = goods[i]
+			var pts := PackedVector2Array()
+			for snap in world.history:
+				var p: PackedFloat32Array = snap.get("prices", PackedFloat32Array())
+				if p.size() == goods.size():
+					pts.append(Vector2(snap.year, p[i] / g.base_price))
+			series.append({"name": g.display_name, "color": g.color, "points": pts})
 	else:
 		var metric := 1 if _view == 1 else 0
 		# Топ государств по текущему показателю (среди живых) + павшие гиганты прошлого не нужны.

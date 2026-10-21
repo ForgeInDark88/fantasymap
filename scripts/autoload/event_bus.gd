@@ -75,4 +75,6 @@ signal follow_hero_requested(hero_id: int)
 ## Выбрана армия на карте (null — снять выбор).
 ## Выбрано логово или племя (Lair / Tribe; null — снять выбор): карточка дикого края.
 signal wild_selected(entity: RefCounted)
+## Открыть окно «Рынок» (nation_id — чей рынок справа; -1 — крупнейшего).
+signal market_window_requested(nation_id: int)
 signal army_selected(army: Army)

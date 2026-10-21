@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"grain"
+display_name = "Зерно"
+description = "Хлеб насущный: пашни равнин и степей."
+color = Color(0.9, 0.8, 0.35, 1)
+base_price = 0.6
+spoil = 0.25
+biomes = Dictionary[StringName, float]({&"plains": 2.0, &"steppe": 1.0, &"hills": 0.6, &"forest": 0.3, &"jungle": 0.45})
+river = 1.0
+demand = Dictionary[StringName, float]({&"nobles": 1.0, &"burghers": 1.0, &"peasants": 1.0, &"slaves": 0.8})
+army_demand = 1.0
+staple = true

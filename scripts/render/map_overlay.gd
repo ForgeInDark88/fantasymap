@@ -230,6 +230,7 @@ func _draw() -> void:
 		_draw_roads(world, zoom)
 		_draw_ruins(world, zoom)
 		_draw_wild(world, zoom)
+		_draw_caravans(world, zoom)
 		_draw_titan(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
@@ -489,6 +490,59 @@ func _draw_wild(world: World, zoom: float) -> void:
 		if t.horde:
 			draw_line(Vector2(0.0, -4.0), Vector2(0.0, -11.0), Color(0.15, 0.1, 0.05, fade), 1.2)
 			draw_colored_polygon(PackedVector2Array([Vector2(0.0, -11.0), Vector2(6.0, -9.5), Vector2(0.0, -8.0)]), Color(0.9, 0.2, 0.15, fade))
+	draw_set_transform(Vector2.ZERO)
+
+
+## Караваны (этап 11.D) — повозка (на море — парус) с цветом товара, идёт от
+## города к городу по ходу пути; вольные отряды наёмников — щит со стягом.
+## В режимах «Торговля» и «Товары» — на любом зуме.
+func caravan_pos(world: World, c: Caravan) -> Vector2:
+	var a := renderer.cell_center(world.cities[c.from_city].cell)
+	var b := renderer.cell_center(world.cities[c.to_city].cell)
+	var month := float(posmod(world.day - c.day, 30)) / 30.0
+	return a.lerp(b, clampf((float(c.done) + month) / float(maxi(1, c.months)), 0.0, 1.0))
+
+
+func _draw_caravans(world: World, zoom: float) -> void:
+	var trade := _mode == MapMode.TRADE or _mode == MapMode.GOODS
+	var fade := 1.0 if trade else zoom_fade(zoom, 0.8, 1.0)
+	if fade <= 0.0:
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	var goods := MarketDB.all()
+	for c in world.caravans:
+		if not c.alive or c.road < 0 or c.road >= world.roads.size():
+			continue
+		var pos := caravan_pos(world, c)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var col: Color = (goods[c.good] as GoodDef).color
+		col.a = fade
+		var dark := Color(0.12, 0.08, 0.05, 0.9 * fade)
+		if world.roads[c.road].sea:
+			draw_colored_polygon(PackedVector2Array([Vector2(-5.0, 2.0), Vector2(5.0, 2.0), Vector2(3.5, 4.5), Vector2(-3.5, 4.5)]), dark)
+			draw_colored_polygon(PackedVector2Array([Vector2(0.0, -6.0), Vector2(4.5, 1.5), Vector2(0.0, 1.5)]), col)
+		else:
+			draw_rect(Rect2(-5.0, -3.0, 10.0, 5.0), dark)
+			draw_rect(Rect2(-4.0, -2.0, 8.0, 3.0), col)
+			draw_circle(Vector2(-3.0, 3.0), 1.6, dark)
+			draw_circle(Vector2(3.0, 3.0), 1.6, dark)
+	for m in world.mercs:
+		if not m.alive or m.cell < 0:
+			continue
+		var pos := renderer.cell_center(m.cell) + Vector2(9.0, -9.0) / zoom
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var c2 := Color(0.75, 0.75, 0.8, fade) if m.employer < 0 else world.nations[m.employer].color
+		c2.a = fade
+		draw_colored_polygon(PackedVector2Array([Vector2(-5.0, -5.0), Vector2(5.0, -5.0), Vector2(5.0, 1.0), Vector2(0.0, 6.0), Vector2(-5.0, 1.0)]),
+			Color(0.08, 0.08, 0.1, 0.9 * fade))
+		draw_colored_polygon(PackedVector2Array([Vector2(-3.8, -3.8), Vector2(3.8, -3.8), Vector2(3.8, 0.6), Vector2(0.0, 4.4), Vector2(-3.8, 0.6)]), c2)
+		draw_line(Vector2(-2.5, -2.5), Vector2(2.5, 2.0), Color(0.1, 0.1, 0.1, fade), 1.2)
+		draw_line(Vector2(2.5, -2.5), Vector2(-2.5, 2.0), Color(0.1, 0.1, 0.1, fade), 1.2)
 	draw_set_transform(Vector2.ZERO)
 
 

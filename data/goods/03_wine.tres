@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"wine"
+display_name = "Вино"
+description = "Виноградники тёплых холмов."
+color = Color(0.6, 0.15, 0.3, 1)
+base_price = 3.0
+spoil = 0.05
+biomes = Dictionary[StringName, float]({&"hills": 0.25, &"plains": 0.08})
+demand = Dictionary[StringName, float]({&"nobles": 0.6, &"burghers": 0.2, &"peasants": 0.02})
+luxury = true

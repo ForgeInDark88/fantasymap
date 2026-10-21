@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"mithril"
+display_name = "Мифрил"
+description = "Лёгкий как шёлк и крепкий как алмаз."
+color = Color(0.75, 0.85, 1.0, 1)
+base_price = 25.0
+spoil = 0.0
+deposit = &"mithril"
+deposit_amount = 0.8
+demand = Dictionary[StringName, float]({&"nobles": 0.008})
+army_demand = 0.004
+military = true

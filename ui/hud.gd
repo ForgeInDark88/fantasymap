@@ -20,6 +20,7 @@ const CHRONICLE_COLORS := {
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
 	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"battle": "#ff9a6a", &"pirates": "#9ab8d8",
 	&"tribe": "#d8b080", &"lair": "#e07a6a", &"disease": "#a8c860", &"language": "#c0c8f0",
+	&"caravan": "#e0b878", &"mercs": "#c8c0a8", &"debt": "#e8c070", &"society": "#d8a8c0",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -206,6 +207,7 @@ func _build_left_panels() -> void:
 	root.add_child(TechWindow.new())
 	root.add_child(UnderworldWindow.new())
 	root.add_child(ChroniclesWindow.new())
+	root.add_child(MarketWindow.new())
 	root.add_child(ArmyCard.new())
 	root.add_child(WildCard.new())
 	root.add_child(HeroChoicePopup.new())
@@ -229,6 +231,12 @@ func _build_left_panels() -> void:
 	chronicles.focus_mode = Control.FOCUS_NONE
 	chronicles.pressed.connect(func() -> void: EventBus.chronicles_window_requested.emit())
 	_panel_buttons.add_child(chronicles)
+	var market := Button.new()
+	market.text = "Рынок"
+	market.tooltip_text = "Рынок: цены и товары мира и государства, сословия, долги, наёмники"
+	market.focus_mode = Control.FOCUS_NONE
+	market.pressed.connect(func() -> void: EventBus.market_window_requested.emit(_nation_panel.get("_nation_id") if _nation_panel.get("_nation_id") != null else -1))
+	_panel_buttons.add_child(market)
 	var ach := Button.new()
 	ach.text = "🏆"
 	ach.tooltip_text = "Достижения"
@@ -285,7 +293,7 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND, MapMode.DANGER, MapMode.LANGUAGE] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND, MapMode.DANGER, MapMode.LANGUAGE, MapMode.GOODS] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
 
@@ -444,6 +452,17 @@ func _rebuild_legend() -> void:
 					_legend_row(o.def.color, null, "%s — краёв %d" % [o.def.display_name, o.regions.size()],
 						"%s\nС %d г., погибло %s" % [o.def.description, o.born, ArmySystem._num(o.deaths)])
 				_legend_row(DANGER_HIGH_LEGEND, null, "Багровый — смертельно опасно", "Логово великого чудовища, орда, чума")
+		MapMode.GOODS:
+			_legend_title.text = "Товары (главный товар края)"
+			if world != null:
+				var goods := MarketDB.all()
+				var prices := MarketSystem.world_prices(world)
+				for i in goods.size():
+					var g: GoodDef = goods[i]
+					_legend_row(g.color, null, "%s — цена %.2f (×%.2f)" % [g.display_name, prices[i], prices[i] / g.base_price],
+						"%s\nКараваны везут товар туда, где он дороже." % g.description)
+				_legend_row(Color(0.5, 0.35, 0.2), null, "Караванов в пути: %d" % world.caravans.filter(func(c: Caravan) -> bool: return c.alive).size(),
+					"Повозка — по дороге, парус — по морю; окно «Рынок» — подробности")
 		MapMode.LANGUAGE:
 			_legend_title.text = "Языки и наречия"
 			if world != null:

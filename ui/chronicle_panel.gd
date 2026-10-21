@@ -29,6 +29,8 @@ const CATEGORIES := {
 	"Дикие земли": [&"tribe", &"lair"],
 	"Болезни": [&"disease"],
 	"Языки": [&"language"],
+	"Рынок и казна": [&"caravan", &"mercs", &"debt"],
+	"Общество": [&"society"],
 }
 const COLORS := {
 	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0", &"ruler": "#d6b3ff", &"famine": "#ff9a7a",
@@ -38,6 +40,7 @@ const COLORS := {
 	&"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
 	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"lineage": "#f0d0b0", &"battle": "#ff9a6a", &"pirates": "#9ab8d8", &"order": "#a8c8f0", &"gods": "#fff0a0", &"artifact": "#e8c060",
 	&"tribe": "#d8b080", &"lair": "#e07a6a", &"disease": "#a8c860", &"language": "#c0c8f0",
+	&"caravan": "#e0b878", &"mercs": "#c8c0a8", &"debt": "#e8c070", &"society": "#d8a8c0",
 }
 
 var _checks: Dictionary[String, CheckBox] = {}

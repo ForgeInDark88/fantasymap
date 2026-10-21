@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"spices"
+display_name = "Пряности"
+description = "Перец и шафран джунглей и пустынных оазисов."
+color = Color(0.9, 0.5, 0.15, 1)
+base_price = 7.0
+spoil = 0.04
+biomes = Dictionary[StringName, float]({&"jungle": 0.1, &"desert": 0.02, &"swamp": 0.02})
+demand = Dictionary[StringName, float]({&"nobles": 0.08, &"burghers": 0.03})
+luxury = true

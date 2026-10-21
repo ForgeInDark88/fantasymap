@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"silk"
+display_name = "Шёлк"
+description = "Тайна южных садов, дороже золота по весу."
+color = Color(0.95, 0.55, 0.75, 1)
+base_price = 8.0
+spoil = 0.03
+biomes = Dictionary[StringName, float]({&"jungle": 0.08, &"plains": 0.01})
+demand = Dictionary[StringName, float]({&"nobles": 0.08, &"burghers": 0.02})
+luxury = true

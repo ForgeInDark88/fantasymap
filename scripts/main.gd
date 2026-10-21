@@ -96,6 +96,18 @@ func _on_map_clicked(pos: Vector2) -> void:
 			if d < wrad:
 				wrad = d
 				wild = t
+	for c in world.caravans:
+		if c.alive:
+			var d := _overlay.caravan_pos(world, c).distance_to(pos)
+			if d < wrad:
+				wrad = d
+				wild = c
+	for m in world.mercs:
+		if m.alive and m.cell >= 0:
+			var d := (_renderer.cell_center(m.cell) + Vector2(9.0, -9.0) / _camera.zoom.x).distance_to(pos)
+			if d < wrad:
+				wrad = d
+				wild = m
 	EventBus.wild_selected.emit(wild)
 	if wild != null:
 		return
@@ -173,6 +185,16 @@ func _apply_tool(world: World, cell: int) -> void:
 			GodTools.start_disease(world, cell, _tool_params.disease)
 		&"dialect":
 			GodTools.split_dialect(world, cell)
+		&"caravan":
+			GodTools.send_caravan(world, cell)
+		&"mercs":
+			GodTools.spawn_mercs(world, cell)
+		&"gold_rush":
+			GodTools.gold_rush(world, cell)
+		&"slavery":
+			GodTools.toggle_slavery(world, cell)
+		&"forgive":
+			GodTools.forgive_debts(world, cell)
 		&"mutiny":
 			var rebels := GodTools.mutiny(world, cell)
 			if rebels != null:

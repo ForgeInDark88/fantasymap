@@ -106,6 +106,20 @@ var tribes: Array[Tribe] = []
 var lairs: Array[Lair] = []
 var outbreaks: Array[Outbreak] = []
 var languages: Array[Language] = []
+## Рынок и общество (этап 11.D): караваны в пути, вольные отряды наёмников,
+## займы {id, lender, debtor, amount, left, rate, year, missed}, год последнего
+## дефолта государства ("id" → год), итоги рынка за всю историю (made, used,
+## lost, robbed, delivered — для проверки учёта).
+var caravans: Array[Caravan] = []
+var mercs: Array[MercCompany] = []
+var loans: Array[Dictionary] = []
+var loan_serial := 0
+var defaults: Dictionary = {}
+var market_totals: Dictionary = {}
+## Товары краёв (MarketSystem.region_goods; производное от карты, не сохраняется).
+var region_goods: Array = []
+## Края, чьи товары надо пересчитать (смена биома, рельеф).
+var goods_dirty: Dictionary = {}
 var player := -1
 ## Наблюдатель за событиями мира (не сохраняется): интерфейс передаёт через него
 ## записи летописи и счётчики в EventBus — логика мира об EventBus не знает.

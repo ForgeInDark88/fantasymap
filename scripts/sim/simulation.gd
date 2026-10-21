@@ -46,6 +46,10 @@ var tribes := TribeSystem.new()
 var lairs := LairSystem.new()
 var diseases := DiseaseSystem.new()
 var languages := LanguageSystem.new()
+var market := MarketSystem.new()
+var caravans := CaravanSystem.new()
+var mercs := MercSystem.new()
+var credit := CreditSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -96,6 +100,7 @@ func step_day(world: World) -> void:
 		_t("tribes", tribes.tick_day.bind(world))
 		_t("lairs", lairs.tick_day.bind(world))
 		_t("diseases", diseases.tick_day.bind(world))
+		_t("caravans", caravans.tick_day.bind(world))
 	else:
 		wars.tick_day(world)
 		armies.tick_day(world)
@@ -103,6 +108,7 @@ func step_day(world: World) -> void:
 		tribes.tick_day(world)
 		lairs.tick_day(world)
 		diseases.tick_day(world)
+		caravans.tick_day(world)
 	world.cleanup_dead()
 
 
@@ -124,6 +130,8 @@ func _new_year(world: World) -> void:
 	lairs.tick_year(world)
 	diseases.tick_year(world)
 	languages.tick_year(world)
+	_t("mercs", mercs.tick_year.bind(world))
+	_t("credit", credit.tick_year.bind(world))
 	_portals(world)
 	world.record_history()
 
@@ -150,7 +158,7 @@ var _nation_systems: Array = []
 func _init() -> void:
 	armies.wars = wars
 	_nation_systems = [
-		["economy", economy.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
+		["economy", economy.tick], ["market", market.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
 		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
 		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
 		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],

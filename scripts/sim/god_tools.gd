@@ -128,6 +128,8 @@ static func set_elevation(world: World, i: int, e: float) -> bool:
 	var will_land := e >= 0.0
 	if is_equal_approx(e, map.elevation[i]):
 		return false
+	if world.region_of[i] >= 0:
+		world.goods_dirty[world.region_of[i]] = true
 	var owner := world.owner[i]
 	if owner >= 0:
 		world.set_owner(i, -1)
@@ -475,3 +477,81 @@ static func split_dialect(world: World, cell: int) -> int:
 	world.log_event(&"language", "По воле богов в крае %s заговорили по-новому: %s (от: %s)." % [region.name,
 		LanguageSystem.title(world, id), LanguageSystem.title(world, parent)])
 	return id
+
+
+## Рынок (этап 11.D): караван от ближайшего к клетке города — самым выгодным товаром.
+static func send_caravan(world: World, cell: int) -> Caravan:
+	var city := _nearest_city(world, cell)
+	if city == null or city.nation_id < 0:
+		return null
+	var nation := world.nations[city.nation_id]
+	MarketSystem.ensure(world, nation)
+	var best: Array = []
+	for rid in world.city_roads.get(city.id, PackedInt32Array()):
+		var road := world.roads[rid]
+		var other := world.cities[road.other(city.id)]
+		if not road.alive or not other.alive or other.nation_id == nation.id or other.nation_id < 0:
+			continue
+		var o := world.nations[other.nation_id]
+		MarketSystem.ensure(world, o)
+		for i in MarketDB.size():
+			if nation.market_stock[i] < 1.0:
+				continue
+			var margin := o.market_price[i] / maxf(0.001, nation.market_price[i])
+			if best.is_empty() or margin > best[0]:
+				best = [margin, road, other.id, i]
+	if best.is_empty():
+		return null
+	var i: int = best[3]
+	return CaravanSystem.launch(world, best[1], city.id, best[2], i, nation.market_stock[i] * 0.5, nation.market_price[i])
+
+
+static func spawn_mercs(world: World, cell: int) -> MercCompany:
+	var m := MercSystem.spawn(world, _nearest_city(world, cell))
+	if m != null:
+		world.log_event(&"mercs", "У города %s собралась вольная %s." % [world.cities[world.city_cell[m.cell]].name if world.city_cell[m.cell] >= 0 else "?", m.name.to_lower()])
+	return m
+
+
+static func gold_rush(world: World, cell: int) -> bool:
+	var n := world.nation_at(cell)
+	if n == null:
+		return false
+	n.stock[Goods.GOLD] += maxf(500.0, n.population / 1000.0 * 4.0)
+	world.log_event(&"debt", "В землях государства %s нашли богатые россыпи — золотая лихорадка!" % n.short_name, PackedInt32Array([n.id]))
+	return true
+
+
+static func toggle_slavery(world: World, cell: int) -> bool:
+	var n := world.nation_at(cell)
+	if n == null:
+		return false
+	n.slavery = not n.slavery
+	world.log_event(&"society", ("%s по воле богов вводит рабство." if n.slavery else "%s по воле богов отменяет рабство.") % n.name,
+		PackedInt32Array([n.id]))
+	return true
+
+
+static func forgive_debts(world: World, cell: int) -> int:
+	var n := world.nation_at(cell)
+	if n == null:
+		return 0
+	var before := world.loans.size()
+	world.loans = world.loans.filter(func(l: Dictionary) -> bool: return int(l.debtor) != n.id)
+	var k := before - world.loans.size()
+	if k > 0:
+		world.log_event(&"debt", "Долги государства %s прощены по воле богов (займов: %d)." % [n.short_name, k], PackedInt32Array([n.id]))
+	return k
+
+
+static func _nearest_city(world: World, cell: int) -> City:
+	var p := Vector2(world.map.cell_pos(cell))
+	var best: City = null
+	var best_d := 30.0
+	for c in world.cities:
+		if c.alive:
+			var d := p.distance_to(Vector2(world.map.cell_pos(c.cell)))
+			if d < best_d:
+				best_d = d
+				best = c
+	return best

@@ -82,6 +82,7 @@ func refresh(world: World) -> void:
 	if not roads.is_empty():
 		var sea := roads.values().filter(func(r: Road) -> bool: return r.sea).size()
 		lines.append("[b]Пути:[/b] дорог %d, морских %d · торговля по ним: %s золота в год" % [roads.size() - sea, sea, fmt(trade)])
+	_append_market(world, nation, lines)
 	var caves := UndergroundSystem.owned_by(world, nation.id)
 	if not caves.is_empty():
 		lines.append("[b]Под землёй:[/b] пещер %d, подземных городов %d%s" % [caves.size(), caves.filter(func(c: Cave) -> bool: return c.city).size(),
@@ -245,6 +246,25 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")
+
+
+## Рынок и общество (этап 11.D): сословия, рабство, индекс цен, долги, наёмники, дефицит.
+func _append_market(world: World, nation: Nation, lines: Array[String]) -> void:
+	if nation.market_price.size() != MarketDB.size():
+		return
+	lines.append("[b]Общество:[/b] %s%s" % [MarketWindow.class_line(nation).trim_prefix("Сословия: "),
+		" · [color=#ff9a6a]рабство[/color]" if nation.slavery else ""])
+	var short: Array[String] = []
+	var goods := MarketDB.all()
+	for i in goods.size():
+		if nation.market_demand[i] > 0.5 and nation.market_used[i] < nation.market_demand[i] * 0.8:
+			short.append((goods[i] as GoodDef).display_name.to_lower())
+	var debts := CreditSystem.debts_of(world, nation.id)
+	lines.append("[b]Рынок:[/b] индекс цен %.2f%s%s" % [nation.inflation, (" · долги %s" % fmt(debts)) if debts > 0.0 else "",
+		(" · нехватка: " + ", ".join(short)) if not short.is_empty() else ""])
+	for m in world.mercs:
+		if m.alive and m.employer == nation.id:
+			lines.append("[color=#c8c0a8]Наёмники: %s (%s воинов)[/color]" % [m.name, fmt(m.strength)])
 
 
 ## Дикий мир края (этап 11.C): логово, племя, поветрие — короткими строками.

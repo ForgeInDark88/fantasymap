@@ -87,7 +87,8 @@ static func to_dict(world: World) -> Dictionary:
 		for id in snap.nations:
 			ns[str(id)] = Array(snap.nations[id])
 		history.append({"year": snap.year, "races": Array(snap.races), "nations": ns,
-			"techs": Array(snap.get("techs", PackedFloat32Array())), "faiths": _int_dict(snap.get("faiths", {}))})
+			"techs": Array(snap.get("techs", PackedFloat32Array())), "faiths": _int_dict(snap.get("faiths", {})),
+			"prices": Array(snap.get("prices", PackedFloat32Array()))})
 	var chronicle := []
 	for e in world.chronicle:
 		chronicle.append({"y": e.year, "m": e.get("month", 0), "d": e.get("day", 0), "k": str(e.kind),
@@ -137,6 +138,7 @@ static func to_dict(world: World) -> Dictionary:
 			"color": _col(c.color), "customs": Array(c.customs), "origin": c.origin_nation, "founded": c.founded_year}),
 		"lore": _lore_dict(world),
 		"wild": _wild_dict(world),
+		"market": _market_dict(world),
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -303,7 +305,7 @@ static func from_dict(data: Dictionary) -> World:
 		for k in snap.get("faiths", {}):
 			faiths[int(k)] = int(snap.faiths[k])
 		world.history.append({"year": int(snap.year), "races": PackedFloat32Array(snap.races), "nations": ns,
-			"techs": PackedFloat32Array(snap.get("techs", [])), "faiths": faiths})
+			"techs": PackedFloat32Array(snap.get("techs", [])), "faiths": faiths, "prices": PackedFloat32Array(snap.get("prices", []))})
 	world.terrain_version = int(data.get("terrain_version", 0))
 	_load_religions(world, data)
 	_load_techs_and_cultures(world, data)
@@ -378,6 +380,7 @@ static func from_dict(data: Dictionary) -> World:
 		road.alive = rd[8]
 	_load_lore(world, data)
 	_load_wild(world, data)
+	_load_market(world, data)
 	world.update_label_anchors()
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
 	world.rng.seed = int(data.rng[0])

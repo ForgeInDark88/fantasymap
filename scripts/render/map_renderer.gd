@@ -147,6 +147,12 @@ func refresh_region_palette() -> void:
 				if d > 0.0:
 					c = DANGER_LOW.lerp(DANGER_HIGH, d)
 					c.a = 0.25 + 0.65 * d
+			MapMode.GOODS:
+				# Главный товар края (по стоимости); бледнее — ничьи края.
+				var gi := MarketSystem.main_good(world, region.id)
+				if gi >= 0:
+					c = (MarketDB.all()[gi] as GoodDef).color
+					c.a = 0.85 if region.controller() >= 0 else 0.4
 			MapMode.LANGUAGE:
 				if region.language >= 0:
 					c = world.languages[region.language].color

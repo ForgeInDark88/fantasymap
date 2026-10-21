@@ -50,6 +50,14 @@ func _run() -> void:
 	await _frames(3)
 	_shot(out_dir, "nation_card.png")
 
+	# Окно «Рынок» крупнейшего государства.
+	bus.market_window_requested.emit(biggest.id)
+	await _frames(20)
+	_shot(out_dir, "market.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_world_text") != null:
+			c.visible = false
+
 	# Армия в поле: значки, путь и карточка армии (в мирное время — война крупнейшего с соседом).
 	if not world.armies.any(func(x: RefCounted) -> bool: return x.alive and x.kind == &"land"):
 		for o in biggest.borders:

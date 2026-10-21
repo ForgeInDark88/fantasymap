@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"salt"
+display_name = "Соль"
+description = "Без соли не сберечь ни мяса, ни рыбы."
+color = Color(0.95, 0.95, 0.95, 1)
+base_price = 1.2
+spoil = 0.02
+biomes = Dictionary[StringName, float]({&"desert": 0.5, &"steppe": 0.15})
+coastal = 0.15
+demand = Dictionary[StringName, float]({&"nobles": 0.1, &"burghers": 0.1, &"peasants": 0.08, &"slaves": 0.05})
+army_demand = 0.1
+staple = true

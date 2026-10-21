@@ -1,7 +1,7 @@
 class_name WildCard
 extends PanelContainer
-## Карточка дикого края (клик по значку логова или племени): кто это, сила,
-## набеги, где; «К месту» — плавный перелёт камеры.
+## Карточка дикого края и дорог (клик по значку логова, племени, каравана или
+## отряда наёмников): кто это, сила, где; «К месту» — плавный перелёт камеры.
 
 const REFRESH_MS := 500
 
@@ -66,6 +66,10 @@ func _cell() -> int:
 	if _entity is Lair and world != null:
 		var l := _entity as Lair
 		return l.cell if l.region == l.home else world.regions[l.region].center
+	if _entity is MercCompany:
+		return (_entity as MercCompany).cell
+	if _entity is Caravan and world != null:
+		return world.cities[(_entity as Caravan).from_city].cell
 	return -1
 
 
@@ -105,4 +109,28 @@ func refresh() -> void:
 			if t.def.nomad:
 				var need := t.def.found_strength if t.horde else t.def.horde_strength
 				lines.append("%s: %d%%" % ["До своего государства" if t.horde else "До орды", mini(100, roundi(t.strength / need * 100.0))])
+	elif _entity is Caravan:
+		var c := _entity as Caravan
+		var g: GoodDef = MarketDB.all()[c.good]
+		lines.append("[font_size=16][b]Караван: %s[/b][/font_size]" % g.display_name)
+		lines.append("%s → %s (%s → %s)" % [world.cities[c.from_city].name, world.cities[c.to_city].name,
+			world.nations[c.from_nation].short_name, world.nations[c.to_nation].short_name])
+		if not c.alive:
+			lines.append("[color=#8a90a0]%s[/color]" % ("Разграблен." if c.robbed else "Дошёл."))
+		else:
+			lines.append("Груз: %s ед. · цена у отправителя %.2f, у получателя %.2f" % [ArmySystem._num(c.amount), c.price,
+				world.nations[c.to_nation].market_price[c.good] if world.nations[c.to_nation].market_price.size() > c.good else 0.0])
+			lines.append("В пути: месяц %d из %d · безопасность дороги %d%%" % [c.done + 1, c.months,
+				roundi(world.roads[c.road].safety * 100.0) if c.road < world.roads.size() else 0])
+	elif _entity is MercCompany:
+		var m := _entity as MercCompany
+		lines.append("[font_size=16][b]%s[/b][/font_size]" % m.name)
+		lines.append("Наёмники · народ: %s" % m.race.display_name.to_lower())
+		if not m.alive:
+			lines.append("[color=#8a90a0]Отряд распался.[/color]")
+		else:
+			lines.append("Воинов: [b]%s[/b] · плата: %d золота в год · с %d г." % [ArmySystem._num(m.strength), roundi(m.wage), m.born])
+			lines.append(("На службе у государства %s" % world.nations[m.employer].short_name) if m.employer >= 0 else "Вольный — ищет нанимателя среди воюющих")
+			if m.unpaid > 0:
+				lines.append("[color=#ff8a6a]Плату задерживают![/color]")
 	_text.text = "\n".join(lines)

@@ -17,7 +17,10 @@ static func _nation_dict(n: Nation) -> Dictionary:
 		"border_order": n.borders.keys(), "region_order": n.region_counts.keys(),
 		"pop": Array(n.pop), "stock": Array(n.stock), "income": Array(n.income),
 		"bonus": [n.food_bonus, n.stability_bonus, n.army_bonus, n.science_bonus], "building_production": Array(n.building_production),
-		"hero_power": n.hero_power, "sources": n.sources,
+		"hero_power": n.hero_power, "sources": n.sources, "merc_power": n.merc_power,
+		"market": [Array(n.market_stock), Array(n.market_price), Array(n.market_made), Array(n.market_used), Array(n.market_out),
+			Array(n.market_in), Array(n.market_lost), Array(n.market_demand)],
+		"classes": Array(n.classes), "slavery": n.slavery, "inflation": n.inflation,
 		"army": n.army, "stability": n.stability, "tech": n.tech, "expansion_points": n.expansion_points,
 		"famine": n.famine_years, "founded": n.founded_year, "alive": n.alive, "label": n.label_cell,
 		"overlord": n.overlord, "vassal_since": n.vassal_since, "allies": n.allies.keys(), "trade": n.trade_partners.keys(),
@@ -380,6 +383,21 @@ static func _restore_nation(nd: Dictionary) -> Nation:
 	n.hero_ids = PackedInt32Array(nd.hero_ids)
 	n.stock = PackedFloat32Array(nd.stock)
 	n.income = PackedFloat32Array(nd.income)
+	n.merc_power = nd.get("merc_power", 0.0)
+	var mk: Array = nd.get("market", [])
+	if mk.size() == 8:
+		n.market_stock = PackedFloat32Array(mk[0])
+		n.market_price = PackedFloat32Array(mk[1])
+		n.market_made = PackedFloat32Array(mk[2])
+		n.market_used = PackedFloat32Array(mk[3])
+		n.market_out = PackedFloat32Array(mk[4])
+		n.market_in = PackedFloat32Array(mk[5])
+		n.market_lost = PackedFloat32Array(mk[6])
+		n.market_demand = PackedFloat32Array(mk[7])
+	if nd.has("classes"):
+		n.classes = PackedFloat32Array(nd.classes)
+	n.slavery = bool(nd.get("slavery", false))
+	n.inflation = nd.get("inflation", 1.0)
 	n.army = nd.army
 	n.stability = nd.stability
 	n.tech = nd.tech
@@ -584,3 +602,57 @@ static func _load_wild(world: World, data: Dictionary) -> void:
 			o.nations[int(nid)] = true
 		if o.def != null:
 			world.outbreaks.append(o)
+
+
+## Рынок и общество (этап 11.D): караваны, наёмники, займы, итоги рынка.
+static func _market_dict(world: World) -> Dictionary:
+	return {
+		"caravans": world.caravans.filter(func(c: Caravan) -> bool: return c.alive).map(func(c: Caravan) -> Dictionary: return {
+			"road": c.road, "from": c.from_city, "to": c.to_city, "fn": c.from_nation, "tn": c.to_nation, "good": c.good,
+			"amount": c.amount, "price": c.price, "months": c.months, "done": c.done, "day": c.day}),
+		"mercs": world.mercs.filter(func(m: MercCompany) -> bool: return m.alive).map(func(m: MercCompany) -> Dictionary: return {
+			"name": m.name, "race": str(m.race.id), "str": m.strength, "wage": m.wage, "employer": m.employer, "cell": m.cell,
+			"born": m.born, "unpaid": m.unpaid, "battles": m.battles}),
+		"loans": world.loans, "serial": world.loan_serial, "defaults": world.defaults, "totals": world.market_totals,
+	}
+
+
+static func _load_market(world: World, data: Dictionary) -> void:
+	var m: Dictionary = data.get("market", {})
+	for cd in m.get("caravans", []):
+		var c := Caravan.new()
+		c.id = world.caravans.size()
+		c.road = int(cd.road)
+		c.from_city = int(cd.from)
+		c.to_city = int(cd.to)
+		c.from_nation = int(cd.fn)
+		c.to_nation = int(cd.tn)
+		c.good = int(cd.good)
+		c.amount = cd.amount
+		c.price = cd.price
+		c.months = int(cd.months)
+		c.done = int(cd.done)
+		c.day = int(cd.day)
+		world.caravans.append(c)
+	for md in m.get("mercs", []):
+		var x := MercCompany.new()
+		x.id = world.mercs.size()
+		x.name = str(md.name)
+		x.race = RaceDB.get_race(StringName(md.race))
+		x.strength = md.str
+		x.wage = md.wage
+		x.employer = int(md.employer)
+		x.cell = int(md.cell)
+		x.born = int(md.born)
+		x.unpaid = int(md.unpaid)
+		x.battles = int(md.battles)
+		world.mercs.append(x)
+	for l in m.get("loans", []):
+		world.loans.append({"id": int(l.id), "lender": int(l.lender), "debtor": int(l.debtor), "amount": float(l.amount),
+			"left": float(l.left), "rate": float(l.rate), "year": int(l.year), "missed": int(l.missed)})
+	world.loan_serial = int(m.get("serial", 0))
+	for k in m.get("defaults", {}):
+		world.defaults[str(k)] = int(m.defaults[k])
+	for k in m.get("totals", {}):
+		world.market_totals[str(k)] = float(m.totals[k])
+	MarketSystem.region_goods(world)  # кэш товаров краёв — при загрузке, а не в первом ходе

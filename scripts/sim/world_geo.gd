@@ -35,6 +35,8 @@ func change_land_biome(cell: int, new_biome: int) -> void:
 		if r != NO_RACE:
 			nation.capacity[r] = maxf(0.0, nation.capacity[r] - cell_capacity(RaceDB.by_index(r), cell))
 	map.biome[cell] = new_biome
+	if region_of[cell] >= 0:
+		goods_dirty[region_of[cell]] = true
 	refresh_cell_yield(cell)
 	if nation != null:
 		for g in Goods.COUNT:

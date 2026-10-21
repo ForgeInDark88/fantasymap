@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"fish"
+display_name = "Рыба"
+description = "Улов морей и рек."
+color = Color(0.5, 0.75, 0.9, 1)
+base_price = 0.7
+spoil = 0.4
+coastal = 2.0
+river = 0.5
+demand = Dictionary[StringName, float]({&"nobles": 0.3, &"burghers": 0.4, &"peasants": 0.25, &"slaves": 0.2})
+staple = true
