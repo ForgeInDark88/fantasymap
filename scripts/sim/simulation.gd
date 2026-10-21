@@ -5,8 +5,8 @@ extends RefCounted
 ## Годовые дела каждого государства (экономика, рост, экспансия, города,
 ## правители, восстания, события, дипломатия) выполняются в «его» день года
 ## (месяц id % 12, день (id / 12) % 30): нагрузка размазана по году, а карта
-## меняется плавно. Войны сражаются раз в год — в свой день; герои действуют
-## раз в месяц — тоже каждый в свой день.
+## меняется плавно. Войны с армиями ходят раз в 15 дней — в свой день; герои,
+## племена, логова и поветрия действуют раз в месяц — тоже каждый в свой день.
 ##
 ## Чистая логика без нод и отрисовки: работает с World и ничего не знает об
 ## интерфейсе. При profile = true копит время каждой системы (tests/profile_systems.gd).
@@ -41,6 +41,17 @@ var legacies := LegacySystem.new()
 var lineages := LineageSystem.new()
 var orders := OrderSystem.new()
 var gods := GodSystem.new()
+var armies := ArmySystem.new()
+var tribes := TribeSystem.new()
+var lairs := LairSystem.new()
+var diseases := DiseaseSystem.new()
+var languages := LanguageSystem.new()
+var market := MarketSystem.new()
+var caravans := CaravanSystem.new()
+var mercs := MercSystem.new()
+var credit := CreditSystem.new()
+var deals := DealSystem.new()
+var rumors := RumorSystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -68,6 +79,7 @@ func step_day(world: World) -> void:
 			world.month = 0
 			world.year += 1
 			_t("new_year", _new_year.bind(world))
+		StageSystem.tick_month(world)
 	# День года государства однозначно задаётся его id: id = месяц + 12·день + 360·k.
 	var id := world.month + MONTHS * world.day
 	while id < world.nations.size():
@@ -85,10 +97,20 @@ func step_day(world: World) -> void:
 				(s[1] as Callable).call(world, nation)
 	if profile:
 		_t("wars", wars.tick_day.bind(world))
+		_t("armies", armies.tick_day.bind(world))
 		_t("heroes", heroes.tick_day.bind(world))
+		_t("tribes", tribes.tick_day.bind(world))
+		_t("lairs", lairs.tick_day.bind(world))
+		_t("diseases", diseases.tick_day.bind(world))
+		_t("caravans", caravans.tick_day.bind(world))
 	else:
 		wars.tick_day(world)
+		armies.tick_day(world)
 		heroes.tick_day(world)
+		tribes.tick_day(world)
+		lairs.tick_day(world)
+		diseases.tick_day(world)
+		caravans.tick_day(world)
 	world.cleanup_dead()
 
 
@@ -106,6 +128,13 @@ func _new_year(world: World) -> void:
 	eras.tick_year(world)
 	lineages.tick_year(world)
 	orders.tick_year(world)
+	tribes.tick_year(world)
+	lairs.tick_year(world)
+	diseases.tick_year(world)
+	languages.tick_year(world)
+	_t("mercs", mercs.tick_year.bind(world))
+	_t("credit", credit.tick_year.bind(world))
+	_t("rumors", rumors.tick_year.bind(world))
 	_portals(world)
 	world.record_history()
 
@@ -130,11 +159,13 @@ var _nation_systems: Array = []
 
 
 func _init() -> void:
+	armies.wars = wars
 	_nation_systems = [
-		["economy", economy.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
+		["economy", economy.tick], ["market", market.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
 		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],
 		["events", events.tick], ["religion", religion.tick], ["culture", culture.tick],
-		["diplomacy", diplomacy.tick_nation], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],
+		["diplomacy", diplomacy.tick_nation], ["deals", deals.tick], ["spies", spies.tick], ["enclaves", enclaves.tick], ["underground", underground.tick], ["ruins", ruins.tick], ["gods", gods.tick],
+		["languages", languages.tick],
 	]
 
 

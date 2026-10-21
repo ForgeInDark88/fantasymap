@@ -128,6 +128,8 @@ func _consider_war(world: World, nation: Nation, target: Nation, op: float) -> v
 	if target.race.has_trait(&"hidden"):
 		desire *= 0.5
 	desire *= pow(0.3, d.wars_of(nation.id).size())
+	# Слухи о слабости или богатстве цели (если держава им верит).
+	desire *= RumorSystem.war_factor(world, nation, target)
 	# Соотношение сил (с союзниками цели).
 	var ours := nation.power()
 	var theirs := target.power()

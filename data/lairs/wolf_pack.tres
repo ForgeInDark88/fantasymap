@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"wolf_pack"
+display_name = "Волчье логово"
+monster = "волколаки"
+description = "Стая волколаков, ведомая белым вожаком."
+biomes = Array[StringName]([&"forest", &"tundra", &"steppe"])
+weight = 1.3
+strength = Vector2(800.0, 2500.0)
+raid_chance = 0.1
+raid_pop = 0.005
+raid_gold = 20.0
+loot = 60.0
+growth = 0.04
+color = Color(0.6, 0.6, 0.65, 1)

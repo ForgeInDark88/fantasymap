@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DiseaseDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/disease_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"grey_rot"
+display_name = "Серая гниль"
+description = "Гниль, от которой сохнут поля и люди; эльфы ей не подвластны."
+weight = 0.6
+lethality = 0.03
+road_spread = 0.2
+land_spread = 0.08
+sea_spread = 0.05
+months = 7
+immunity_years = 40
+immune_races = Array[StringName]([&"elves"])
+immune_traits = Array[StringName]([&"no_food"])
+color = Color(0.55, 0.55, 0.5, 1)

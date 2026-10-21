@@ -131,6 +131,7 @@ static func build(world: World, from: City, to: City, sea: bool, length: float, 
 	r.bridges = bridges
 	r.built_year = world.year
 	world.roads.append(r)
+	world.road_version += 1
 	for c in [from.id, to.id]:
 		var list: PackedInt32Array = world.city_roads.get(c, PackedInt32Array())
 		list.append(r.id)
@@ -179,6 +180,7 @@ func _trade(world: World, nation: Nation) -> void:
 			var cb := world.cities[road.b]
 			if not ca.alive or not cb.alive:
 				road.alive = false
+				world.road_version += 1
 				continue
 			# Безопасность восстанавливается; пираты нападают на морские пути.
 			if road.a == id:

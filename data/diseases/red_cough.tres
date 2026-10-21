@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="DiseaseDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/disease_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"red_cough"
+display_name = "Кровавый кашель"
+description = "Долгая хворь северных городов."
+weight = 0.8
+lethality = 0.04
+road_spread = 0.2
+land_spread = 0.04
+sea_spread = 0.1
+months = 9
+immunity_years = 25
+immune_traits = Array[StringName]([&"no_food"])
+color = Color(0.75, 0.3, 0.3, 1)

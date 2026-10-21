@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"furs"
+display_name = "Меха"
+description = "Соболь и горностай северных лесов."
+color = Color(0.55, 0.45, 0.35, 1)
+base_price = 5.0
+spoil = 0.06
+biomes = Dictionary[StringName, float]({&"tundra": 0.15, &"forest": 0.06, &"snow": 0.08})
+demand = Dictionary[StringName, float]({&"nobles": 0.12, &"burghers": 0.03})
+luxury = true

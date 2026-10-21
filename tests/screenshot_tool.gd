@@ -36,7 +36,7 @@ func _run() -> void:
 	await _frames(3)
 	for mode in MapMode.NAMES.size():
 		bus.map_mode_changed.emit(mode)
-		await _frames(2)
+		await _frames(30)  # кроссфейд режимов (~0,25 с) — дождаться
 		_shot(out_dir, "mode%d.png" % mode)
 	bus.map_mode_changed.emit(0)
 
@@ -49,6 +49,48 @@ func _run() -> void:
 	bus.nation_selected.emit(biggest.id)
 	await _frames(3)
 	_shot(out_dir, "nation_card.png")
+
+	# Окно «Рынок» крупнейшего государства.
+	bus.market_window_requested.emit(biggest.id)
+	await _frames(20)
+	_shot(out_dir, "market.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_world_text") != null:
+			c.visible = false
+
+	# Окно «Дипломатия»: журнал, нравы и слухи с правдой.
+	bus.diplomacy_window_requested.emit(-1)
+	await _frames(10)
+	for c in hud.get_node("Root").get_children():
+		if c.get("_truth") != null:
+			(c.get("_truth") as CheckBox).button_pressed = true
+	await _frames(10)
+	_shot(out_dir, "diplomacy.png")
+	for c in hud.get_node("Root").get_children():
+		if c.get("_truth") != null:
+			c.visible = false
+
+	# Армия в поле: значки, путь и карточка армии (в мирное время — война крупнейшего с соседом).
+	if not world.armies.any(func(x: RefCounted) -> bool: return x.alive and x.kind == &"land"):
+		for o in biggest.borders:
+			if world.nations[o].alive:
+				world.diplomacy.declare_war(world, biggest.id, o, &"territory")
+				break
+		for m in 2:
+			ws.call("step_month")
+	var army: RefCounted = null
+	for a in world.armies:
+		if a.alive and a.kind == &"land" and (army == null or a.state == &"march"):
+			army = a
+	if army != null:
+		bus.army_selected.emit(army)
+		cam.position = renderer.call("cell_center", army.cell)
+		cam.zoom = Vector2.ONE * 1.6
+		cam.set("target_position", cam.position)
+		cam.set("target_zoom", 1.6)
+		await _frames(20)
+		_shot(out_dir, "army.png")
+		bus.army_selected.emit(null)
 
 	for p in ["Летопись", "Статистика", "Герои", "Бог"]:
 		_panel(hud, p, true)

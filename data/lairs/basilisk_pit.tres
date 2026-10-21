@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"basilisk_pit"
+display_name = "Яма василиска"
+monster = "василиск"
+description = "Каменные статуи вокруг ямы — бывшие путники."
+biomes = Array[StringName]([&"desert"])
+weight = 0.7
+strength = Vector2(1500.0, 3500.0)
+raid_chance = 0.05
+raid_pop = 0.006
+raid_gold = 30.0
+loot = 180.0
+growth = 0.02
+color = Color(0.7, 0.65, 0.3, 1)

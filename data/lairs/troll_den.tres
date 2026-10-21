@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"troll_den"
+display_name = "Логово троллей"
+monster = "тролли"
+description = "Пещера в скалах, усыпанная костями."
+biomes = Array[StringName]([&"mountains", &"hills", &"snow"])
+weight = 1.2
+strength = Vector2(1500.0, 4000.0)
+raid_chance = 0.08
+raid_pop = 0.008
+raid_gold = 40.0
+loot = 150.0
+growth = 0.03
+color = Color(0.55, 0.65, 0.4, 1)

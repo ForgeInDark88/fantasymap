@@ -117,6 +117,8 @@ var legacy := -1
 # --- Культура (CultureSystem) ---
 ## Культура государства (id в World.cultures) и её «вес» — престиж, мягкая сила.
 var culture := -1
+## Язык государства (id в World.languages; LanguageSystem): язык края столицы.
+var language := -1
 var culture_level := 0.0
 
 # --- Вера (ReligionSystem) ---
@@ -233,9 +235,33 @@ func power() -> float:
 	p *= 1.0 + 0.25 * clampf(stock[Goods.METAL] / (army / 200.0 + 1.0), 0.0, 1.0)
 	if race.has_trait(&"warlike"):
 		p *= 1.2
-	return p * modifier("army_mult") * policy("army_mult") * (1.0 + 0.25 * sources) + hero_power
+	return p * modifier("army_mult") * policy("army_mult") * (1.0 + 0.25 * sources) + hero_power + merc_power
 
 ## Вклад присягнувших героев в военную мощь (пересчитывает HeroSystem).
 var hero_power := 0.0
+## Нанятые вольные отряды (MercSystem): их сила в бою.
+var merc_power := 0.0
+
+# --- Рынок и общество (этап 11.D, MarketSystem) ---
+## По товарам рынка (MarketDB, индекс — позиция): запас, цена, за прошлый год —
+## произведено, потреблено, вывезено, ввезено, испорчено; спрос за год.
+var market_stock := PackedFloat32Array()
+var market_price := PackedFloat32Array()
+var market_made := PackedFloat32Array()
+var market_used := PackedFloat32Array()
+var market_out := PackedFloat32Array()
+var market_in := PackedFloat32Array()
+var market_lost := PackedFloat32Array()
+var market_demand := PackedFloat32Array()
+## Сословия (доли, сумма 1): знать, горожане, крестьяне, рабы.
+var classes := PackedFloat32Array([0.04, 0.12, 0.84, 0.0])
+## Рабство дозволено; индекс цен (инфляция; 1 — как при основании).
+var slavery := false
+var inflation := 1.0
+## Характер (этап 11.E, DealSystem) и при каком правителе он выбран.
+var personality: PersonalityDef
+var personality_ruler := ""
+## Год последнего переноса столицы.
+var capital_year := -1000
 ## Сколько источников силы контролирует государство (пересчитывает EconomySystem).
 var sources := 0

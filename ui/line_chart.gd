@@ -6,6 +6,9 @@ extends Control
 var series: Array[Dictionary] = []
 var y_format := "%.0f"
 var _font: Font
+## Плавный масштаб: максимум оси y «доезжает» до нового значения.
+var _shown := Vector3(-1, -1, -1)
+var _goal := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -15,6 +18,15 @@ func _ready() -> void:
 
 func set_series(new_series: Array[Dictionary]) -> void:
 	series = new_series
+	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	if _shown.x < 0.0 or _shown.is_equal_approx(_goal):
+		return
+	_shown = _shown.lerp(_goal, SmoothSettings.factor(8.0, delta)) if SmoothSettings.ui_anim else _goal
+	if _shown.distance_to(_goal) < maxf(0.001, _goal.z * 0.001):
+		_shown = _goal
 	queue_redraw()
 
 
@@ -33,6 +45,11 @@ func _draw() -> void:
 		draw_string(_font, rect.position + Vector2(10, 24), "Пока мало данных — история пишется каждые %d лет." % World.HISTORY_STEP,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.7, 0.72, 0.8))
 		return
+	_goal = Vector3(x_min, x_max, y_max)
+	if _shown.x < 0.0 or not SmoothSettings.ui_anim:
+		_shown = _goal
+	# Ось x — точно (точки не выходят за край), ось y «доезжает»: график не прыгает.
+	y_max = maxf(_shown.z, y_max * 0.999) if _shown.z < y_max else _shown.z
 	# Сетка и подписи осей.
 	for k in 5:
 		var t := k / 4.0

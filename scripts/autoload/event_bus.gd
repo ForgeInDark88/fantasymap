@@ -68,3 +68,15 @@ signal world_event(what: StringName, data: Dictionary)
 signal achievement_unlocked(def: AchievementDef)
 ## Открыть окно «Достижения».
 signal achievements_window_requested
+
+## Камера следует за героем (-1 — перестать).
+signal follow_hero_requested(hero_id: int)
+
+## Выбрана армия на карте (null — снять выбор).
+## Выбрано логово или племя (Lair / Tribe; null — снять выбор): карточка дикого края.
+signal wild_selected(entity: RefCounted)
+## Открыть окно «Рынок» (nation_id — чей рынок справа; -1 — крупнейшего).
+signal market_window_requested(nation_id: int)
+## Открыть окно «Дипломатия» (журнал, характеры, слухи; nation_id — фильтр, -1 — все).
+signal diplomacy_window_requested(nation_id: int)
+signal army_selected(army: Army)

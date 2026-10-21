@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_evt")
 id = &"plague"
+stage_months = 6
 display_name = "Чума"
 chronicle_kind = &"plague"
 chance = 0.004
@@ -14,5 +15,5 @@ population_loss = 0.12
 stability_change = -0.06
 duration = 6
 growth_mult = 0.6
-spread_chance = 0.3
+spread_chance = 0.0
 text = "Чума пришла в регион {region}: {nation} теряет каждого восьмого жителя."

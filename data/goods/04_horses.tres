@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="GoodDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/good_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"horses"
+display_name = "Кони"
+description = "Табуны степей — сила конницы."
+color = Color(0.6, 0.4, 0.25, 1)
+base_price = 4.0
+spoil = 0.12
+biomes = Dictionary[StringName, float]({&"steppe": 0.4, &"plains": 0.12, &"tundra": 0.05})
+demand = Dictionary[StringName, float]({&"nobles": 0.3, &"burghers": 0.08, &"peasants": 0.04})
+army_demand = 2.5
+military = true

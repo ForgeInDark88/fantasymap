@@ -2,4 +2,11 @@
 .godot/
 /android/
 *.tmp
-export_presets.cfg
+
+# Сборки и экспорт
+/build/
+/export/
+
+# Временные файлы тестов и инструментов
+/reports/
+*.log

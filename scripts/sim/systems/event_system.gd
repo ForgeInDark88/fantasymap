@@ -47,15 +47,11 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 	var rng := world.rng
 	var city := _region_city(world, region, nation.id)
 
-	if e.population_loss > 0.0:
-		for r in nation.pop.size():
-			nation.pop[r] *= 1.0 - e.population_loss
-		for id in nation.city_ids:
-			world.cities[id].population *= 1.0 - e.population_loss
-	nation.army *= 1.0 - e.army_loss
-	nation.stability = clampf(nation.stability + e.stability_change, 0.0, 1.0)
-	nation.stock[Goods.GOLD] -= maxf(0.0, nation.stock[Goods.GOLD]) * e.gold_loss
-	nation.stock[Goods.FOOD] *= 1.0 - e.food_loss
+	if e.stage_months > 0:
+		# Растянутый удар: StageSystem применяет его помесячно по кривой.
+		StageSystem.push(world, nation, e.stage_months, e.population_loss, e.army_loss, e.stability_change, e.gold_loss, e.food_loss, e.id)
+	else:
+		StageSystem.hit(world, nation, e.population_loss, e.army_loss, e.stability_change, e.gold_loss, e.food_loss)
 	if e.causes_famine:
 		nation.famine_years = maxi(nation.famine_years, 1)
 	if e.destroys_buildings > 0 and city != null:
@@ -89,6 +85,9 @@ func apply(world: World, nation: Nation, e: EventDef) -> bool:
 			"id": e.id, "until": world.year + e.duration,
 			"army_mult": e.army_mult, "growth_mult": e.growth_mult, "science_mult": e.science_mult,
 		})
+	# Чума — частный случай болезни: идёт по дорогам «Чёрным мором» (DiseaseSystem).
+	if e.id == &"plague":
+		DiseaseSystem.start(world, DiseaseDB.find(DiseaseSystem.PLAGUE), region.id)
 	if e.spread_chance > 0.0:
 		for other in nation.borders:
 			if rng.randf() < e.spread_chance:

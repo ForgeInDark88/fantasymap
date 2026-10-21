@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="LairDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/lair_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"hydra"
+display_name = "Логово гидры"
+monster = "гидра"
+description = "Многоглавая гидра топей."
+biomes = Array[StringName]([&"swamp", &"jungle"])
+weight = 0.3
+min_year = 40
+great = true
+great_range = 3
+strength = Vector2(7000.0, 12000.0)
+raid_chance = 0.1
+raid_pop = 0.015
+raid_gold = 80.0
+loot = 900.0
+growth = 0.01
+color = Color(0.25, 0.7, 0.45, 1)

@@ -134,6 +134,10 @@ func opinion(world: World, a: int, b: int) -> float:
 			o += 0.12
 		else:
 			o -= 0.1 * world.religions[na.state_religion].hostility(world.religions[nb.state_religion])
+	# Свои по языку (одна семья языков) ближе.
+	if na.language >= 0 and nb.language >= 0 and na.language < world.languages.size() and nb.language < world.languages.size() \
+			and LanguageSystem.root(world, na.language) == LanguageSystem.root(world, nb.language):
+		o += 0.06
 	# Претензии на земли друг друга.
 	if has_claims_against(world, a, b):
 		o -= 0.2

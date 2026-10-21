@@ -128,6 +128,8 @@ static func set_elevation(world: World, i: int, e: float) -> bool:
 	var will_land := e >= 0.0
 	if is_equal_approx(e, map.elevation[i]):
 		return false
+	if world.region_of[i] >= 0:
+		world.goods_dirty[world.region_of[i]] = true
 	var owner := world.owner[i]
 	if owner >= 0:
 		world.set_owner(i, -1)
@@ -355,3 +357,255 @@ static func hero_child(world: World, cell: int) -> Dictionary:
 static func found_order(world: World, cell: int) -> HeroOrder:
 	var hero := nearest_hero(world, cell)
 	return OrderSystem.found(world, hero) if hero != null else null
+
+
+# --- Этап 11.B: армии и флоты ---
+
+static func nearest_army(world: World, cell: int, max_dist: float = 25.0, kind: StringName = &"") -> Army:
+	var p := Vector2(world.map.cell_pos(cell))
+	var best: Army = null
+	var best_d := max_dist
+	for a in world.armies:
+		if a.alive and a.cell >= 0 and (kind == &"" or a.kind == kind):
+			var d := p.distance_to(Vector2(world.map.cell_pos(a.cell)))
+			if d < best_d:
+				best_d = d
+				best = a
+	return best
+
+
+## Создать армию владельца клетки (в его первой войне или гарнизоном) — в регионе клетки.
+static func create_army(world: World, cell: int, kind: StringName = &"land") -> Army:
+	var o := world.owner[cell]
+	if o < 0 or world.region_of[cell] < 0:
+		return null
+	var n := world.nations[o]
+	var wars := world.diplomacy.wars_of(o)
+	n.army += 3000.0
+	var a := ArmySystem.create(world, n, wars[0].id if not wars.is_empty() else -1, kind, world.region_of[cell])
+	a.state = &"idle"
+	world.log_event(&"battle", "По воле богов %s собирает %s в регионе %s." % [n.name, "флот" if kind == &"fleet" else "новое войско",
+		world.region_label(cell, "диких земель")], PackedInt32Array([o]))
+	return a
+
+
+static func destroy_army(world: World, cell: int) -> bool:
+	var a := nearest_army(world, cell)
+	if a == null:
+		return false
+	if a.nation >= 0:
+		var n := world.nations[a.nation]
+		n.army -= n.army * a.share * 0.6
+	world.log_event(&"battle", "Гнев богов обрушился на войско: %s уничтожена." % a.label(world),
+			PackedInt32Array([a.nation]) if a.nation >= 0 else PackedInt32Array())
+	ArmySystem.disband(world, a)
+	return true
+
+
+static func launch_fleet(world: World, cell: int) -> Army:
+	var o := world.owner[cell]
+	if o < 0:
+		return null
+	var n := world.nations[o]
+	for id in n.city_ids:
+		if world.cities[id].buildings.has(&"harbor"):
+			return create_army(world, world.cities[id].cell, &"fleet")
+	return null
+
+
+## Бунт армии: войско восстаёт, его край провозглашает свою державу.
+static func mutiny(world: World, cell: int) -> Nation:
+	var a := nearest_army(world, cell, 25.0, &"land")
+	if a == null or a.nation < 0:
+		return null
+	var n := world.nations[a.nation]
+	var rebels := incite_rebellion(world, a.cell)
+	if rebels == null:
+		return null
+	var defect := n.army * a.share * 0.5
+	n.army -= defect
+	rebels.army += defect
+	ArmySystem.disband(world, a)
+	world.log_event(&"battle", "Войско государства %s подняло бунт и перешло на сторону мятежников — %s." % [n.name, rebels.name],
+			PackedInt32Array([n.id, rebels.id]))
+	return rebels
+
+
+## Дикий мир (этап 11.C): племя в ничейном крае клетки.
+static func spawn_tribe(world: World, cell: int) -> Tribe:
+	return TribeSystem.spawn(world, null, cell)
+
+
+## Логово (или великое чудовище) в крае клетки; вид — по биому края.
+static func spawn_lair(world: World, cell: int, great: bool) -> Lair:
+	var region := world.region_at(cell)
+	if region == null:
+		return null
+	var biome := BiomeDB.get_def(world.map.biome[region.center]).id
+	var pick: LairDef = null
+	for d in LairDB.all():
+		var def: LairDef = d
+		if def.great == great and def.biomes.has(biome):
+			pick = def
+			break
+	if pick == null:
+		for d in LairDB.all():
+			if (d as LairDef).great == great:
+				pick = d
+				break
+	return LairSystem.spawn(world, pick, cell)
+
+
+static func start_disease(world: World, cell: int, def: DiseaseDef) -> Outbreak:
+	if world.region_of[cell] < 0:
+		return null
+	return DiseaseSystem.start(world, def, world.region_of[cell])
+
+
+## Новое наречие языка края (и соседних краёв того же языка у того же владельца).
+static func split_dialect(world: World, cell: int) -> int:
+	var region := world.region_at(cell)
+	if region == null or region.language < 0:
+		return -1
+	var ids := PackedInt32Array([region.id])
+	for nb in region.neighbors:
+		var r := world.regions[nb]
+		if r.language == region.language and r.controller() == region.controller() and ids.size() < 4:
+			ids.append(nb)
+	var parent := region.language
+	var id := LanguageSystem.new_dialect(world, parent, ids)
+	world.log_event(&"language", "По воле богов в крае %s заговорили по-новому: %s (от: %s)." % [region.name,
+		LanguageSystem.title(world, id), LanguageSystem.title(world, parent)])
+	return id
+
+
+## Рынок (этап 11.D): караван от ближайшего к клетке города — самым выгодным товаром.
+static func send_caravan(world: World, cell: int) -> Caravan:
+	var city := _nearest_city(world, cell)
+	if city == null or city.nation_id < 0:
+		return null
+	var nation := world.nations[city.nation_id]
+	MarketSystem.ensure(world, nation)
+	var best: Array = []
+	for rid in world.city_roads.get(city.id, PackedInt32Array()):
+		var road := world.roads[rid]
+		var other := world.cities[road.other(city.id)]
+		if not road.alive or not other.alive or other.nation_id == nation.id or other.nation_id < 0:
+			continue
+		var o := world.nations[other.nation_id]
+		MarketSystem.ensure(world, o)
+		for i in MarketDB.size():
+			if nation.market_stock[i] < 1.0:
+				continue
+			var margin := o.market_price[i] / maxf(0.001, nation.market_price[i])
+			if best.is_empty() or margin > best[0]:
+				best = [margin, road, other.id, i]
+	if best.is_empty():
+		return null
+	var i: int = best[3]
+	return CaravanSystem.launch(world, best[1], city.id, best[2], i, nation.market_stock[i] * 0.5, nation.market_price[i])
+
+
+static func spawn_mercs(world: World, cell: int) -> MercCompany:
+	var m := MercSystem.spawn(world, _nearest_city(world, cell))
+	if m != null:
+		world.log_event(&"mercs", "У города %s собралась вольная %s." % [world.cities[world.city_cell[m.cell]].name if world.city_cell[m.cell] >= 0 else "?", m.name.to_lower()])
+	return m
+
+
+static func gold_rush(world: World, cell: int) -> bool:
+	var n := world.nation_at(cell)
+	if n == null:
+		return false
+	n.stock[Goods.GOLD] += maxf(500.0, n.population / 1000.0 * 4.0)
+	world.log_event(&"debt", "В землях государства %s нашли богатые россыпи — золотая лихорадка!" % n.short_name, PackedInt32Array([n.id]))
+	return true
+
+
+static func toggle_slavery(world: World, cell: int) -> bool:
+	var n := world.nation_at(cell)
+	if n == null:
+		return false
+	n.slavery = not n.slavery
+	world.log_event(&"society", ("%s по воле богов вводит рабство." if n.slavery else "%s по воле богов отменяет рабство.") % n.name,
+		PackedInt32Array([n.id]))
+	return true
+
+
+static func forgive_debts(world: World, cell: int) -> int:
+	var n := world.nation_at(cell)
+	if n == null:
+		return 0
+	var before := world.loans.size()
+	world.loans = world.loans.filter(func(l: Dictionary) -> bool: return int(l.debtor) != n.id)
+	var k := before - world.loans.size()
+	if k > 0:
+		world.log_event(&"debt", "Долги государства %s прощены по воле богов (займов: %d)." % [n.short_name, k], PackedInt32Array([n.id]))
+	return k
+
+
+static func _nearest_city(world: World, cell: int) -> City:
+	var p := Vector2(world.map.cell_pos(cell))
+	var best: City = null
+	var best_d := 30.0
+	for c in world.cities:
+		if c.alive:
+			var d := p.distance_to(Vector2(world.map.cell_pos(c.cell)))
+			if d < best_d:
+				best_d = d
+				best = c
+	return best
+
+
+## Дипломатия (этап 11.E): другой характер правителей.
+static func change_personality(world: World, cell: int) -> PersonalityDef:
+	var n := world.nation_at(cell)
+	if n == null:
+		return null
+	DealSystem.ensure_personality(world, n)
+	var all := PersonalityDB.all()
+	var next: PersonalityDef = all[(all.find(n.personality) + 1) % all.size()]
+	n.personality = next
+	n.personality_ruler = n.ruler_name
+	n.set_effects(&"personality", {"aggression_mult": next.aggression})
+	world.log_event(&"deal", "По воле богов у государства %s новый нрав: %s." % [n.short_name, next.display_name.to_lower()], PackedInt32Array([n.id]))
+	return next
+
+
+static func false_rumor(world: World, cell: int) -> Dictionary:
+	var n := world.nation_at(cell)
+	if n == null:
+		return {}
+	return RumorSystem.spread(world, &"weak", n, null, -1, false)
+
+
+static func move_capital(world: World, cell: int) -> bool:
+	var id := world.city_cell[cell]
+	if id < 0:
+		var c := _nearest_city(world, cell)
+		id = c.id if c != null else -1
+	if id < 0:
+		return false
+	var city := world.cities[id]
+	if city.nation_id < 0 or city.is_capital:
+		return false
+	var n := world.nations[city.nation_id]
+	if n.capital_city >= 0:
+		world.cities[n.capital_city].is_capital = false
+	city.is_capital = true
+	n.capital_city = city.id
+	n.capital_year = world.year
+	world.log_event(&"capital", "По воле богов %s переносит столицу в город %s." % [n.name, city.name], PackedInt32Array([n.id]))
+	return true
+
+
+## Государство from предлагает государству to первую возможную сделку.
+static func force_deal(world: World, simulation: Simulation, from: int, to: int) -> bool:
+	if from < 0 or to < 0 or from == to or not world.nations[from].alive or not world.nations[to].alive:
+		return false
+	for kind in DealSystem.KINDS:
+		var offer := simulation.deals._offer(world, kind, world.nations[from], world.nations[to])
+		if not offer.is_empty():
+			return DealSystem.propose(world, offer)
+	DealSystem.journal(world, &"none", from, to, false, "%s и %s: сделать нечего." % [world.nations[from].short_name, world.nations[to].short_name])
+	return false

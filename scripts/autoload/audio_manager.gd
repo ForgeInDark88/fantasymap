@@ -7,7 +7,24 @@ extends Node
 ## Настройки — user://settings.cfg. В headless-режиме звук выключен.
 
 const SETTINGS := "user://settings.cfg"
-const CROSSFADE := 3.0
+## Кроссфейд тем (с) — длинный и мягкий.
+const CROSSFADE := 6.0
+## Уровень угрозы (доля воюющих и больных чумой держав) сглаживается — одна
+## война не переключает музыку. Скорость сглаживания (1/с), пороги с
+## гистерезисом и минимальное время звучания темы (с).
+const THREAT_K := 0.06
+const TENSION_ON := 0.42
+const TENSION_OFF := 0.3
+const DARK_ON := 0.33
+const DARK_OFF := 0.22
+const MIN_HOLD := 40.0
+## Эффекты: не больше SFX_PER_SEC в секунду; на скорости x10 и выше — тише и реже.
+const SFX_PER_SEC := 3
+const FAST_SPEED := 4
+const FAST_SFX_DB := -9.0
+## «Нырок» музыки при уведомлениях и выборе героя (дБ) и его длительность после уведомления (с).
+const DUCK_DB := -8.0
+const DUCK_HOLD := 3.0
 ## Как часто пересматривать контекст музыки (с).
 const CONTEXT_EVERY := 2.0
 ## Героическая тема держится после великого деяния (с).
@@ -41,6 +58,13 @@ var _context_timer := 0.0
 var _heroic_until := 0.0
 var _music_bus := 0
 var _sfx_bus := 0
+var _war_level := 0.0
+var _plague_level := 0.0
+var _context: StringName = &"peace"
+var _context_since := -1000.0
+var _sfx_times: Array[float] = []
+var _duck := 0.0
+var _duck_until := 0.0
 
 
 func _ready() -> void:
@@ -64,7 +88,9 @@ func _ready() -> void:
 	for id in Synth.SFX:
 		_sfx_streams[id] = Synth.make_stream(Synth.render_sfx(id), false)
 	EventBus.world_event.connect(_on_world_event)
-	EventBus.achievement_unlocked.connect(func(_d: AchievementDef) -> void: play_sfx(&"achievement"))
+	EventBus.achievement_unlocked.connect(func(_d: AchievementDef) -> void:
+		_duck_until = Time.get_ticks_msec() / 1000.0 + DUCK_HOLD
+		play_sfx(&"achievement"))
 	for sig in [EventBus.hero_window_requested, EventBus.tech_window_requested]:
 		sig.connect(func(_id: int) -> void: play_sfx(&"open"))
 	for sig in [EventBus.chronicles_window_requested, EventBus.achievements_window_requested, EventBus.underworld_window_requested]:
@@ -109,7 +135,7 @@ func apply_volumes() -> void:
 	if disabled:
 		return
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(0.0001, master)))
-	AudioServer.set_bus_volume_db(_music_bus, linear_to_db(maxf(0.0001, music)))
+	AudioServer.set_bus_volume_db(_music_bus, linear_to_db(maxf(0.0001, music)) + _duck)
 	AudioServer.set_bus_mute(_music_bus, not music_on)
 	AudioServer.set_bus_volume_db(_sfx_bus, linear_to_db(maxf(0.0001, sfx)))
 	AudioServer.set_bus_mute(_sfx_bus, not sfx_on)
@@ -131,10 +157,18 @@ func play_sfx(id: StringName) -> void:
 	if disabled or not sfx_on or not _sfx_streams.has(id):
 		return
 	var now := Time.get_ticks_msec() / 1000.0
-	if now - float(_sfx_last.get(id, -10.0)) < SFX_GAP:
+	var fast := WorldState.speed_index >= FAST_SPEED
+	# На высокой скорости одинаковые звуки «сливаются»: реже и тише.
+	if now - float(_sfx_last.get(id, -10.0)) < SFX_GAP * (3.0 if fast else 1.0):
 		return
+	while not _sfx_times.is_empty() and now - _sfx_times[0] > 1.0:
+		_sfx_times.pop_front()
+	if _sfx_times.size() >= SFX_PER_SEC:
+		return
+	_sfx_times.append(now)
 	_sfx_last[id] = now
 	_sfx_player.stream = _sfx_streams[id]
+	_sfx_player.volume_db = FAST_SFX_DB if fast else 0.0
 	_sfx_player.play()
 
 
@@ -177,6 +211,44 @@ static func pick_context(world: World, heroic: bool) -> StringName:
 	return &"peace"
 
 
+## Приглушить музыку на seconds секунд (0 — вернуть сразу): суд Судьбы, уведомления.
+func duck_for(seconds: float) -> void:
+	_duck_until = Time.get_ticks_msec() / 1000.0 + seconds
+
+
+## Мгновенная угроза: доли воюющих и больных чумой держав.
+static func threat(world: World) -> Vector2:
+	if world == null:
+		return Vector2.ZERO
+	var alive := 0
+	var plague := 0
+	for n in world.nations:
+		if n.alive:
+			alive += 1
+			if n.modifiers.any(func(m: Dictionary) -> bool: return m.id == &"plague"):
+				plague += 1
+	var fighting := {}
+	for w in world.diplomacy.wars:
+		for id in w.attackers:
+			fighting[id] = true
+		for id in w.defenders:
+			fighting[id] = true
+	return Vector2(fighting.size(), plague) / maxf(1.0, alive)
+
+
+## Контекст по сглаженной угрозе с гистерезисом (current — звучащий сейчас).
+static func context_for(world: World, heroic: bool, war_level: float, plague_level: float, current: StringName) -> StringName:
+	if world != null and not world.crisis.is_empty():
+		return &"crisis"
+	if (world != null and world.player >= 0) or heroic:
+		return &"heroic"
+	if plague_level > (DARK_OFF if current == &"dark" else DARK_ON):
+		return &"dark"
+	if war_level > (TENSION_OFF if current == &"tension" else TENSION_ON):
+		return &"tension"
+	return &"peace"
+
+
 ## Ведущая раса для лейтмотива: раса героя игрока, выбранной державы или крупнейшей.
 static func leading_race(world: World) -> StringName:
 	if world == null or world.nations.is_empty():
@@ -193,11 +265,29 @@ static func leading_race(world: World) -> StringName:
 func _process(delta: float) -> void:
 	if disabled:
 		return
+	var now := Time.get_ticks_msec() / 1000.0
+	# «Нырок» музыки: уведомление или ждущий выбор героя.
+	var world := WorldState.world
+	var duck_goal := DUCK_DB if now < _duck_until or (world != null and not world.player_choice.is_empty()) else 0.0
+	var d := SmoothSettings.damp(_duck, duck_goal, 3.0, delta)
+	if absf(d - _duck) > 0.05 or (d != duck_goal and absf(d - duck_goal) < 0.05):
+		_duck = d if absf(d - duck_goal) >= 0.05 else duck_goal
+		AudioServer.set_bus_volume_db(_music_bus, linear_to_db(maxf(0.0001, music)) + _duck)
 	_context_timer -= delta
 	if _context_timer > 0.0:
 		return
 	_context_timer = CONTEXT_EVERY
-	var t := Synth.theme(pick_context(WorldState.world, Time.get_ticks_msec() / 1000.0 < _heroic_until), leading_race(WorldState.world))
+	var raw := threat(world)
+	_war_level = SmoothSettings.damp(_war_level, raw.x, THREAT_K, CONTEXT_EVERY)
+	_plague_level = SmoothSettings.damp(_plague_level, raw.y, THREAT_K, CONTEXT_EVERY)
+	var ctx := context_for(world, now < _heroic_until, _war_level, _plague_level, _context)
+	# Тема держится не меньше MIN_HOLD (кроме начала кризиса и игры за героя).
+	if ctx != _context and now - _context_since < MIN_HOLD and ctx != &"crisis" and ctx != &"heroic" and not _theme.is_empty():
+		ctx = _context
+	if ctx != _context:
+		_context = ctx
+		_context_since = now
+	var t := Synth.theme(_context, leading_race(world))
 	if t.name == _theme:
 		return
 	if _themes.has(t.name):

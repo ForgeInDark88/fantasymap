@@ -18,6 +18,7 @@ func _init() -> void:
 	_window.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_window.mouse_filter = Control.MOUSE_FILTER_STOP
 	_window.visible = false
+	UiAnim.attach(_window, Vector2.ZERO)
 	add_child(_window)
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.02, 0.04, 0.8)
@@ -48,7 +49,7 @@ func _init() -> void:
 	var close := Button.new()
 	close.text = "Закрыть"
 	close.focus_mode = Control.FOCUS_NONE
-	close.pressed.connect(func() -> void: _window.visible = false)
+	close.pressed.connect(func() -> void: UiAnim.hide(_window))
 	header.add_child(close)
 	box.add_child(header)
 	var scroll := ScrollContainer.new()
@@ -130,6 +131,6 @@ func _toast(d: AchievementDef) -> void:
 	desc.add_theme_font_size_override("font_size", 12)
 	box.add_child(desc)
 	_toasts.add_child(panel)
-	get_tree().create_timer(TOAST_SECONDS).timeout.connect(panel.queue_free)
+	UiAnim.toast(panel, TOAST_SECONDS)
 	if _window.visible:
 		refresh()

@@ -20,6 +20,7 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+	UiAnim.attach(self, Vector2.ZERO)
 	var bg := ColorRect.new()
 	bg.color = Color(0.02, 0.02, 0.05, 0.82)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -101,11 +102,13 @@ func open_panel() -> void:
 	_speed_before = WorldState.speed_index
 	WorldState.set_speed(0)
 	visible = true
+	AudioManager.duck_for(3600.0)
 	refresh()
 
 
 func close_panel() -> void:
-	visible = false
+	UiAnim.hide(self)
+	AudioManager.duck_for(0.0)
 	if _speed_before > 0:
 		WorldState.set_speed(_speed_before)
 	closed.emit()

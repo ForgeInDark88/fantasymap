@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="TribeDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/tribe_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"goblin_warbands"
+display_name = "Гоблинские ватаги"
+description = "Мелкие и злые ватаги гоблинов в холмах и болотах."
+race = &"goblins"
+nomad = true
+biomes = Array[StringName]([&"hills", &"swamp", &"mountains", &"forest"])
+weight = 1.0
+strength = Vector2(600.0, 1800.0)
+growth = 0.07
+raid_chance = 0.12
+horde_strength = 4500.0
+found_strength = 7000.0
+tribe_name = "Ватага {name}"
+horde_name = "Тьма {name}"

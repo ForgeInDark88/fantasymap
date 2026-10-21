@@ -63,8 +63,8 @@ func refresh(world: World) -> void:
 		"[b]Правитель:[/b] %s (%d лет)%s" % [nation.ruler_display(), nation.ruler_age, trait_text],
 		"[b]Столица:[/b] %s (%s жит.)" % [capital.name, fmt(capital.population)] if capital != null else "[b]Столица:[/b] —",
 		"[b]Территория:[/b] %d клеток · [b]городов:[/b] %d" % [nation.cell_count, nation.city_ids.size()],
-		"[b]Население:[/b] %s из %s возможных" % [fmt(nation.population), fmt(nation.total_capacity())],
-		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(nation.army), nation.tech],
+		"[b]Население:[/b] %s из %s возможных" % [fmt(UiAnim.roll("n%d.pop" % nation.id, nation.population)), fmt(nation.total_capacity())],
+		"[b]Армия:[/b] %s · [b]наука:[/b] %.1f" % [fmt(UiAnim.roll("n%d.army" % nation.id, nation.army)), nation.tech],
 		"[b]Стабильность:[/b] %s" % _stability_text(nation.stability),
 	])
 	var researching := TechDB.find(nation.researching) if nation.researching != &"" else null
@@ -82,12 +82,24 @@ func refresh(world: World) -> void:
 	if not roads.is_empty():
 		var sea := roads.values().filter(func(r: Road) -> bool: return r.sea).size()
 		lines.append("[b]Пути:[/b] дорог %d, морских %d · торговля по ним: %s золота в год" % [roads.size() - sea, sea, fmt(trade)])
+	_append_market(world, nation, lines)
+	_append_ai(world, nation, lines)
 	var caves := UndergroundSystem.owned_by(world, nation.id)
 	if not caves.is_empty():
 		lines.append("[b]Под землёй:[/b] пещер %d, подземных городов %d%s" % [caves.size(), caves.filter(func(c: Cave) -> bool: return c.city).size(),
 			(" · жилы: " + ", ".join(caves.filter(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems").map(func(c: Cave) -> String: return c.kind_name()))) if caves.any(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems") else ""])
 	var spies := SpySystem.spies_of(world, nation).size()
 	lines.append("[b]Разведка:[/b] %d очков%s" % [roundi(nation.intel), (" · шпионов на службе: %d" % spies) if spies > 0 else ""])
+	var armies := ArmySystem.armies_of(world, nation.id)
+	if not armies.is_empty():
+		lines.append("[b]Армии:[/b] " + ", ".join(armies.map(func(a: Army) -> String:
+			return "%s %s (%s, дух %d%%%s)" % ["⚓" if a.kind == &"fleet" else "⚔", ArmySystem._num(a.strength(world)),
+				ArmyCard.STATE_NAMES.get(a.state, String(a.state)), roundi(a.morale * 100.0),
+				(", " + ArmySystem.general_name(world, a.general)) if a.general >= 0 else ""])))
+	var gens := world.generals.filter(func(g: Dictionary) -> bool: return g.alive and int(g.nation) == nation.id)
+	if not gens.is_empty():
+		lines.append("[b]Полководцы:[/b] " + ", ".join(gens.slice(0, 5).map(func(g: Dictionary) -> String:
+			return "%s (%d%%%s)" % [g.name, roundi(float(g.skill) * 100.0), ", в плену" if int(g.captured_by) >= 0 else ""])))
 	var orgs := OrgSystem.orgs_of(world, nation.id)
 	if not orgs.is_empty():
 		lines.append("[b]Организации:[/b] " + ", ".join(orgs.map(func(o: Organization) -> String:
@@ -226,9 +238,67 @@ func _append_place(world: World, nation: Nation, lines: Array[String]) -> void:
 			var rc := world.cultures[region.culture]
 			lines.append("Культура: [color=#%s]%s[/color]%s" % [rc.color.to_html(false), rc.name,
 				(" · ассимиляция %d%%" % roundi(region.assim * 100.0)) if region.culture != nation.culture else ""])
+		if region.language >= 0:
+			var lang := world.languages[region.language]
+			lines.append("Язык: [color=#%s]%s[/color]%s" % [lang.color.to_html(false), LanguageSystem.title(world, region.language),
+				(" · переход на язык державы %d%%" % roundi(region.lang_assim * 100.0)) if region.language != nation.language else ""])
+		for w in wild_lines(world, region):
+			lines.append("[color=#e0a080]%s[/color]" % w)
 		if not claims.is_empty():
 			lines.append("Претензии на регион: " + ", ".join(claims.map(func(id: int) -> String: return world.nations[id].short_name)))
 	lines.append("")
+
+
+## Дипломатия (этап 11.E): нрав, последние сделки, слухи о державе.
+func _append_ai(world: World, nation: Nation, lines: Array[String]) -> void:
+	if nation.personality != null:
+		lines.append("[b]Нрав:[/b] %s — [color=#a8b0c0]%s[/color]" % [nation.personality.display_name, nation.personality.description])
+	var shown := 0
+	for k in range(world.diplo_journal.size() - 1, -1, -1):
+		var j: Dictionary = world.diplo_journal[k]
+		if (int(j.a) == nation.id or int(j.b) == nation.id) and bool(j.ok):
+			lines.append("[color=#a8d8b8]%d: %s[/color]" % [int(j.year), j.text])
+			shown += 1
+			if shown >= 2:
+				break
+	for r in RumorSystem.active(world):
+		if int(r.about) == nation.id:
+			lines.append("[color=#b0a8c8]Слух: %s[/color]" % String(r.text).trim_prefix("Говорят, "))
+			break
+
+
+## Рынок и общество (этап 11.D): сословия, рабство, индекс цен, долги, наёмники, дефицит.
+func _append_market(world: World, nation: Nation, lines: Array[String]) -> void:
+	if nation.market_price.size() != MarketDB.size():
+		return
+	lines.append("[b]Общество:[/b] %s%s" % [MarketWindow.class_line(nation).trim_prefix("Сословия: "),
+		" · [color=#ff9a6a]рабство[/color]" if nation.slavery else ""])
+	var short: Array[String] = []
+	var goods := MarketDB.all()
+	for i in goods.size():
+		if nation.market_demand[i] > 0.5 and nation.market_used[i] < nation.market_demand[i] * 0.8:
+			short.append((goods[i] as GoodDef).display_name.to_lower())
+	var debts := CreditSystem.debts_of(world, nation.id)
+	lines.append("[b]Рынок:[/b] индекс цен %.2f%s%s" % [nation.inflation, (" · долги %s" % fmt(debts)) if debts > 0.0 else "",
+		(" · нехватка: " + ", ".join(short)) if not short.is_empty() else ""])
+	for m in world.mercs:
+		if m.alive and m.employer == nation.id:
+			lines.append("[color=#c8c0a8]Наёмники: %s (%s воинов)[/color]" % [m.name, fmt(m.strength)])
+
+
+## Дикий мир края (этап 11.C): логово, племя, поветрие — короткими строками.
+static func wild_lines(world: World, region: Region) -> Array[String]:
+	var res: Array[String] = []
+	for l in world.lairs:
+		if l.alive and (l.home == region.id or l.region == region.id):
+			res.append("%s%s: сила %s" % [l.label(), "" if l.home == region.id else " (бродит здесь)", ArmySystem._num(l.strength)])
+	var t := TribeSystem.tribe_in(world, region.id)
+	if t != null:
+		res.append("%s (%s): %s воинов" % [t.label(), t.race.display_name.to_lower(), ArmySystem._num(t.strength)])
+	var d := DiseaseSystem.region_text(world, region.id)
+	if not d.is_empty():
+		res.append("Болезнь: " + d)
+	return res
 
 
 ## Последние записи летописи о государстве.

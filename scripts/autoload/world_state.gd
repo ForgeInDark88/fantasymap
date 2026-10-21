@@ -27,6 +27,13 @@ var _task_id := -1
 var _gen_started_ms := 0
 var _day_accum := 0.0
 var _last_speed := 1
+## Плавная скорость: отображаемый множитель разгоняется к SPEEDS[speed_index]
+## за ~0,4 с (пауза — мягкое торможение). Логика дней от этого не меняется:
+## симулируются те же дни, только их темп в реальном времени плавный.
+const SPEED_K := 9.0
+## Торможение быстрее разгона: после паузы мир почти сразу замирает.
+const SPEED_K_DOWN := 22.0
+var speed_now := 1.0
 ## Среднее время одного дня (мс) — для отладки и панели статистики.
 var avg_tick_ms := 0.0
 
@@ -42,16 +49,22 @@ func _ready() -> void:
 	OrgDB.ensure_loaded()
 	CrisisDB.ensure_loaded()
 	LoreDB.ensure_loaded()
+	SmoothSettings.load_settings()
 	EventBus.generate_requested.connect(generate)
 
 
 func _process(delta: float) -> void:
-	if world == null or is_generating or speed_index == 0:
+	var target := float(SPEEDS[speed_index])
+	var k := SPEED_K if target > speed_now else SPEED_K_DOWN
+	speed_now = SmoothSettings.damp(speed_now, target, k, delta) if SmoothSettings.ui_anim else target
+	if absf(speed_now - target) < 0.02:
+		speed_now = target
+	if world == null or is_generating or speed_now <= 0.001:
 		return
 	# Герой игрока ждёт решения — мир стоит.
 	if not world.player_choice.is_empty():
 		return
-	_day_accum += delta * SPEEDS[speed_index] * DAYS_PER_SECOND
+	_day_accum += delta * speed_now * DAYS_PER_SECOND
 	var start := Time.get_ticks_usec()
 	var ticks := 0
 	while _day_accum >= 1.0:

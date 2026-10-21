@@ -10,6 +10,7 @@ const FEED_LINES := 7
 ## Как часто (мс) обновлять карточку и легенду во время симуляции.
 const PANEL_REFRESH_MS := 300
 const LEGEND_REFRESH_MS := 1000
+const DANGER_HIGH_LEGEND := Color(0.75, 0.05, 0.1)
 const CHRONICLE_COLORS := {
 	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0",
 	&"ruler": "#d6b3ff", &"famine": "#ff9a7a",
@@ -17,7 +18,10 @@ const CHRONICLE_COLORS := {
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
 	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
-	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8",
+	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"battle": "#ff9a6a", &"pirates": "#9ab8d8",
+	&"tribe": "#d8b080", &"lair": "#e07a6a", &"disease": "#a8c860", &"language": "#c0c8f0",
+	&"caravan": "#e0b878", &"mercs": "#c8c0a8", &"debt": "#e8c070", &"society": "#d8a8c0",
+	&"deal": "#a8d8b8", &"capital": "#f0d090", &"rumor": "#b0a8c8",
 }
 
 @onready var _mode_buttons: HBoxContainer = %ModeButtons
@@ -51,6 +55,7 @@ const CHRONICLE_COLORS := {
 @onready var _chronicle_text: RichTextLabel = %ChronicleText
 
 var _mode := MapMode.POLITICAL
+var _feed_tween: Tween
 var _race_checks: Dictionary[StringName, CheckBox] = {}
 var _mode_button_list: Array[Button] = []
 var _speed_buttons: Array[Button] = []
@@ -192,6 +197,7 @@ func _build_left_panels() -> void:
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggled.connect(_on_left_panel_toggled.bind(d[0]))
+		UiAnim.attach(panel, Vector2(-14, 0))
 		_panel_buttons.add_child(b)
 		_left_panels[d[0]] = [b, panel]
 	_left_panels["Мир"][0].button_pressed = true
@@ -202,8 +208,17 @@ func _build_left_panels() -> void:
 	root.add_child(TechWindow.new())
 	root.add_child(UnderworldWindow.new())
 	root.add_child(ChroniclesWindow.new())
+	root.add_child(MarketWindow.new())
+	root.add_child(DiplomacyWindow.new())
+	root.add_child(ArmyCard.new())
+	root.add_child(WildCard.new())
 	root.add_child(HeroChoicePopup.new())
 	root.add_child(AchievementsWindow.new())
+	# Мягкие подсветки всех кнопок интерфейса (и тех, что появятся позже).
+	_hover_all(self)
+	get_tree().node_added.connect(func(n: Node) -> void:
+		if n is BaseButton:
+			UiAnim.hover(n as BaseButton))
 	EventBus.my_hero_requested.connect(func(mine: bool) -> void:
 		_left_panels["Мой герой" if mine else "Герои"][0].button_pressed = true)
 	_fate_button = Button.new()
@@ -218,6 +233,18 @@ func _build_left_panels() -> void:
 	chronicles.focus_mode = Control.FOCUS_NONE
 	chronicles.pressed.connect(func() -> void: EventBus.chronicles_window_requested.emit())
 	_panel_buttons.add_child(chronicles)
+	var market := Button.new()
+	market.text = "Рынок"
+	market.tooltip_text = "Рынок: цены и товары мира и государства, сословия, долги, наёмники"
+	market.focus_mode = Control.FOCUS_NONE
+	market.pressed.connect(func() -> void: EventBus.market_window_requested.emit(_nation_panel.get("_nation_id") if _nation_panel.get("_nation_id") != null else -1))
+	_panel_buttons.add_child(market)
+	var diplo := Button.new()
+	diplo.text = "Дипломатия"
+	diplo.tooltip_text = "Журнал сделок и предложений, характеры держав, слухи (и правда о них)"
+	diplo.focus_mode = Control.FOCUS_NONE
+	diplo.pressed.connect(func() -> void: EventBus.diplomacy_window_requested.emit(_nation_panel.get("_nation_id") if _nation_panel.get("_nation_id") != null else -1))
+	_panel_buttons.add_child(diplo)
 	var ach := Button.new()
 	ach.text = "🏆"
 	ach.tooltip_text = "Достижения"
@@ -230,9 +257,14 @@ func _build_left_panels() -> void:
 	root.add_child(audio)
 	var sound := Button.new()
 	sound.text = "🔊"
-	sound.tooltip_text = "Звук и музыка"
+	sound.tooltip_text = "Звук, музыка и плавность"
 	sound.focus_mode = Control.FOCUS_NONE
-	sound.pressed.connect(func() -> void: audio.visible = not audio.visible)
+	UiAnim.attach(audio, Vector2(0, -8))
+	sound.pressed.connect(func() -> void:
+		if audio.visible:
+			UiAnim.hide(audio)
+		else:
+			audio.visible = true)
 	_panel_buttons.add_child(sound)
 
 
@@ -240,13 +272,19 @@ func _on_left_panel_toggled(on: bool, panel_name: String) -> void:
 	for key in _left_panels:
 		var entry: Array = _left_panels[key]
 		if key == panel_name:
-			entry[1].visible = on
+			# Открытие — плавно (UiAnim.attach), закрытие — плавно гаснет.
+			if on:
+				entry[1].visible = true
+			else:
+				UiAnim.hide(entry[1])
 		elif on:
+			# Другая панель заменяет эту — сразу, без наложения двух анимаций.
 			entry[0].set_pressed_no_signal(false)
 			entry[1].visible = false
-	# Полная летопись заменяет ленту.
-	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not (_left_panels["Летопись"][1] as Control).visible \
-			and not (_left_panels["Мой герой"][1] as Control).visible
+	# Полная летопись и «Мой герой» заменяют ленту.
+	var open_full := (on and (panel_name == "Летопись" or panel_name == "Мой герой")) \
+			or (_left_panels["Летопись"][0] as Button).button_pressed or (_left_panels["Мой герой"][0] as Button).button_pressed
+	_chronicle_feed.visible = _toggle_chronicle.button_pressed and not open_full
 
 
 func _on_speed_changed(index: int) -> void:
@@ -263,7 +301,7 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND, MapMode.DANGER, MapMode.LANGUAGE, MapMode.GOODS] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
 
@@ -285,14 +323,29 @@ func _refresh_chronicle() -> void:
 	var world := WorldState.world
 	if world == null or world.chronicle_total == _chronicle_shown:
 		return
+	var fresh := mini(world.chronicle_total - _chronicle_shown, FEED_LINES) if _chronicle_shown > 0 else 0
 	_chronicle_shown = world.chronicle_total
-	var lines: Array[String] = []
 	var entries := world.chronicle.slice(maxi(0, world.chronicle.size() - FEED_LINES))
 	entries.reverse()
-	for e in entries:
-		var color: String = CHRONICLE_COLORS.get(e.kind, "#dddddd")
-		lines.append("[color=#8a90a0]%d[/color]  [color=%s]%s[/color]" % [e.year, color, e.text])
-	_chronicle_text.text = "\n".join(lines)
+	# Новые записи проявляются плавно (остальные на месте).
+	if _feed_tween != null and _feed_tween.is_valid():
+		_feed_tween.kill()
+	if fresh > 0 and SmoothSettings.ui_anim:
+		_feed_tween = create_tween()
+		_feed_tween.tween_method(func(a: float) -> void: _chronicle_text.text = _feed_text(entries, fresh, a), 0.15, 1.0, 0.35)
+	else:
+		_chronicle_text.text = _feed_text(entries, 0, 1.0)
+
+
+func _feed_text(entries: Array, fresh: int, alpha: float) -> String:
+	var lines: Array[String] = []
+	for i in entries.size():
+		var e: Dictionary = entries[i]
+		var a := alpha if i < fresh else 1.0
+		var color := Color(String(CHRONICLE_COLORS.get(e.kind, "#dddddd")))
+		color.a = a
+		lines.append("[color=#%s]%d[/color]  [color=#%s]%s[/color]" % [Color(0.54, 0.56, 0.63, a).to_html(), e.year, color.to_html(), e.text])
+	return "\n".join(lines)
 
 
 func _build_race_checks() -> void:
@@ -389,6 +442,50 @@ func _rebuild_legend() -> void:
 					var race := RaceDB.by_index(c.race)
 					_legend_row(c.color, race.icon, "%s — регионов %d" % [c.name, regions[id]],
 						"Культура %s (%s), с %d г.\nОбычаи: %s" % [c.name, race.display_name.to_lower(), c.founded_year, ", ".join(c.customs)])
+		MapMode.DANGER:
+			_legend_title.text = "Опасности"
+			if world != null:
+				for l in LairSystem.alive_lairs(world):
+					if l.def.great:
+						_legend_row(l.def.color, null, "%s — край %s" % [l.label(), world.regions[l.region].name],
+							"%s: сила %s, набегов %d, с %d г." % [l.def.display_name, ArmySystem._num(l.strength), l.raids, l.born])
+				var lairs := LairSystem.alive_lairs(world).filter(func(l: Lair) -> bool: return not l.def.great).size()
+				_legend_row(Color(0.85, 0.35, 0.25), null, "Логова чудовищ: %d" % lairs, "Набегают на соседние края; их разоряют герои и войска")
+				var tribes := TribeSystem.alive_tribes(world)
+				var hordes := tribes.filter(func(t: Tribe) -> bool: return t.horde)
+				_legend_row(Color(0.85, 0.65, 0.35), null, "Племена: %d, орды: %d" % [tribes.size(), hordes.size()], "Кочевники грабят соседей; орда может основать государство")
+				for t in hordes:
+					_legend_row(Color(0.95, 0.5, 0.2), t.race.icon, "%s — %s воинов" % [t.label(), ArmySystem._num(t.strength)], t.def.description)
+				for o in DiseaseSystem.alive_outbreaks(world):
+					_legend_row(o.def.color, null, "%s — краёв %d" % [o.def.display_name, o.regions.size()],
+						"%s\nС %d г., погибло %s" % [o.def.description, o.born, ArmySystem._num(o.deaths)])
+				_legend_row(DANGER_HIGH_LEGEND, null, "Багровый — смертельно опасно", "Логово великого чудовища, орда, чума")
+		MapMode.GOODS:
+			_legend_title.text = "Товары (главный товар края)"
+			if world != null:
+				var goods := MarketDB.all()
+				var prices := MarketSystem.world_prices(world)
+				for i in goods.size():
+					var g: GoodDef = goods[i]
+					_legend_row(g.color, null, "%s — цена %.2f (×%.2f)" % [g.display_name, prices[i], prices[i] / g.base_price],
+						"%s\nКараваны везут товар туда, где он дороже." % g.description)
+				_legend_row(Color(0.5, 0.35, 0.2), null, "Караванов в пути: %d" % world.caravans.filter(func(c: Caravan) -> bool: return c.alive).size(),
+					"Повозка — по дороге, парус — по морю; окно «Рынок» — подробности")
+		MapMode.LANGUAGE:
+			_legend_title.text = "Языки и наречия"
+			if world != null:
+				var regions := {}
+				for region in world.regions:
+					if region.language >= 0:
+						regions[region.language] = regions.get(region.language, 0) + 1
+				var ids := regions.keys()
+				ids.sort_custom(func(a: int, b: int) -> bool: return regions[a] > regions[b])
+				for id in ids.slice(0, 40):
+					var l := world.languages[id]
+					var tip := "%s (%s), с %d г." % [LanguageSystem.title(world, id), l.race.display_name.to_lower(), l.born]
+					if l.parent >= 0:
+						tip += "\nОт: %s" % LanguageSystem.title(world, l.parent)
+					_legend_row(l.color, l.race.icon, "%s — краёв %d" % [LanguageSystem.title(world, id), regions[id]], tip)
 		MapMode.TRADE:
 			_legend_title.text = "Торговые пути"
 			if world != null:
@@ -598,6 +695,10 @@ func _on_cell_hovered(cell: int) -> void:
 		if people != World.NO_RACE and nation != null and people != nation.race.index:
 			region_text += ", живут %s" % RaceDB.by_index(people).display_name.to_lower()
 		parts.append(region_text)
+	if region != null:
+		if region.language >= 0:
+			parts.append(LanguageSystem.title(world, region.language))
+		parts.append_array(NationPanel.wild_lines(world, region))
 	parts.append(BiomeDB.get_def(map.biome[cell]).display_name)
 	var dep := world.deposit_at(cell)
 	if dep != null:
@@ -612,3 +713,10 @@ func _on_cell_hovered(cell: int) -> void:
 		parts.append(["", "ручей", "река", "великая река"][map.river[cell]])
 	parts.append("(%d, %d)" % [p.x, p.y])
 	_cell_info.text = "  ·  ".join(parts)
+
+
+func _hover_all(node: Node) -> void:
+	if node is BaseButton:
+		UiAnim.hover(node as BaseButton)
+	for c in node.get_children():
+		_hover_all(c)

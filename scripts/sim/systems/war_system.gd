@@ -1,7 +1,9 @@
 class_name WarSystem
 extends RefCounted
-## Ход войн: раз в год (в день начала войны) — генеральное сражение и
-## продвижение осады.
+## Ход войн. Битвы и осады ведут армии на карте (ArmySystem, этап 11.B);
+## здесь — раз в год (в день начала войны) проверка конца войны и переговоры,
+## а также общие правила, которыми пользуются армии: выбор цели осады,
+## оборона региона, захват «волной».
 ##
 ## Шанс победы стороны — доля её военной мощи (Nation.power() с героями,
 ## поделённой между всеми войнами участника). Победитель осаждает регион на
@@ -28,7 +30,6 @@ func tick_day(world: World) -> void:
 		if war.attackers.is_empty() or war.defenders.is_empty():
 			_finish(world, war, 1 if war.defenders.is_empty() else -1)
 			continue
-		_battle(world, war)
 		_check_end(world, war)
 
 
@@ -36,92 +37,6 @@ func _prune(world: World, war: War) -> void:
 	for m in war.attackers.duplicate() + war.defenders.duplicate():
 		if not world.nations[m].alive:
 			war.remove_member(m)
-
-
-func _side_power(world: World, war: War, side: int) -> float:
-	var total := 0.0
-	for m in war.members(side):
-		var n := world.nations[m]
-		total += n.power() / maxf(1.0, world.diplomacy.wars_of(m).size())
-	return total
-
-
-func _battle(world: World, war: War) -> void:
-	var rng := world.rng
-	var pa := _side_power(world, war, 1)
-	var pd := _side_power(world, war, -1)
-	var share := pa / (pa + pd) if pa + pd > 0.0 else 0.5
-	var p := clampf(0.5 + (share - 0.5) * 1.4, 0.05, 0.95)
-	var winner := 1 if rng.randf() < p else -1
-	var margin := absf(share - 0.5) * 2.0  # 0 — равные силы, 1 — подавляющее превосходство
-	war.battles += 1
-
-	# Потери: проигравшие теряют больше; трусливые бегут и теряют ещё больше,
-	# нежить поднимает павших в свои ряды.
-	var fallen := 0.0
-	for m in war.members(-winner):
-		var n := world.nations[m]
-		var loss := n.army * rng.randf_range(0.06, 0.14) * (1.5 if n.race.has_trait(&"cowardly") else 1.0)
-		n.army -= loss
-		fallen += loss
-	for m in war.members(winner):
-		var n := world.nations[m]
-		var loss := n.army * rng.randf_range(0.02, 0.06)
-		n.army -= loss
-		fallen += loss
-		if n.race.has_trait(&"raise_dead"):
-			n.army += fallen * 0.25
-	war.casualties += fallen
-	war.score += winner * (4.0 + 8.0 * rng.randf()) * (0.6 + margin)
-	HeroSystem.on_battle(world, war, winner)
-
-	# Усталость от войны.
-	for m in war.attackers + war.defenders:
-		var n := world.nations[m]
-		n.stability = maxf(0.0, n.stability - 0.006)
-		n.stock[Goods.GOLD] -= n.army * 0.002
-
-	_advance_siege(world, war, winner, margin)
-
-
-func _advance_siege(world: World, war: War, winner: int, margin: float) -> void:
-	if war.siege_side != winner or not _is_valid_target(world, war, war.siege_region, winner):
-		_pick_target(world, war, winner)
-		war.siege_side = winner
-		war.siege_progress = 0.0
-		if war.siege_region < 0:
-			return
-		var city := _region_city(world, war.siege_region, war.members(-winner))
-		var who := world.nations[war.leader(winner)].short_name
-		if war.siege_landing:
-			world.log_event(&"siege", "%s высаживает десант в регионе %s." % [who, world.regions[war.siege_region].name],
-					PackedInt32Array(war.attackers + war.defenders))
-		elif city != null and city.tier() >= 2:
-			world.log_event(&"siege", "%s осаждает город %s." % [who, city.name], PackedInt32Array(war.attackers + war.defenders))
-	var region := world.regions[war.siege_region]
-	var defense := _region_defense(world, region, war.members(-winner))
-	# Десант медленнее: снабжение через море.
-	# Осадное дело ускоряет осады, мореходство — десанты (верфи — ещё сильнее).
-	var attacker := world.nations[war.leader(winner)]
-	var speed := (0.35 + 0.5 * margin) * attacker.effect(&"siege_mult")
-	# Подкоп: у наступающих есть пещера под осаждённым регионом.
-	if UndergroundSystem.sapping(world, war.members(winner), war.siege_region):
-		speed *= UndergroundSystem.SAP_SIEGE
-	# Дорога к осаждаемому городу от города наступающих — подвоз и переброска войск.
-	var target_city := _region_city(world, war.siege_region, war.members(-winner))
-	if target_city != null:
-		for rid in world.city_roads.get(target_city.id, PackedInt32Array()):
-			var road := world.roads[rid]
-			if road.alive and not road.sea and war.members(winner).has(world.cities[road.other(target_city.id)].nation_id):
-				speed *= 1.25
-				break
-	if war.siege_landing:
-		speed *= 0.6 * attacker.effect(&"naval_mult") * (1.25 if _has_building(world, war.members(winner), &"shipyard") else 1.0)
-	war.siege_progress += speed / (1.0 + defense)
-	if war.siege_progress >= 1.0:
-		_capture(world, war, region, winner)
-		war.siege_region = -1
-		war.siege_progress = 0.0
 
 
 ## Клетка проигравших, граничащая с клеткой победителей (без выделения памяти).
@@ -252,8 +167,12 @@ func _region_city(world: World, rid: int, owners: PackedInt32Array) -> City:
 
 ## Оборона региона: стены и крепости городов, эльфийские леса.
 func _region_defense(world: World, region: Region, owners: PackedInt32Array) -> float:
+	return _city_defense(world, region, _region_city(world, region.id, owners))
+
+
+## Оборона региона с уже найденным главным городом (city может быть null).
+func _city_defense(world: World, region: Region, city: City) -> float:
 	var defense := 0.0
-	var city := _region_city(world, region.id, owners)
 	if city != null:
 		for b in city.buildings:
 			var def := EconomyDB.get_building(b)

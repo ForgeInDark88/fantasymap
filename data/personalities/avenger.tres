@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PersonalityDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/personality_def.gd" id="1_s"]
+
+[resource]
+script = ExtResource("1_s")
+id = &"avenger"
+display_name = "Мститель"
+description = "Ничего не забывает: обиды копит десятилетиями и платит по ним сполна."
+weight = 0.6
+races = Dictionary[StringName, float]({&"orcs": 1.3, &"dwarves": 1.3, &"undead": 1.2})
+governments = Dictionary[StringName, float]({&"clans": 1.5, &"tribal": 1.2})
+aggression = 1.25
+deal_rate = 0.7
+deal_taste = Dictionary[StringName, float]({&"subsidy": 1.4, &"pact": 0.6})
+generosity = 0.25
+grudge = 2.2
+rumor = 0.06
+relocation = 0.8

@@ -23,6 +23,23 @@ var _selected := -1
 var _world_dirty := false
 var _selected_hero := -1
 var _last_redraw_ms := 0
+## Плавное движение героев: id → видимая позиция (мировые координаты).
+var _hero_pos: Dictionary = {}
+## Скорость сглаживания движения героев (1/с) и дальность, после которой — скачок.
+const HERO_K := 3.0
+const HERO_JUMP := 400.0
+## Цели заданий героя игрока: заголовок → {pos, alpha} (плавно появляются и гаснут).
+var _marks: Dictionary = {}
+var _route_alpha := 0.0
+var _animating := false
+## Армии: видимая позиция (по объекту — id армий пересчитываются), выбранная армия.
+var _army_pos: Dictionary = {}
+var _selected_army: Army = null
+const ARMY_K := 2.2
+## Вспышки битв: {pos, t} (t — 0..1), сколько битв уже показано.
+var _flashes: Array = []
+var _battles_seen := -1
+const FLASH_TIME := 1.4
 
 
 func _ready() -> void:
@@ -30,6 +47,12 @@ func _ready() -> void:
 	z_index = 1
 	EventBus.world_generated.connect(func(_w: World, _ms: int) -> void:
 		_selected = -1
+		_hero_pos.clear()
+		_marks.clear()
+		_army_pos.clear()
+		_flashes.clear()
+		_battles_seen = -1
+		_selected_army = null
 		queue_redraw())
 	EventBus.map_mode_changed.connect(func(m: int) -> void:
 		_mode = m
@@ -41,9 +64,20 @@ func _ready() -> void:
 	EventBus.hero_selected.connect(func(id: int) -> void:
 		_selected_hero = id
 		queue_redraw())
+	EventBus.army_selected.connect(func(a: Army) -> void:
+		_selected_army = a
+		queue_redraw())
 
 
-func _process(_delta: float) -> void:
+## Видимая (плавно движущаяся) позиция героя — для значка и слежения камеры.
+func hero_visual_pos(h: Hero) -> Vector2:
+	if _hero_pos.has(h.id):
+		return _hero_pos[h.id]
+	return renderer.cell_center(h.cell) if renderer != null and renderer.map != null and h.cell >= 0 else Vector2.ZERO
+
+
+func _process(delta: float) -> void:
+	_animate(delta)
 	var zoom := _camera_zoom()
 	var cam := get_viewport().get_camera_2d()
 	var cam_pos := cam.position if cam != null else Vector2.ZERO
@@ -59,6 +93,118 @@ func _process(_delta: float) -> void:
 		_last_redraw_ms = now
 		WorldState.world.update_label_anchors()
 		queue_redraw()
+
+
+## Визуальные переходы (не трогают симуляцию): движение героев, цели заданий.
+func _animate(delta: float) -> void:
+	var world := WorldState.world
+	if world == null or renderer == null or renderer.map == null:
+		return
+	var smooth := SmoothSettings.border_anim
+	var moving := false
+	var alive := {}
+	for h in world.wandering_heroes():
+		if not h.alive or h.cell < 0:
+			continue
+		alive[h.id] = true
+		var target := renderer.cell_center(h.cell)
+		var cur: Vector2 = _hero_pos.get(h.id, target)
+		if not smooth or cur.distance_to(target) > HERO_JUMP:
+			cur = target
+		else:
+			cur = SmoothSettings.damp_v(cur, target, HERO_K, delta)
+			if cur.distance_to(target) < 0.3:
+				cur = target
+		if cur != target:
+			moving = true
+		_hero_pos[h.id] = cur
+	if _hero_pos.size() > alive.size() + 16:
+		for id in _hero_pos.keys():
+			if not alive.has(id):
+				_hero_pos.erase(id)
+	# Цели заданий и путь героя игрока: плавно появляются и гаснут.
+	var present := {}
+	if world.player >= 0:
+		for q in world.player_quests:
+			var qc := PlayerQuests.target_cell(world, q)
+			if qc >= 0:
+				present[q.title] = renderer.cell_center(qc)
+	for title in present:
+		if not _marks.has(title):
+			_marks[title] = {"pos": present[title], "alpha": 0.0 if smooth else 1.0}
+		_marks[title].pos = present[title]
+	for title in _marks.keys():
+		var m: Dictionary = _marks[title]
+		var goal := 1.0 if present.has(title) else 0.0
+		m.alpha = SmoothSettings.damp(float(m.alpha), goal, 6.0, delta) if smooth else goal
+		if absf(float(m.alpha) - goal) > 0.01:
+			moving = true
+		elif goal == 0.0:
+			_marks.erase(title)
+	# Армии плавно идут между регионами.
+	var army_alive := {}
+	for a in world.armies:
+		if not a.alive or a.cell < 0:
+			continue
+		var key := a.get_instance_id()
+		army_alive[key] = true
+		var target := army_point(a)
+		var cur: Vector2 = _army_pos.get(key, target)
+		if not smooth or cur.distance_to(target) > HERO_JUMP * 1.5:
+			cur = target
+		else:
+			cur = SmoothSettings.damp_v(cur, target, ARMY_K, delta)
+			if cur.distance_to(target) < 0.3:
+				cur = target
+		if cur != target:
+			moving = true
+		_army_pos[key] = cur
+	if _army_pos.size() > army_alive.size() + 32:
+		for k in _army_pos.keys():
+			if not army_alive.has(k):
+				_army_pos.erase(k)
+	# Вспышки новых битв (только отображение).
+	var seen := world.recent_battles.size()
+	if _battles_seen < 0 or seen < _battles_seen:
+		_battles_seen = seen
+	if SmoothSettings.event_fx and seen > _battles_seen:
+		for i in range(_battles_seen, seen):
+			var b: Dictionary = world.recent_battles[i]
+			_flashes.append({"pos": renderer.cell_center(world.regions[int(b.region)].center), "t": 0.0})
+	_battles_seen = seen
+	for f in _flashes:
+		f.t = float(f.t) + delta / FLASH_TIME
+	_flashes = _flashes.filter(func(f: Dictionary) -> bool: return float(f.t) < 1.0)
+	if not _flashes.is_empty():
+		moving = true
+	var route_goal := 1.0 if world.player >= 0 and not world.player_cmd.is_empty() and world.player_cmd.kind == "travel" else 0.0
+	_route_alpha = SmoothSettings.damp(_route_alpha, route_goal, 6.0, delta) if smooth else route_goal
+	if absf(_route_alpha - route_goal) > 0.01:
+		moving = true
+	if moving or _animating:
+		queue_redraw()
+	_animating = moving
+
+
+## Где стоит значок армии: центр региона; флот — у берега, со сдвигом; несколько армий в регионе — веером.
+func army_point(a: Army) -> Vector2:
+	var p := renderer.cell_center(a.cell)
+	var offset := Vector2(((a.nation * 37) % 11 - 5) * 1.6, ((a.nation * 53) % 9 - 4) * 1.6)
+	if a.kind == &"fleet":
+		offset += Vector2(10, 8)
+	elif a.kind == &"pirates":
+		offset += Vector2(-10, 9)
+	return p + offset
+
+
+## Видимая позиция армии (для значка и клика).
+func army_visual_pos(a: Army) -> Vector2:
+	return _army_pos.get(a.get_instance_id(), army_point(a))
+
+
+## Плавное проявление по зуму: 0 ниже from, 1 выше to.
+static func zoom_fade(zoom: float, from: float, to: float) -> float:
+	return clampf((zoom - from) / maxf(0.0001, to - from), 0.0, 1.0)
 
 
 func _camera_zoom() -> float:
@@ -83,6 +229,8 @@ func _draw() -> void:
 		_draw_scars(world, zoom)
 		_draw_roads(world, zoom)
 		_draw_ruins(world, zoom)
+		_draw_wild(world, zoom)
+		_draw_caravans(world, zoom)
 		_draw_titan(world, zoom)
 	if map_like:
 		_draw_region_labels(world, zoom)
@@ -90,6 +238,7 @@ func _draw() -> void:
 		_draw_sieges(world, zoom)
 		_draw_landmarks(world, zoom)
 		_draw_player_route(world, zoom)
+		_draw_armies(world, zoom)
 		_draw_heroes(world, zoom)
 	draw_set_transform(Vector2.ZERO)
 
@@ -174,12 +323,14 @@ func _draw_cities(world: World, zoom: float) -> void:
 		else:
 			draw_circle(Vector2.ZERO, r + 1.0, dark)
 			draw_circle(Vector2.ZERO, r, fill.darkened(0.1 if tier == 0 else 0.0))
-		if zoom >= TIER_LABEL_ZOOM[tier] or (city.is_capital and zoom >= 1.2):
+		var label_zoom := minf(TIER_LABEL_ZOOM[tier], 1.2) if city.is_capital else TIER_LABEL_ZOOM[tier]
+		var la := zoom_fade(zoom, label_zoom * 0.8, label_zoom)
+		if la > 0.0:
 			var font_size := TIER_FONT[tier] + (1 if city.is_capital else 0)
 			var text_size := _font.get_string_size(city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 			var origin := Vector2(-text_size.x * 0.5, r + 3.0 + font_size)
-			var text_color := Color(1, 1, 0.95) if tier >= 2 else Color(0.88, 0.88, 0.84)
-			draw_string_outline(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.05, 0.05, 0.08, 0.85))
+			var text_color := Color(1, 1, 0.95, la) if tier >= 2 else Color(0.88, 0.88, 0.84, la)
+			draw_string_outline(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0.05, 0.05, 0.08, 0.85 * la))
 			draw_string(_font, origin, city.name, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
 
 
@@ -269,7 +420,8 @@ func _draw_titan(world: World, zoom: float) -> void:
 
 ## Руины: обломок колонны (исчерпанные — бледнее, проклятые — с лиловым ореолом).
 func _draw_ruins(world: World, zoom: float) -> void:
-	if zoom < 0.9:
+	var fade := zoom_fade(zoom, 0.7, 0.9)
+	if fade <= 0.0:
 		return
 	var view := _visible_rect().grow(20.0 / zoom)
 	var inv := Vector2.ONE / zoom
@@ -280,9 +432,9 @@ func _draw_ruins(world: World, zoom: float) -> void:
 		if not view.has_point(pos):
 			continue
 		draw_set_transform(pos, 0.0, inv)
-		var a := 0.45 if r.depleted() else 0.95
+		var a := (0.45 if r.depleted() else 0.95) * fade
 		if r.cursed:
-			draw_circle(Vector2.ZERO, 8.0, Color(0.6, 0.3, 0.8, 0.35))
+			draw_circle(Vector2.ZERO, 8.0, Color(0.6, 0.3, 0.8, 0.35 * fade))
 		var stone := Color(0.78, 0.74, 0.68, a)
 		var dark := Color(0.08, 0.07, 0.06, a)
 		draw_rect(Rect2(-5.5, 3.0, 11.0, 3.0), dark)
@@ -295,12 +447,112 @@ func _draw_ruins(world: World, zoom: float) -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+## Дикий мир (этап 11.C): логова (клык в круге), великие чудовища (крылья —
+## там, где чудовище сейчас), племена (шатёр), орды (шатёр со стягом). В режиме
+## «Опасности» видны на любом зуме.
+func _draw_wild(world: World, zoom: float) -> void:
+	var fade := 1.0 if _mode == MapMode.DANGER else zoom_fade(zoom, 0.5, 0.7)
+	if fade <= 0.0:
+		return
+	var view := _visible_rect().grow(24.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for l in world.lairs:
+		if not l.alive:
+			continue
+		var cell := l.cell if l.region == l.home else world.regions[l.region].center
+		var pos := renderer.cell_center(cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv * (1.5 if l.def.great else 1.0))
+		var col := l.def.color
+		col.a = fade
+		draw_circle(Vector2.ZERO, 6.5, Color(0.08, 0.05, 0.05, 0.85 * fade))
+		draw_circle(Vector2.ZERO, 5.0, col)
+		var fang := Color(0.98, 0.95, 0.9, fade)
+		draw_colored_polygon(PackedVector2Array([Vector2(-3.0, -2.0), Vector2(-1.2, -2.0), Vector2(-2.1, 2.5)]), fang)
+		draw_colored_polygon(PackedVector2Array([Vector2(1.2, -2.0), Vector2(3.0, -2.0), Vector2(2.1, 2.5)]), fang)
+		if l.def.great:
+			var wing := Color(col.r * 0.6, col.g * 0.6, col.b * 0.6, 0.9 * fade)
+			draw_colored_polygon(PackedVector2Array([Vector2(-5.0, -1.0), Vector2(-13.0, -7.0), Vector2(-9.0, 1.0)]), wing)
+			draw_colored_polygon(PackedVector2Array([Vector2(5.0, -1.0), Vector2(13.0, -7.0), Vector2(9.0, 1.0)]), wing)
+	for t in world.tribes:
+		if not t.alive or t.cell < 0:
+			continue
+		var pos := renderer.cell_center(t.cell)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv * (1.35 if t.horde else 1.0))
+		var col := t.race.color
+		col.a = fade
+		draw_colored_polygon(PackedVector2Array([Vector2(-6.5, 4.5), Vector2(0.0, -5.5), Vector2(6.5, 4.5)]), Color(0.08, 0.06, 0.04, 0.85 * fade))
+		draw_colored_polygon(PackedVector2Array([Vector2(-5.0, 3.5), Vector2(0.0, -4.0), Vector2(5.0, 3.5)]), col)
+		draw_rect(Rect2(-1.0, 0.5, 2.0, 3.0), Color(0.1, 0.07, 0.05, fade))
+		if t.horde:
+			draw_line(Vector2(0.0, -4.0), Vector2(0.0, -11.0), Color(0.15, 0.1, 0.05, fade), 1.2)
+			draw_colored_polygon(PackedVector2Array([Vector2(0.0, -11.0), Vector2(6.0, -9.5), Vector2(0.0, -8.0)]), Color(0.9, 0.2, 0.15, fade))
+	draw_set_transform(Vector2.ZERO)
+
+
+## Караваны (этап 11.D) — повозка (на море — парус) с цветом товара, идёт от
+## города к городу по ходу пути; вольные отряды наёмников — щит со стягом.
+## В режимах «Торговля» и «Товары» — на любом зуме.
+func caravan_pos(world: World, c: Caravan) -> Vector2:
+	var a := renderer.cell_center(world.cities[c.from_city].cell)
+	var b := renderer.cell_center(world.cities[c.to_city].cell)
+	var month := float(posmod(world.day - c.day, 30)) / 30.0
+	return a.lerp(b, clampf((float(c.done) + month) / float(maxi(1, c.months)), 0.0, 1.0))
+
+
+func _draw_caravans(world: World, zoom: float) -> void:
+	var trade := _mode == MapMode.TRADE or _mode == MapMode.GOODS
+	var fade := 1.0 if trade else zoom_fade(zoom, 0.8, 1.0)
+	if fade <= 0.0:
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	var goods := MarketDB.all()
+	for c in world.caravans:
+		if not c.alive or c.road < 0 or c.road >= world.roads.size():
+			continue
+		var pos := caravan_pos(world, c)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var col: Color = (goods[c.good] as GoodDef).color
+		col.a = fade
+		var dark := Color(0.12, 0.08, 0.05, 0.9 * fade)
+		if world.roads[c.road].sea:
+			draw_colored_polygon(PackedVector2Array([Vector2(-5.0, 2.0), Vector2(5.0, 2.0), Vector2(3.5, 4.5), Vector2(-3.5, 4.5)]), dark)
+			draw_colored_polygon(PackedVector2Array([Vector2(0.0, -6.0), Vector2(4.5, 1.5), Vector2(0.0, 1.5)]), col)
+		else:
+			draw_rect(Rect2(-5.0, -3.0, 10.0, 5.0), dark)
+			draw_rect(Rect2(-4.0, -2.0, 8.0, 3.0), col)
+			draw_circle(Vector2(-3.0, 3.0), 1.6, dark)
+			draw_circle(Vector2(3.0, 3.0), 1.6, dark)
+	for m in world.mercs:
+		if not m.alive or m.cell < 0:
+			continue
+		var pos := renderer.cell_center(m.cell) + Vector2(9.0, -9.0) / zoom
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var c2 := Color(0.75, 0.75, 0.8, fade) if m.employer < 0 else world.nations[m.employer].color
+		c2.a = fade
+		draw_colored_polygon(PackedVector2Array([Vector2(-5.0, -5.0), Vector2(5.0, -5.0), Vector2(5.0, 1.0), Vector2(0.0, 6.0), Vector2(-5.0, 1.0)]),
+			Color(0.08, 0.08, 0.1, 0.9 * fade))
+		draw_colored_polygon(PackedVector2Array([Vector2(-3.8, -3.8), Vector2(3.8, -3.8), Vector2(3.8, 0.6), Vector2(0.0, 4.4), Vector2(-3.8, 0.6)]), c2)
+		draw_line(Vector2(-2.5, -2.5), Vector2(2.5, 2.0), Color(0.1, 0.1, 0.1, fade), 1.2)
+		draw_line(Vector2(2.5, -2.5), Vector2(-2.5, 2.0), Color(0.1, 0.1, 0.1, fade), 1.2)
+	draw_set_transform(Vector2.ZERO)
+
+
 ## Дороги и морские пути — линии между городами. Подробность по зуму: на
 ## общем плане — только пути между крупными городами; в режиме «Торговля» —
 ## все, толщина по обороту.
 func _draw_roads(world: World, zoom: float) -> void:
 	var trade := _mode == MapMode.TRADE
-	if not trade and zoom < 0.7:
+	var fade := 1.0 if trade else zoom_fade(zoom, 0.55, 0.7)
+	if fade <= 0.0:
 		return
 	var view := _visible_rect().grow(60.0 / zoom)
 	var max_traffic := 1.0
@@ -316,8 +568,11 @@ func _draw_roads(world: World, zoom: float) -> void:
 		var cb := world.cities[r.b]
 		if not ca.alive or not cb.alive:
 			continue
-		if not trade and zoom < 1.4 and (ca.tier() < 2 or cb.tier() < 2):
-			continue
+		var small := 1.0
+		if not trade and (ca.tier() < 2 or cb.tier() < 2):
+			small = zoom_fade(zoom, 1.15, 1.4)
+			if small <= 0.0:
+				continue
 		var pa := renderer.cell_center(ca.cell)
 		var pb := renderer.cell_center(cb.cell)
 		if not view.has_point(pa) and not view.has_point(pb):
@@ -332,6 +587,7 @@ func _draw_roads(world: World, zoom: float) -> void:
 			col = Color(0.95, 0.75, 0.3, 0.45 + 0.5 * k) if not r.sea else Color(0.5, 0.8, 1.0, 0.45 + 0.5 * k)
 			if r.safety < 0.6:
 				col = col.lerp(Color(0.9, 0.3, 0.25, col.a), 0.6)  # разбой и пираты
+		col.a *= fade * small
 		if r.sea:
 			draw_dashed_line(pa, pb, col, px / zoom, 6.0 / zoom)
 		else:
@@ -395,25 +651,24 @@ func _draw_player_route(world: World, zoom: float) -> void:
 		return
 	var w := 2.0 / zoom
 	var cmd := world.player_cmd
-	if not cmd.is_empty() and cmd.kind == "travel":
-		var prev := renderer.cell_center(h.cell)
+	if _route_alpha > 0.01 and not cmd.is_empty() and cmd.kind == "travel":
+		var prev := hero_visual_pos(h)
+		var col := Color(1.0, 0.9, 0.4, 0.9 * _route_alpha)
 		for r in cmd.path:
 			var region := world.regions[int(r)]
 			var p := renderer.cell_center(region.cells[region.cells.size() / 2])
-			draw_dashed_line(prev, p, Color(1.0, 0.9, 0.4, 0.9), w, 6.0 / zoom)
+			draw_dashed_line(prev, p, col, w, 6.0 / zoom)
 			prev = p
-		draw_circle(prev, 5.0 / zoom, Color(1.0, 0.9, 0.4))
-	for q in world.player_quests:
-		var qc := PlayerQuests.target_cell(world, q)
-		if qc < 0:
-			continue
-		var p := renderer.cell_center(qc)
-		draw_set_transform(p, 0.0, Vector2.ONE / zoom)
-		draw_colored_polygon(PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)]), Color(0.08, 0.06, 0.02))
-		draw_colored_polygon(PackedVector2Array([Vector2(0, -7), Vector2(7, 0), Vector2(0, 7), Vector2(-7, 0)]), Color(1.0, 0.82, 0.25))
-		var size := _font.get_string_size(q.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
-		draw_string_outline(_font, Vector2(-size.x * 0.5, -13), q.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))
-		draw_string(_font, Vector2(-size.x * 0.5, -13), q.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.85, 0.4))
+		draw_circle(prev, 5.0 / zoom, Color(1.0, 0.9, 0.4, _route_alpha))
+	for title: String in _marks:
+		var m: Dictionary = _marks[title]
+		var a := float(m.alpha)
+		draw_set_transform(m.pos, 0.0, Vector2.ONE / zoom * (0.7 + 0.3 * a))
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)]), Color(0.08, 0.06, 0.02, a))
+		draw_colored_polygon(PackedVector2Array([Vector2(0, -7), Vector2(7, 0), Vector2(0, 7), Vector2(-7, 0)]), Color(1.0, 0.82, 0.25, a))
+		var size := _font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
+		draw_string_outline(_font, Vector2(-size.x * 0.5, -13), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85 * a))
+		draw_string(_font, Vector2(-size.x * 0.5, -13), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.85, 0.4, a))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -425,7 +680,7 @@ func _draw_heroes(world: World, zoom: float) -> void:
 	for hero in world.wandering_heroes():
 		if not hero.alive or hero.is_ruler or hero.cell < 0:
 			continue
-		var pos := renderer.cell_center(hero.cell)
+		var pos := hero_visual_pos(hero)
 		if not view.has_point(pos):
 			continue
 		draw_set_transform(pos, 0.0, inv)
@@ -439,11 +694,12 @@ func _draw_heroes(world: World, zoom: float) -> void:
 			draw_arc(Vector2.ZERO, r + 6.0, 0.0, TAU, 24, Color.WHITE, 2.0)
 		if hero.id == world.player:
 			draw_arc(Vector2.ZERO, r + 9.0, 0.0, TAU, 24, Color(1.0, 0.85, 0.3), 2.5)
-		if zoom >= 1.8 or hero.id == _selected_hero or hero.id == world.player:
+		var la := 1.0 if hero.id == _selected_hero or hero.id == world.player else zoom_fade(zoom, 1.5, 1.8)
+		if la > 0.0:
 			var text := "%s, %s %d" % [hero.display_name(), hero.hero_class.display_name.to_lower(), hero.level]
 			var size := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11)
-			draw_string_outline(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85))
-			draw_string(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.92, 0.6))
+			draw_string_outline(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, 3, Color(0.05, 0.05, 0.08, 0.85 * la))
+			draw_string(_font, Vector2(-size.x * 0.5, -r - 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.92, 0.6, la))
 
 
 ## Источники силы, Врата бездны, пустые троны, чудеса света.
@@ -503,3 +759,72 @@ func _draw_landmarks(world: World, zoom: float) -> void:
 func _visible_rect() -> Rect2:
 	var inv := get_viewport().get_canvas_transform().affine_inverse()
 	return inv * get_viewport_rect()
+
+
+## Армии (щит цвета державы со значком расы и численностью), флоты (ладья),
+## пираты (чёрный флаг); у выбранной — путь пунктиром; вспышки битв.
+func _draw_armies(world: World, zoom: float) -> void:
+	var inv := Vector2.ONE / zoom
+	var view := _visible_rect().grow(30.0 / zoom)
+	var scale := clampf(zoom, 0.65, 1.15)
+	var fade := zoom_fade(zoom, 0.35, 0.55)
+	for f in _flashes:
+		var t := float(f.t)
+		draw_set_transform(f.pos, 0.0, inv)
+		var r := (10.0 + 26.0 * t) * scale
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.75, 0.35, 0.28 * (1.0 - t)))
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 28, Color(1.0, 0.9, 0.6, 0.6 * (1.0 - t)), 2.0)
+	if fade <= 0.0:
+		draw_set_transform(Vector2.ZERO)
+		return
+	if _selected_army != null and _selected_army.alive and not _selected_army.path.is_empty():
+		draw_set_transform(Vector2.ZERO)
+		var prev := army_visual_pos(_selected_army)
+		var col := world.nations[_selected_army.nation].color.lightened(0.4) if _selected_army.nation >= 0 else Color.WHITE
+		col.a = 0.85
+		for rid in _selected_army.path:
+			var p := renderer.cell_center(world.regions[rid].center)
+			draw_dashed_line(prev, p, col, 2.0 / zoom, 6.0 / zoom)
+			prev = p
+		draw_circle(prev, 4.0 / zoom, col)
+	for a in world.armies:
+		if not a.alive or a.cell < 0:
+			continue
+		var pos := army_visual_pos(a)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var s := 7.0 * scale
+		var dark := Color(0.05, 0.05, 0.08, 0.9 * fade)
+		if a.kind == &"pirates":
+			draw_line(Vector2(-s * 0.6, s), Vector2(-s * 0.6, -s), Color(0.8, 0.75, 0.6, fade), 1.5)
+			draw_colored_polygon(PackedVector2Array([Vector2(-s * 0.6, -s), Vector2(s, -s * 0.6), Vector2(-s * 0.6, -s * 0.1)]), Color(0.05, 0.05, 0.05, fade))
+			continue
+		var n := world.nations[a.nation]
+		var fill := n.color.lightened(0.2)
+		fill.a = fade
+		if a.kind == &"fleet":
+			var hull := PackedVector2Array([Vector2(-s, 0), Vector2(s, 0), Vector2(s * 0.6, s * 0.6), Vector2(-s * 0.6, s * 0.6)])
+			draw_colored_polygon(hull, dark)
+			draw_colored_polygon(PackedVector2Array([Vector2(-s * 0.1, -s), Vector2(s * 0.7, -s * 0.05), Vector2(-s * 0.1, -s * 0.05)]), fill)
+			draw_line(Vector2(-s * 0.1, -s), Vector2(-s * 0.1, 0), dark, 1.5)
+			continue
+		# Щит: тёмная кайма, цвет державы, значок расы.
+		var shield := PackedVector2Array([Vector2(-s, -s), Vector2(s, -s), Vector2(s, s * 0.3), Vector2(0, s * 1.2), Vector2(-s, s * 0.3)])
+		var rim := PackedVector2Array()
+		for p in shield:
+			rim.append(p * 1.22)
+		draw_colored_polygon(rim, dark)
+		draw_colored_polygon(shield, fill)
+		if n.race.icon != null:
+			draw_texture_rect(n.race.icon, Rect2(-s * 0.7, -s * 0.85, s * 1.4, s * 1.4), false, Color(1, 1, 1, fade))
+		if a == _selected_army:
+			draw_arc(Vector2.ZERO, s * 1.9, 0.0, TAU, 24, Color(1, 1, 1, fade), 2.0)
+		if a.state == &"siege":
+			draw_arc(Vector2.ZERO, s * 1.55, -PI * 0.5, PI * 1.5, 20, Color(0.95, 0.35, 0.25, 0.8 * fade), 1.5)
+		if zoom >= 1.2:
+			var label := ArmySystem._num(a.strength(world))
+			var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+			draw_string_outline(_font, Vector2(-w * 0.5, s * 1.25 + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0, 0, 0, 0.85 * fade))
+			draw_string(_font, Vector2(-w * 0.5, s * 1.25 + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 0.95, 0.85, fade))
+	draw_set_transform(Vector2.ZERO)
