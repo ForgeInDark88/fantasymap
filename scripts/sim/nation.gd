@@ -37,6 +37,12 @@ var cells := PackedInt32Array()
 var cell_count: int:
 	get:
 		return cells.size()
+## Масштаб сетки мира (GridScale) и площадь в базовых («условных») клетках —
+## для порогов и интерфейса, чтобы числа не зависели от разрешения карты.
+var grid_scale := 1
+var base_area: float:
+	get:
+		return float(cells.size()) / (grid_scale * grid_scale) if grid_scale != 1 else float(cells.size())
 ## Территория менялась с прошлой проверки анклавов (EnclaveSystem).
 var territory_dirty := true
 var sum_x := 0.0

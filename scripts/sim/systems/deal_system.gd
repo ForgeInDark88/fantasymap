@@ -363,7 +363,7 @@ func _relocate(world: World, n: Nation, p: PersonalityDef) -> void:
 		return
 	var best: City = null
 	var best_score := -INF
-	var far := maxf(10.0, sqrt(float(n.cell_count)))
+	var far := maxf(10.0 * world.grid_scale, sqrt(float(n.cell_count)))
 	for id in n.city_ids:
 		var c := world.cities[id]
 		if c == cap or world.regions[world.region_of[c.cell]].controller() != n.id:

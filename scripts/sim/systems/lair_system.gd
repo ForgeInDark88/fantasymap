@@ -71,7 +71,7 @@ static func spawn(world: World, def: LairDef, cell: int) -> Lair:
 		var best_score := -INF
 		for k in 16:
 			var r := world.regions[rng.randi_range(0, world.regions.size() - 1)]
-			if r.cells.size() < 3:
+			if r.cells.size() < world.gai(3):
 				continue
 			var score := rng.randf()
 			if def.biomes.has(BiomeDB.get_def(world.map.biome[r.center]).id):

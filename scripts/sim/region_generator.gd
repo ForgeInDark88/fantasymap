@@ -9,7 +9,8 @@ extends RefCounted
 ## 3. Острова без семян становятся отдельными регионами, мелкие обрезки
 ##    присоединяются к соседу.
 
-## Средняя площадь региона на средней карте (384×240), в клетках.
+## Средняя площадь региона на средней карте (384×240), в базовых клетках
+## (при масштабе сетки — × scale²: регионы те же, клеток в них больше).
 const BASE_REGION_SIZE := 90.0
 const MAX_COST := 8192
 
@@ -23,7 +24,8 @@ func generate(world: World) -> Array[Region]:
 	var n := _map.cell_count()
 	var w := _map.width
 	var rng := world.rng
-	var target := BASE_REGION_SIZE * float(w) / 384.0
+	var gs := world.grid_scale
+	var target := BASE_REGION_SIZE * float(w / gs) / 384.0 * (gs * gs)
 	var spacing := sqrt(target) * 0.95
 
 	var land := PackedInt32Array()

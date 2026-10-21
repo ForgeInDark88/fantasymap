@@ -28,6 +28,7 @@ static func create(s: MapSettings) -> World:
 func _init(world_map: WorldMap, generate: bool = true) -> void:
 	map = world_map
 	settings = world_map.settings
+	grid_scale = GridScale.valid(settings.grid_scale) if settings != null else 1
 	rng.seed = hash(str(settings.world_seed) + ":world")
 	var n := map.cell_count()
 	owner.resize(n)
@@ -157,7 +158,7 @@ func record_history() -> void:
 			continue
 		for r in n.pop.size():
 			races[r] += n.pop[r]
-		snapshot[n.id] = PackedFloat32Array([n.population, n.cell_count])
+		snapshot[n.id] = PackedFloat32Array([n.population, n.base_area])
 		techs[n.race.index] += n.techs.size()
 		counts[n.race.index] += 1.0
 	for r in techs.size():
@@ -206,6 +207,7 @@ func cleanup_dead() -> void:
 
 func add_nation(race: RaceDef) -> Nation:
 	var nation := Nation.new()
+	nation.grid_scale = grid_scale
 	nation.id = nations.size()
 	nation.race = race
 	nation.race_id = race.id

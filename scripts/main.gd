@@ -138,9 +138,9 @@ func _apply_tool(world: World, cell: int) -> void:
 		&"war":
 			GodTools.declare_war(world, _selected_nation, world.owner[cell])
 		&"raise":
-			GodTools.reshape(world, cell, _tool_params.get("radius", 3), 0.12)
+			GodTools.reshape(world, cell, int(_tool_params.get("radius", 3)) * world.grid_scale, 0.12)
 		&"lower":
-			GodTools.reshape(world, cell, _tool_params.get("radius", 3), -0.12)
+			GodTools.reshape(world, cell, int(_tool_params.get("radius", 3)) * world.grid_scale, -0.12)
 		&"hero":
 			GodTools.spawn_hero(world, cell)
 		&"source":

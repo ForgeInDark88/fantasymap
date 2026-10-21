@@ -248,7 +248,7 @@ func _draw_nation_labels(world: World, zoom: float) -> void:
 		if not nation.alive or nation.label_cell < 0 or nation.cell_count <= 0:
 			continue
 		# Размер подписи растёт с площадью страны.
-		var world_size := clampf(sqrt(nation.cell_count) * MapRenderer.CELL_SIZE * 0.25, 8.0, 110.0)
+		var world_size := clampf(sqrt(nation.cell_count) * MapRenderer.cell_size * 0.25, 8.0, 110.0)
 		var screen_size := world_size * zoom
 		if screen_size < 9.0 or screen_size > 56.0:
 			continue
@@ -346,7 +346,7 @@ func _draw_scars(world: World, zoom: float) -> void:
 		var col: Color = SCAR_COLORS.get(s.kind, Color(0.5, 0.5, 0.5, 0.3))
 		var left := clampf((int(s.until) - world.year) / 5.0, 0.25, 1.0)
 		col.a *= left
-		var r: float = s.radius * MapRenderer.CELL_SIZE
+		var r: float = s.radius * MapRenderer.BASE_CELL_SIZE  # радиус следа — в базовых клетках
 		draw_circle(pos, r, col)
 		draw_arc(pos, r, 0.0, TAU, 32, Color(col, minf(1.0, col.a * 1.6)), 1.5 / zoom)
 	if zoom < 0.6:
@@ -602,7 +602,7 @@ func _draw_region_labels(world: World, zoom: float) -> void:
 	var view := _visible_rect()
 	var inv := Vector2.ONE / zoom
 	for region in world.regions:
-		if region.name.is_empty() or region.cells.size() < 12:
+		if region.name.is_empty() or world.gbi(region.cells.size()) < 12:
 			continue
 		var pos := renderer.cell_center(region.center)
 		if not view.has_point(pos) or world.city_cell[region.center] >= 0:

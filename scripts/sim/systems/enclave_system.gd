@@ -110,15 +110,15 @@ static func absorb(world: World, nation: Nation, dry_run: bool = false) -> int:
 					encloser = -1  # несколько соседей — не анклав
 			if encloser == -1:
 				break
-		if encloser < 0 or (coastal and piece.size() >= MIN_COASTAL_POCKET):
+		if encloser < 0 or (coastal and piece.size() >= world.gai(MIN_COASTAL_POCKET)):
 			continue
 		found += 1
 		if dry_run:
 			continue
 		for c in piece:
 			world.set_owner(c, encloser)
-		if piece.size() >= 4:
+		if piece.size() >= world.gai(4):
 			world.log_event(&"conquest", "Отрезанные земли %s (%d кл.) перешли к государству %s." % [
-				nation.short_name, piece.size(), world.nations[encloser].short_name],
+				nation.short_name, world.gbi(piece.size()), world.nations[encloser].short_name],
 					PackedInt32Array([nation.id, encloser]))
 	return found

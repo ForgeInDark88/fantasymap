@@ -97,12 +97,14 @@ static func _goods_of(world: World, region: Region) -> PackedFloat32Array:
 			var x: float = g.biomes.get(bid, 0.0)
 			if river:
 				x += g.river
+			# Клетка мелкой сетки даёт 1/scale² (месторождений же столько же — их не делим).
+			x = GridScale.per_cell(world.grid_scale, x)
 			if dep > 0 and g.deposit != &"" and deposits[dep - 1].id == g.deposit:
 				x += g.deposit_amount
 			v[i] += x
 	if region.coastal:
 		for i in n:
-			v[i] += (goods[i] as GoodDef).coastal * region.cells.size() * 0.35
+			v[i] += (goods[i] as GoodDef).coastal * world.gb(region.cells.size()) * 0.35
 	return v
 
 

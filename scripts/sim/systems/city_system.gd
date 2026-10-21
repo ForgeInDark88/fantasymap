@@ -63,7 +63,7 @@ func _city_weight(world: World, city: City) -> float:
 
 func _maybe_found_city(world: World, nation: Nation) -> void:
 	var race := nation.race
-	if nation.cells.size() < race.cells_per_city * (nation.city_ids.size() + 1):
+	if world.gbi(nation.cells.size()) < race.cells_per_city * (nation.city_ids.size() + 1):
 		return
 	if nation.stock[Goods.WOOD] < FOUND_COST_WOOD or nation.stock[Goods.GOLD] < FOUND_COST_GOLD:
 		return

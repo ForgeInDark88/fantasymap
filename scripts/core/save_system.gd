@@ -52,6 +52,8 @@ static func load_world(path: String) -> World:
 
 
 static func to_dict(world: World) -> Dictionary:
+	# Карты ×2 и крупнее: большие массивы клеток — сжатыми (×1 — как прежде).
+	compress_cells = world.grid_scale > 1
 	var map := world.map
 	var s := map.settings
 	var regions := []
@@ -97,7 +99,9 @@ static func to_dict(world: World) -> Dictionary:
 		"version": VERSION,
 		"settings": {"width": s.width, "height": s.height, "seed": s.world_seed, "land": s.land_fraction,
 			"continents": s.continents, "rivers": s.river_density, "climate": s.temperature_bias,
-			"nation_count": s.nation_count, "races": Array(s.enabled_races).map(func(r: StringName) -> String: return str(r))},
+			"nation_count": s.nation_count, "races": Array(s.enabled_races).map(func(r: StringName) -> String: return str(r))}.merged(
+				# Масштаб сетки пишется только при ×2 и выше: сохранение ×1 — то же, что до этапа 12.A.
+				{"grid_scale": s.grid_scale} if s.grid_scale != 1 else {}),
 		"date": [world.year, world.month, world.day],
 		"rng": [str(world.rng.seed), str(world.rng.state)],
 		"map": {
@@ -165,12 +169,14 @@ static func from_dict(data: Dictionary) -> World:
 	s.river_density = st.rivers
 	s.temperature_bias = st.climate
 	s.nation_count = int(st.nation_count)
+	# Старые сохранения — без поля: масштаб ×1.
+	s.grid_scale = GridScale.valid(int(st.get("grid_scale", 1)))
 	var races: Array[StringName] = []
 	for r in st.races:
 		races.append(StringName(r))
 	s.enabled_races = races
 
-	var map := WorldMap.new(s.width, s.height)
+	var map := WorldMap.new(s.cell_width(), s.cell_height())
 	map.settings = s
 	var m: Dictionary = data.map
 	map.elevation = _raw(m.elevation).to_float32_array()
@@ -208,6 +214,7 @@ static func from_dict(data: Dictionary) -> World:
 	# Клетки передаются в сохранённом порядке — от него зависят случайные выборы.
 	for nd in data.nations:
 		world.nations.append(_restore_nation(nd))
+		world.nations[-1].grid_scale = world.grid_scale
 	world.cell_race = _raw(cells.race)
 	for k in data.nations.size():
 		for c in _raw(data.nations[k].cells).to_int32_array():

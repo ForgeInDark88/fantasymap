@@ -48,7 +48,7 @@ static func alive_tribes(world: World) -> Array[Tribe]:
 static func _wild_regions(world: World) -> Array[Region]:
 	var res: Array[Region] = []
 	for r in world.regions:
-		if r.cells.size() >= 4 and r.owner_counts.is_empty():
+		if r.cells.size() >= world.gai(4) and r.owner_counts.is_empty():
 			res.append(r)
 	return res
 
@@ -155,7 +155,7 @@ func tick_day(world: World) -> void:
 func tick_year(world: World) -> void:
 	var wild := 0
 	for r in world.regions:
-		if r.cells.size() >= 4 and r.owner_counts.is_empty():
+		if r.cells.size() >= world.gai(4) and r.owner_counts.is_empty():
 			wild += 1
 	var limit := mini(MAX_TRIBES, wild / REGIONS_PER_TRIBE)
 	if alive_tribes(world).size() < limit and world.rng.randf() < SPAWN_CHANCE:
@@ -177,7 +177,7 @@ func _month(world: World, t: Tribe) -> void:
 		if not t.alive:
 			return
 		region = world.regions[t.region]
-	var cap := minf(MAX_STRENGTH, 1500.0 + region.cells.size() * 120.0 * (2.0 if t.horde else 1.0))
+	var cap := minf(MAX_STRENGTH, 1500.0 + world.gb(region.cells.size()) * 120.0 * (2.0 if t.horde else 1.0))
 	t.strength = minf(cap, t.strength * (1.0 + t.def.growth / 12.0))
 	var chance := t.def.raid_chance * (HORDE_RAID_MULT if t.horde else 1.0)
 	if rng.randf() < chance:
@@ -195,7 +195,7 @@ func _month(world: World, t: Tribe) -> void:
 		world.count(&"hordes")
 		world.log_event(&"tribe", "Кочевые роды сошлись в крае %s: %s ищет новых пастбищ и добычи." % [_rname(region), t.label()])
 	if t.horde:
-		if t.strength >= t.def.found_strength and region.cells.size() >= 8 and rng.randf() < FOUND_CHANCE:
+		if t.strength >= t.def.found_strength and region.cells.size() >= world.gai(8) and rng.randf() < FOUND_CHANCE:
 			_found_state(world, t, region)
 			return
 		if rng.randf() < HORDE_CONQUER_CHANCE and _conquer(world, t, region):
@@ -209,7 +209,7 @@ func _wander(world: World, t: Tribe, region: Region) -> void:
 	var options := PackedInt32Array()
 	for nb in region.neighbors:
 		var r := world.regions[nb]
-		if r.cells.size() >= 4 and r.owner_counts.is_empty() and tribe_in(world, nb) == null:
+		if r.cells.size() >= world.gai(4) and r.owner_counts.is_empty() and tribe_in(world, nb) == null:
 			options.append(nb)
 			if t.def.biomes.has(_biome_id(world, r.center)):
 				options.append(nb)
@@ -259,7 +259,7 @@ func _meet_state(world: World, t: Tribe, region: Region) -> void:
 	if n.power() * 0.5 > t.strength or not t.def.nomad:
 		var free := PackedInt32Array()
 		for nb in region.neighbors:
-			if world.regions[nb].owner_counts.is_empty() and world.regions[nb].cells.size() >= 4 and tribe_in(world, nb) == null:
+			if world.regions[nb].owner_counts.is_empty() and world.regions[nb].cells.size() >= world.gai(4) and tribe_in(world, nb) == null:
 				free.append(nb)
 		# Оседлые сильнее держатся за землю: слабое государство не может их вобрать — они уходят.
 		if not t.def.nomad and n.power() * 0.5 <= t.strength and not free.is_empty():

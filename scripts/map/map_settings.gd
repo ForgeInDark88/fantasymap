@@ -11,8 +11,13 @@ const SIZE_PRESETS: Array[Vector2i] = [
 const SIZE_NAMES: Array[String] = ["Маленькая", "Средняя", "Большая", "Огромная"]
 const DEFAULT_SIZE_PRESET := 1
 
+## Размер карты в «базовых» клетках (пресеты — в них же). Фактическая сетка —
+## base × grid_scale по каждой оси: cell_width(), cell_height().
 @export_range(64, 2048) var width: int = 384
 @export_range(64, 2048) var height: int = 240
+## Масштаб сетки (GridScale): 1 — клетка как раньше, 2 — каждая базовая клетка
+## делится на 2×2 (мир тот же, деталей больше).
+@export_range(1, 3) var grid_scale: int = 1
 @export var world_seed: int = 12345
 ## Доля суши (0.15..0.85).
 @export_range(0.15, 0.85) var land_fraction: float = 0.40
@@ -33,6 +38,14 @@ func apply_size_preset(preset: int) -> void:
 	var s := SIZE_PRESETS[clampi(preset, 0, SIZE_PRESETS.size() - 1)]
 	width = s.x
 	height = s.y
+
+
+func cell_width() -> int:
+	return width * grid_scale
+
+
+func cell_height() -> int:
+	return height * grid_scale
 
 
 func size_preset_index() -> int:

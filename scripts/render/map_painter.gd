@@ -73,13 +73,15 @@ static func _paint_population(world: World, out: PackedInt32Array) -> void:
 	var owner := world.owner
 	var cell_race := world.cell_race
 	var cap := world.cell_cap
+	var area := float(world.grid_scale * world.grid_scale)
 	for i in map.cell_count():
 		var o := owner[i]
 		if o < 0:
 			out[i] = empty if map.is_land(i) else water
 			continue
 		var r := cell_race[i]
-		var density := cap[i] * fill[o * races + r] if r != World.NO_RACE else 0.0
+		# Плотность — на базовую клетку (клетка мелкой сетки кормит в scale² раз меньше).
+		var density := cap[i] * fill[o * races + r] * area if r != World.NO_RACE else 0.0
 		out[i] = _density_lut[clampi(int(sqrt(density / 1500.0) * 63.0), 0, 63)]
 
 
@@ -94,13 +96,15 @@ static func _paint_resources(world: World, out: PackedInt32Array) -> void:
 	var stone := Color(0.65, 0.65, 0.7)
 	var metal := Color(0.45, 0.55, 0.8)
 	var deposits := EconomyDB.deposits()
+	# Добыча клетки — на базовую клетку (см. GridScale.per_cell).
+	var area := float(world.grid_scale * world.grid_scale)
 	for i in map.cell_count():
 		var col := palette[map.biome[i]]
 		if map.is_land(i):
 			var base := i * Goods.COUNT
-			col = col.lerp(wood, clampf(world.cell_yield[base + Goods.WOOD], 0.0, 1.0) * 0.45)
-			col = col.lerp(stone, clampf(world.cell_yield[base + Goods.STONE], 0.0, 1.0) * 0.35)
-			col = col.lerp(metal, clampf(world.cell_yield[base + Goods.METAL] * 2.0, 0.0, 1.0) * 0.35)
+			col = col.lerp(wood, clampf(world.cell_yield[base + Goods.WOOD] * area, 0.0, 1.0) * 0.45)
+			col = col.lerp(stone, clampf(world.cell_yield[base + Goods.STONE] * area, 0.0, 1.0) * 0.35)
+			col = col.lerp(metal, clampf(world.cell_yield[base + Goods.METAL] * area * 2.0, 0.0, 1.0) * 0.35)
 			var d := world.deposit[i]
 			if d > 0:
 				col = deposits[d - 1].color
@@ -186,7 +190,8 @@ static func _slope(map: WorldMap, x: int, y: int) -> float:
 	var y1 := mini(y + 1, map.height - 1)
 	var a := maxf(map.elevation[y0 * w + x0], 0.0)
 	var b := maxf(map.elevation[y1 * w + x1], 0.0)
-	return a - b
+	# Уклон — на базовую клетку: на мелкой сетке соседи ближе, разница высот меньше.
+	return (a - b) * (map.settings.grid_scale if map.settings != null else 1)
 
 
 static func _shade(col: Color, slope: float) -> Color:

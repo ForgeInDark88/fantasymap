@@ -28,16 +28,22 @@ var _map: WorldMap
 var _w := 0
 var _h := 0
 var _n := 0
-## Шаг виртуальных координат на одну клетку.
+## Шаг виртуальных координат на одну клетку (и на одну базовую клетку).
 var _scale := 1.0
+var _base_scale := 1.0
+## Масштаб сетки (GridScale): шумы — в виртуальных координатах, поэтому очертания
+## те же при любом масштабе; пороги «на клетку» пересчитываются.
+var _gs := 1
 
 
 func generate(settings: MapSettings) -> WorldMap:
 	_s = settings
-	_w = settings.width
-	_h = settings.height
+	_gs = GridScale.valid(settings.grid_scale)
+	_w = settings.cell_width()
+	_h = settings.cell_height()
 	_n = _w * _h
 	_scale = VIRTUAL_WIDTH / float(_w)
+	_base_scale = VIRTUAL_WIDTH / float(settings.width)
 	_rng.seed = hash(settings.world_seed)
 	_map = WorldMap.new(_w, _h)
 	_map.settings = settings
@@ -390,7 +396,9 @@ func _compute_rivers() -> void:
 			flow[r] += flow[c]
 
 	# Порог растёт медленнее площади клетки: на больших картах рек больше и они детальнее.
-	var threshold := RIVER_BASE_FLOW / _scale / maxf(_s.river_density, 0.05)
+	# Масштаб сетки: сток копится с scale² клеток — порог во столько же раз выше
+	# (реки те же, но тоньше в клетках).
+	var threshold := RIVER_BASE_FLOW / _base_scale / maxf(_s.river_density, 0.05) * (_gs * _gs)
 	var river := _map.river
 	for i in _n:
 		if Biome.is_water(biome[i]):
@@ -410,16 +418,18 @@ func _compute_rivers() -> void:
 		var cx := i % _w
 		var cy := i / _w
 		var boost := 0.1 + 0.04 * river[i]
-		for dy in range(-2, 3):
+		var reach := 2 * _gs
+		for dy in range(-reach, reach + 1):
 			var y := cy + dy
 			if y < 0 or y >= _h:
 				continue
-			for dx in range(-2, 3):
+			for dx in range(-reach, reach + 1):
 				var x := cx + dx
 				if x < 0 or x >= _w:
 					continue
 				var j := y * _w + x
-				var falloff := 1.0 / (1.0 + absi(dx) + absi(dy))
+				# На мелкой сетке реку «видит» вдвое больше её клеток (вдоль русла) — делим на масштаб.
+				var falloff := 1.0 / (1.0 + float(absi(dx) + absi(dy)) / _gs) / _gs
 				moist[j] = minf(1.0, moist[j] + boost * falloff * 0.5)
 
 	_map.biome = biome

@@ -75,7 +75,8 @@ func _pick_site(race: RaceDef, min_dist: float) -> int:
 				continue
 			var p := _map.cell_pos(cell)
 			# Не у самого края карты.
-			if p.x < 3 or p.y < 3 or p.x >= _map.width - 3 or p.y >= _map.height - 3:
+			var edge := 3 * _world.grid_scale
+			if p.x < edge or p.y < edge or p.x >= _map.width - edge or p.y >= _map.height - edge:
 				continue
 			var ok := true
 			for c in _capitals:
@@ -98,19 +99,19 @@ func _found_nation(race: RaceDef, capital_cell: int) -> void:
 	var nation := _world.found_nation(race)
 	_capitals.append(_map.cell_pos(capital_cell))
 
-	var target := clampi(int(_land_cells.size() * START_TERRITORY_SHARE * race.expansion), 8, 600)
+	var target := clampi(int(_land_cells.size() * START_TERRITORY_SHARE * race.expansion), _world.gai(8), _world.gai(600))
 	var claimed := grow_territory(nation, capital_cell, target)
 	_world.add_city(nation, capital_cell, race, true)
 	_world.log_event(&"nation", "Основано государство %s (%s), столица — %s." % [
 		nation.name, race.display_name, _world.cities[nation.capital_city].name], PackedInt32Array([nation.id]))
 
 	# Второй город — в лучшем месте территории, подальше от столицы.
-	if claimed.size() >= 30:
+	if claimed.size() >= _world.gai(30):
 		var cap_pos := _map.cell_pos(capital_cell)
 		var best := -1
 		var best_score := -INF
 		for cell in claimed:
-			var d := Vector2(_map.cell_pos(cell) - cap_pos).length()
+			var d := Vector2(_map.cell_pos(cell) - cap_pos).length() / _world.grid_scale
 			if d < 5.0:
 				continue
 			var score := _world.site_score(race, cell) + minf(d, 12.0) * 0.05

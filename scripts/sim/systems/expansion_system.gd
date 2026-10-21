@@ -26,15 +26,17 @@ func tick(world: World, nation: Nation) -> void:
 	var rng := world.rng
 	var cap := nation.total_capacity()
 	var pressure := clampf(nation.population / cap, 0.0, 1.2) if cap > 0.0 else 1.0
-	var rate := RATE * sqrt(n) * race.expansion * nation.effect(&"expansion_mult") * (0.2 + pressure) * (0.4 + nation.stability * 0.6)
-	nation.expansion_points = minf(nation.expansion_points + rate, rate * 3.0 + 4.0)
+	# Масштаб сетки: клеток в периметре × scale, а клетка — 1/scale² площади: очков × scale.
+	var gs := world.grid_scale
+	var rate := RATE * sqrt(n) * gs * race.expansion * nation.effect(&"expansion_mult") * (0.2 + pressure) * (0.4 + nation.stability * 0.6)
+	nation.expansion_points = minf(nation.expansion_points + rate, rate * 3.0 + 4.0 * (gs * gs))
 
 	var claimed := 0
 	# Кому расти некуда — лишь изредка «прощупывает» границу (иначе тратим время впустую).
-	var attempts := 10 if nation.stalled_years >= 3 else mini(int(rate * 4.0) + 6, 120)
+	var attempts := 10 * gs if nation.stalled_years >= 3 else mini(int(rate * 4.0) + 6, 120 * gs * gs)
 	# Много промахов подряд — свободной земли у границы почти нет, дальше не ищем.
 	var misses := 0
-	while attempts > 0 and nation.expansion_points > 0.0 and misses < MAX_MISSES:
+	while attempts > 0 and nation.expansion_points > 0.0 and misses < MAX_MISSES * gs:
 		attempts -= 1
 		misses += 1
 		var c := nation.cells[rng.randi_range(0, n - 1)]
@@ -80,7 +82,7 @@ func _try_colonize(world: World, nation: Nation) -> void:
 	var best_score := -INF
 	for s in 40:
 		var region := world.regions[world.rng.randi_range(0, world.regions.size() - 1)]
-		if not region.owner_counts.is_empty() or not region.coastal or region.cells.size() < 15:
+		if not region.owner_counts.is_empty() or not region.coastal or region.cells.size() < world.gai(15):
 			continue
 		var center := Vector2(map.cell_pos(region.center))
 		var dist := INF
@@ -101,7 +103,7 @@ func _try_colonize(world: World, nation: Nation) -> void:
 	var cells := Array(best.cells)
 	cells.sort_custom(func(a: int, b: int) -> bool:
 		return Vector2(map.cell_pos(a)).distance_squared_to(center_pos) < Vector2(map.cell_pos(b)).distance_squared_to(center_pos))
-	for c in cells.slice(0, 25):
+	for c in cells.slice(0, world.gai(25)):
 		if world.owner[c] == -1:
 			world.set_owner(c, nation.id)
 	var city := world.add_city(nation, best.center, nation.race, false)

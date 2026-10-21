@@ -67,11 +67,14 @@ static func naga_island(world: World, hero: Hero) -> bool:
 		if map.biome[c] != Biome.OCEAN:
 			continue
 		var p := map.cell_pos(c)
-		if p.x < 12 or p.y < 12 or p.x > map.width - 12 or p.y > map.height - 12:
+		var m := world.gdi(12)
+		if p.x < m or p.y < m or p.x > map.width - m or p.y > map.height - m:
 			continue
 		var clear := true
-		for dy in range(-9, 10, 3):
-			for dx in range(-9, 10, 3):
+		var r := world.gdi(9)
+		var st := world.gdi(3)
+		for dy in range(-r, r + 1, st):
+			for dx in range(-r, r + 1, st):
 				if map.is_land(map.index_of(p.x + dx, p.y + dy)):
 					clear = false
 		if clear:
@@ -80,7 +83,7 @@ static func naga_island(world: World, hero: Hero) -> bool:
 	if center < 0:
 		return false
 	for k in 8:
-		GodTools.reshape(world, center, 6, 0.12)
+		GodTools.reshape(world, center, world.gdi(6), 0.12)
 	if not map.is_land(center):
 		return false
 	var nation := GodTools.create_nation(world, nagas, center, false)
