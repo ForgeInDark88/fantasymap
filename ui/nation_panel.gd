@@ -88,6 +88,16 @@ func refresh(world: World) -> void:
 			(" · жилы: " + ", ".join(caves.filter(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems").map(func(c: Cave) -> String: return c.kind_name()))) if caves.any(func(c: Cave) -> bool: return c.kind == &"mithril" or c.kind == &"gems") else ""])
 	var spies := SpySystem.spies_of(world, nation).size()
 	lines.append("[b]Разведка:[/b] %d очков%s" % [roundi(nation.intel), (" · шпионов на службе: %d" % spies) if spies > 0 else ""])
+	var armies := ArmySystem.armies_of(world, nation.id)
+	if not armies.is_empty():
+		lines.append("[b]Армии:[/b] " + ", ".join(armies.map(func(a: Army) -> String:
+			return "%s %s (%s, дух %d%%%s)" % ["⚓" if a.kind == &"fleet" else "⚔", ArmySystem._num(a.strength(world)),
+				ArmyCard.STATE_NAMES.get(a.state, String(a.state)), roundi(a.morale * 100.0),
+				(", " + ArmySystem.general_name(world, a.general)) if a.general >= 0 else ""])))
+	var gens := world.generals.filter(func(g: Dictionary) -> bool: return g.alive and int(g.nation) == nation.id)
+	if not gens.is_empty():
+		lines.append("[b]Полководцы:[/b] " + ", ".join(gens.slice(0, 5).map(func(g: Dictionary) -> String:
+			return "%s (%d%%%s)" % [g.name, roundi(float(g.skill) * 100.0), ", в плену" if int(g.captured_by) >= 0 else ""])))
 	var orgs := OrgSystem.orgs_of(world, nation.id)
 	if not orgs.is_empty():
 		lines.append("[b]Организации:[/b] " + ", ".join(orgs.map(func(o: Organization) -> String:

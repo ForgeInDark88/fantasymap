@@ -50,6 +50,28 @@ func _run() -> void:
 	await _frames(3)
 	_shot(out_dir, "nation_card.png")
 
+	# Армия в поле: значки, путь и карточка армии (в мирное время — война крупнейшего с соседом).
+	if not world.armies.any(func(x: RefCounted) -> bool: return x.alive and x.kind == &"land"):
+		for o in biggest.borders:
+			if world.nations[o].alive:
+				world.diplomacy.declare_war(world, biggest.id, o, &"territory")
+				break
+		for m in 2:
+			ws.call("step_month")
+	var army: RefCounted = null
+	for a in world.armies:
+		if a.alive and a.kind == &"land" and (army == null or a.state == &"march"):
+			army = a
+	if army != null:
+		bus.army_selected.emit(army)
+		cam.position = renderer.call("cell_center", army.cell)
+		cam.zoom = Vector2.ONE * 1.6
+		cam.set("target_position", cam.position)
+		cam.set("target_zoom", 1.6)
+		await _frames(20)
+		_shot(out_dir, "army.png")
+		bus.army_selected.emit(null)
+
 	for p in ["Летопись", "Статистика", "Герои", "Бог"]:
 		_panel(hud, p, true)
 		await _frames(30)  # панели обновляются по таймеру

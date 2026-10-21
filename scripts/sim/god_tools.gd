@@ -355,3 +355,75 @@ static func hero_child(world: World, cell: int) -> Dictionary:
 static func found_order(world: World, cell: int) -> HeroOrder:
 	var hero := nearest_hero(world, cell)
 	return OrderSystem.found(world, hero) if hero != null else null
+
+
+# --- Этап 11.B: армии и флоты ---
+
+static func nearest_army(world: World, cell: int, max_dist: float = 25.0, kind: StringName = &"") -> Army:
+	var p := Vector2(world.map.cell_pos(cell))
+	var best: Army = null
+	var best_d := max_dist
+	for a in world.armies:
+		if a.alive and a.cell >= 0 and (kind == &"" or a.kind == kind):
+			var d := p.distance_to(Vector2(world.map.cell_pos(a.cell)))
+			if d < best_d:
+				best_d = d
+				best = a
+	return best
+
+
+## Создать армию владельца клетки (в его первой войне или гарнизоном) — в регионе клетки.
+static func create_army(world: World, cell: int, kind: StringName = &"land") -> Army:
+	var o := world.owner[cell]
+	if o < 0 or world.region_of[cell] < 0:
+		return null
+	var n := world.nations[o]
+	var wars := world.diplomacy.wars_of(o)
+	n.army += 3000.0
+	var a := ArmySystem.create(world, n, wars[0].id if not wars.is_empty() else -1, kind, world.region_of[cell])
+	a.state = &"idle"
+	world.log_event(&"battle", "По воле богов %s собирает %s в регионе %s." % [n.name, "флот" if kind == &"fleet" else "новое войско",
+		world.region_label(cell, "диких земель")], PackedInt32Array([o]))
+	return a
+
+
+static func destroy_army(world: World, cell: int) -> bool:
+	var a := nearest_army(world, cell)
+	if a == null:
+		return false
+	if a.nation >= 0:
+		var n := world.nations[a.nation]
+		n.army -= n.army * a.share * 0.6
+	world.log_event(&"battle", "Гнев богов обрушился на войско: %s уничтожена." % a.label(world),
+			PackedInt32Array([a.nation]) if a.nation >= 0 else PackedInt32Array())
+	ArmySystem.disband(world, a)
+	return true
+
+
+static func launch_fleet(world: World, cell: int) -> Army:
+	var o := world.owner[cell]
+	if o < 0:
+		return null
+	var n := world.nations[o]
+	for id in n.city_ids:
+		if world.cities[id].buildings.has(&"harbor"):
+			return create_army(world, world.cities[id].cell, &"fleet")
+	return null
+
+
+## Бунт армии: войско восстаёт, его край провозглашает свою державу.
+static func mutiny(world: World, cell: int) -> Nation:
+	var a := nearest_army(world, cell, 25.0, &"land")
+	if a == null or a.nation < 0:
+		return null
+	var n := world.nations[a.nation]
+	var rebels := incite_rebellion(world, a.cell)
+	if rebels == null:
+		return null
+	var defect := n.army * a.share * 0.5
+	n.army -= defect
+	rebels.army += defect
+	ArmySystem.disband(world, a)
+	world.log_event(&"battle", "Войско государства %s подняло бунт и перешло на сторону мятежников — %s." % [n.name, rebels.name],
+			PackedInt32Array([n.id, rebels.id]))
+	return rebels

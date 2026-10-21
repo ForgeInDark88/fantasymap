@@ -68,6 +68,19 @@ func _on_map_clicked(pos: Vector2) -> void:
 	if _tool != &"":
 		_apply_tool(world, cell)
 		return
+	# Клик по значку армии — карточка армии.
+	var arad := 10.0 / _camera.zoom.x
+	var army: Army = null
+	for a in world.armies:
+		if a.alive and a.cell >= 0:
+			var d := _overlay.army_visual_pos(a).distance_to(pos)
+			if d < arad:
+				arad = d
+				army = a
+	if army != null:
+		EventBus.army_selected.emit(army)
+		return
+	EventBus.army_selected.emit(null)
 	# Клик по значку героя — окно героя.
 	var radius := 9.0 / _camera.zoom.x
 	var best: Hero = null
@@ -126,6 +139,16 @@ func _apply_tool(world: World, cell: int) -> void:
 			CrisisSystem.start(world, _tool_params.crisis)
 		&"road":
 			GodTools.road_from(world, cell)
+		&"army":
+			GodTools.create_army(world, cell)
+		&"fleet":
+			GodTools.launch_fleet(world, cell)
+		&"destroy_army":
+			GodTools.destroy_army(world, cell)
+		&"mutiny":
+			var rebels := GodTools.mutiny(world, cell)
+			if rebels != null:
+				EventBus.nation_selected.emit(rebels.id)
 		&"player_travel":
 			if world.region_of[cell] >= 0:
 				var res := PlayerSystem.command(world, &"travel", world.region_of[cell])

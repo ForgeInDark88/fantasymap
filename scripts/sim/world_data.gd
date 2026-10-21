@@ -48,6 +48,8 @@ var city_cell := PackedInt32Array()
 var city_block := PackedByteArray()
 ## Растёт при каждом изменении границ — рендер по нему понимает, что пора обновиться.
 var ownership_version := 0
+## Растёт при постройке и гибели дорог (кэши дорог в системах; не сохраняется).
+var road_version := 0
 ## Метки для обходов карты без выделения памяти: клетка посещена, если mark[c] == stamp.
 var mark := PackedInt32Array()
 var _stamp := 0
@@ -94,6 +96,11 @@ var orders: Array[HeroOrder] = []
 ## ("n<id>" — у державы, "r<id>" — у веры, "o<id>" — у ордена), месяцы без команд.
 ## Растянутые удары бедствий (StageSystem): {nation, months, step, pop, army, stab, gold, food, id}.
 var staged_effects: Array[Dictionary] = []
+## Армии, флоты и пираты (ArmySystem), полководцы {id, name, nation, skill, born,
+## alive, captured_by, hero, army, parent, wins}, последние битвы {region, year, month, day, war, winner, fallen}.
+var armies: Array[Army] = []
+var generals: Array[Dictionary] = []
+var recent_battles: Array[Dictionary] = []
 var player := -1
 ## Наблюдатель за событиями мира (не сохраняется): интерфейс передаёт через него
 ## записи летописи и счётчики в EventBus — логика мира об EventBus не знает.

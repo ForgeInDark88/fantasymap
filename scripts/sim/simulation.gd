@@ -41,6 +41,7 @@ var legacies := LegacySystem.new()
 var lineages := LineageSystem.new()
 var orders := OrderSystem.new()
 var gods := GodSystem.new()
+var armies := ArmySystem.new()
 
 var profile := false
 ## Имя системы → [суммарные мкс, худший вызов мкс].
@@ -86,9 +87,11 @@ func step_day(world: World) -> void:
 				(s[1] as Callable).call(world, nation)
 	if profile:
 		_t("wars", wars.tick_day.bind(world))
+		_t("armies", armies.tick_day.bind(world))
 		_t("heroes", heroes.tick_day.bind(world))
 	else:
 		wars.tick_day(world)
+		armies.tick_day(world)
 		heroes.tick_day(world)
 	world.cleanup_dead()
 
@@ -131,6 +134,7 @@ var _nation_systems: Array = []
 
 
 func _init() -> void:
+	armies.wars = wars
 	_nation_systems = [
 		["economy", economy.tick], ["techs", techs.tick], ["roads", roads.tick], ["population", population.tick],
 		["expansion", expansion.tick], ["cities", cities.tick], ["rulers", rulers.tick], ["unrest", unrest.tick],

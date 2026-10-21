@@ -1,5 +1,5 @@
 extends SceneTree
-## «Дым»-прогон всех систем (этапы 1–10): долгая история на нескольких seed и
+## «Дым»-прогон всех систем (этапы 1–11): долгая история на нескольких seed и
 ## размерах карты без ошибок и без вырождения мира — не все погибли, никто не
 ## захватил весь мир, нет вечной чумы, население живо; в конце — сохранение
 ## и загрузка совпадают и мир живёт дальше одинаково.
@@ -44,11 +44,15 @@ func _summary(world: World) -> String:
 	var pop := 0.0
 	for n in alive:
 		pop += n.population
-	return "государств %d (всего %d), население %s, вер %d, техн. %d, путей %d, руин %d, кризисов %d, эпох %d, героев %d" % [
+	var battles := 0
+	for w in world.diplomacy.past_wars + world.diplomacy.wars:
+		battles += w.battles
+	return "государств %d (всего %d), население %s, вер %d, техн. %d, путей %d, руин %d, кризисов %d, эпох %d, героев %d, армий %d, битв %d, полководцев %d" % [
 		alive.size(), world.nations.size(), "%.1f млн" % (pop / 1e6), ReligionSystem.alive_count(world),
 		alive.reduce(func(a: int, n: Nation) -> int: return maxi(a, n.techs.size()), 0),
 		world.roads.filter(func(r: Road) -> bool: return r.alive).size(), world.ruins.size(),
-		world.crisis_history.size() + (0 if world.crisis.is_empty() else 1), world.eras.size(), world.heroes.size()]
+		world.crisis_history.size() + (0 if world.crisis.is_empty() else 1), world.eras.size(), world.heroes.size(),
+		world.armies.filter(func(a: Army) -> bool: return a.alive).size(), battles, world.generals.size()]
 
 
 ## Мир не выродился.
@@ -68,6 +72,16 @@ func _check_alive(world: World, where: String) -> void:
 	_expect(owned > 0 and biggest < owned * 0.6, "%s: одно государство захватило мир (%d из %d клеток)" % [where, biggest, owned])
 	_expect(plague <= alive.size() / 2, "%s: вечная чума (%d из %d держав)" % [where, plague, alive.size()])
 	_expect(pop > 10000.0, "%s: население вымерло" % where)
+	# Армии: только у живых государств, в существующих регионах; число — по войнам, а не лавиной.
+	var armies := 0
+	for a in world.armies:
+		if not a.alive:
+			continue
+		armies += 1
+		if a.kind != &"pirates" and (a.nation < 0 or not world.nations[a.nation].alive or a.region < 0 or a.region >= world.regions.size()):
+			_expect(false, "%s: армия вне мира (%s)" % [where, a.label(world) if a.nation >= 0 else "?"])
+			return
+	_expect(armies <= 4 * world.diplomacy.wars.size() + PirateSystem.MAX + 8, "%s: армий слишком много (%d при %d войнах)" % [where, armies, world.diplomacy.wars.size()])
 	for n in alive:
 		if n.stability < 0.0 or n.stability > 1.0 or is_nan(n.population) or n.army < 0.0:
 			_expect(false, "%s: некорректное состояние %s" % [where, n.name])

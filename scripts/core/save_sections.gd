@@ -218,6 +218,9 @@ static func _lore_dict(world: World) -> Dictionary:
 			"journal": world.player_journal, "rep": world.player_rep, "idle": world.player_idle},
 		"bookmarks": world.bookmarks,
 		"staged": world.staged_effects,
+		"armies": world.armies.filter(func(a: Army) -> bool: return a.alive).map(_army_dict),
+		"generals": world.generals,
+		"battles": world.recent_battles,
 		"quests": world.player_quests, "offers": world.player_offers,
 	}
 
@@ -281,6 +284,39 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		world.player_quests.append(PlayerQuests.restore(q))
 	for q in lore.get("offers", []):
 		world.player_offers.append(PlayerQuests.restore(q))
+	# Армии (этап 11.B): id — по порядку сохранения; ссылки полководцев — пересчитать.
+	var remap := {}
+	for ad in lore.get("armies", []):
+		var a := Army.new()
+		a.id = world.armies.size()
+		remap[int(ad.id)] = a.id
+		a.nation = int(ad.nation)
+		a.war = int(ad.war)
+		a.kind = StringName(ad.kind)
+		a.share = ad.share
+		a.own_strength = ad.own
+		a.region = int(ad.region)
+		a.cell = int(ad.cell)
+		a.path = PackedInt32Array(ad.path)
+		a.eta = int(ad.eta)
+		a.state = StringName(ad.state)
+		a.state_until = int(ad.until)
+		a.morale = ad.morale
+		a.supply = ad.supply
+		a.general = int(ad.general)
+		a.created_year = int(ad.year)
+		a.battles = int(ad.battles)
+		a.wins = int(ad.wins)
+		a.target = int(ad.target)
+		a.allied = float(ad.get("allied", 0.0))
+		world.armies.append(a)
+	for g in lore.get("generals", []):
+		world.generals.append({"id": int(g.id), "name": str(g.name), "nation": int(g.nation), "skill": float(g.skill),
+			"born": int(g.born), "alive": bool(g.alive), "captured_by": int(g.captured_by), "hero": int(g.hero),
+			"army": remap.get(int(g.army), -1) if int(g.army) >= 0 else -1, "parent": int(g.parent), "wins": int(g.wins)})
+	for b in lore.get("battles", []):
+		world.recent_battles.append({"region": int(b.region), "year": int(b.year), "month": int(b.month), "day": int(b.day),
+			"war": int(b.war), "winner": int(b.winner), "fallen": float(b.fallen)})
 	for e in lore.get("staged", []):
 		world.staged_effects.append({"nation": int(e.nation), "months": int(e.months), "step": int(e.step), "pop": float(e.pop),
 			"army": float(e.army), "stab": float(e.stab), "gold": float(e.gold), "food": float(e.food), "id": str(e.id)})
@@ -305,11 +341,18 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		world.nations[i].god_boon_until = int(lore.boons[i][1])
 
 
+static func _army_dict(a: Army) -> Dictionary:
+	return {"id": a.id, "nation": a.nation, "war": a.war, "kind": str(a.kind), "share": a.share, "own": a.own_strength,
+		"region": a.region, "cell": a.cell, "path": Array(a.path), "eta": a.eta, "state": str(a.state), "until": a.state_until,
+		"morale": a.morale, "supply": a.supply, "general": a.general, "year": a.created_year, "battles": a.battles,
+		"wins": a.wins, "target": a.target, "allied": a.allied}
+
+
 static func _war_dict(w: War) -> Dictionary:
 	return {"id": w.id, "name": w.name, "cause": str(w.cause), "start": w.start_year, "end": w.end_year,
 		"first": [w.first_attacker, w.first_defender], "att": Array(w.attackers), "def": Array(w.defenders), "score": w.score, "siege": w.siege_region,
 		"siege_side": w.siege_side, "progress": w.siege_progress, "landing": w.siege_landing,
-		"month": w.month, "day": w.day, "battles": w.battles, "casualties": w.casualties, "active": w.active}
+		"month": w.month, "day": w.day, "battles": w.battles, "casualties": w.casualties, "active": w.active, "lb": w.last_battle, "rate": w.siege_rate, "slog": w.siege_logged}
 
 
 static func _restore_nation(nd: Dictionary) -> Nation:
@@ -444,4 +487,7 @@ static func _restore_war(wd: Dictionary) -> War:
 	w.battles = int(wd.battles)
 	w.casualties = wd.casualties
 	w.active = wd.active
+	w.last_battle = int(wd.get("lb", -100000))
+	w.siege_rate = float(wd.get("rate", 0.0))
+	w.siege_logged = int(wd.get("slog", -1))
 	return w

@@ -26,7 +26,9 @@ static func attach(control: Control, shift: Vector2 = Vector2(0, SHIFT)) -> void
 
 
 static func _kill(control: Control) -> void:
-	var tw: Variant = control.get_meta("ui_anim_tween", null)
+	if not control.has_meta("ui_anim_tween"):
+		return
+	var tw: Variant = control.get_meta("ui_anim_tween")
 	if tw is Tween and (tw as Tween).is_valid():
 		(tw as Tween).kill()
 

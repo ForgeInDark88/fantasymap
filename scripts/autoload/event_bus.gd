@@ -71,3 +71,6 @@ signal achievements_window_requested
 
 ## Камера следует за героем (-1 — перестать).
 signal follow_hero_requested(hero_id: int)
+
+## Выбрана армия на карте (null — снять выбор).
+signal army_selected(army: Army)

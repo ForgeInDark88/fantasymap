@@ -32,6 +32,14 @@ const HERO_JUMP := 400.0
 var _marks: Dictionary = {}
 var _route_alpha := 0.0
 var _animating := false
+## Армии: видимая позиция (по объекту — id армий пересчитываются), выбранная армия.
+var _army_pos: Dictionary = {}
+var _selected_army: Army = null
+const ARMY_K := 2.2
+## Вспышки битв: {pos, t} (t — 0..1), сколько битв уже показано.
+var _flashes: Array = []
+var _battles_seen := -1
+const FLASH_TIME := 1.4
 
 
 func _ready() -> void:
@@ -41,6 +49,10 @@ func _ready() -> void:
 		_selected = -1
 		_hero_pos.clear()
 		_marks.clear()
+		_army_pos.clear()
+		_flashes.clear()
+		_battles_seen = -1
+		_selected_army = null
 		queue_redraw())
 	EventBus.map_mode_changed.connect(func(m: int) -> void:
 		_mode = m
@@ -51,6 +63,9 @@ func _ready() -> void:
 	EventBus.year_passed.connect(func(_y: int) -> void: _world_dirty = true)
 	EventBus.hero_selected.connect(func(id: int) -> void:
 		_selected_hero = id
+		queue_redraw())
+	EventBus.army_selected.connect(func(a: Army) -> void:
+		_selected_army = a
 		queue_redraw())
 
 
@@ -126,6 +141,42 @@ func _animate(delta: float) -> void:
 			moving = true
 		elif goal == 0.0:
 			_marks.erase(title)
+	# Армии плавно идут между регионами.
+	var army_alive := {}
+	for a in world.armies:
+		if not a.alive or a.cell < 0:
+			continue
+		var key := a.get_instance_id()
+		army_alive[key] = true
+		var target := army_point(a)
+		var cur: Vector2 = _army_pos.get(key, target)
+		if not smooth or cur.distance_to(target) > HERO_JUMP * 1.5:
+			cur = target
+		else:
+			cur = SmoothSettings.damp_v(cur, target, ARMY_K, delta)
+			if cur.distance_to(target) < 0.3:
+				cur = target
+		if cur != target:
+			moving = true
+		_army_pos[key] = cur
+	if _army_pos.size() > army_alive.size() + 32:
+		for k in _army_pos.keys():
+			if not army_alive.has(k):
+				_army_pos.erase(k)
+	# Вспышки новых битв (только отображение).
+	var seen := world.recent_battles.size()
+	if _battles_seen < 0 or seen < _battles_seen:
+		_battles_seen = seen
+	if SmoothSettings.event_fx and seen > _battles_seen:
+		for i in range(_battles_seen, seen):
+			var b: Dictionary = world.recent_battles[i]
+			_flashes.append({"pos": renderer.cell_center(world.regions[int(b.region)].center), "t": 0.0})
+	_battles_seen = seen
+	for f in _flashes:
+		f.t = float(f.t) + delta / FLASH_TIME
+	_flashes = _flashes.filter(func(f: Dictionary) -> bool: return float(f.t) < 1.0)
+	if not _flashes.is_empty():
+		moving = true
 	var route_goal := 1.0 if world.player >= 0 and not world.player_cmd.is_empty() and world.player_cmd.kind == "travel" else 0.0
 	_route_alpha = SmoothSettings.damp(_route_alpha, route_goal, 6.0, delta) if smooth else route_goal
 	if absf(_route_alpha - route_goal) > 0.01:
@@ -133,6 +184,22 @@ func _animate(delta: float) -> void:
 	if moving or _animating:
 		queue_redraw()
 	_animating = moving
+
+
+## Где стоит значок армии: центр региона; флот — у берега, со сдвигом; несколько армий в регионе — веером.
+func army_point(a: Army) -> Vector2:
+	var p := renderer.cell_center(a.cell)
+	var offset := Vector2(((a.nation * 37) % 11 - 5) * 1.6, ((a.nation * 53) % 9 - 4) * 1.6)
+	if a.kind == &"fleet":
+		offset += Vector2(10, 8)
+	elif a.kind == &"pirates":
+		offset += Vector2(-10, 9)
+	return p + offset
+
+
+## Видимая позиция армии (для значка и клика).
+func army_visual_pos(a: Army) -> Vector2:
+	return _army_pos.get(a.get_instance_id(), army_point(a))
 
 
 ## Плавное проявление по зуму: 0 ниже from, 1 выше to.
@@ -169,6 +236,7 @@ func _draw() -> void:
 		_draw_sieges(world, zoom)
 		_draw_landmarks(world, zoom)
 		_draw_player_route(world, zoom)
+		_draw_armies(world, zoom)
 		_draw_heroes(world, zoom)
 	draw_set_transform(Vector2.ZERO)
 
@@ -590,3 +658,72 @@ func _draw_landmarks(world: World, zoom: float) -> void:
 func _visible_rect() -> Rect2:
 	var inv := get_viewport().get_canvas_transform().affine_inverse()
 	return inv * get_viewport_rect()
+
+
+## Армии (щит цвета державы со значком расы и численностью), флоты (ладья),
+## пираты (чёрный флаг); у выбранной — путь пунктиром; вспышки битв.
+func _draw_armies(world: World, zoom: float) -> void:
+	var inv := Vector2.ONE / zoom
+	var view := _visible_rect().grow(30.0 / zoom)
+	var scale := clampf(zoom, 0.65, 1.15)
+	var fade := zoom_fade(zoom, 0.35, 0.55)
+	for f in _flashes:
+		var t := float(f.t)
+		draw_set_transform(f.pos, 0.0, inv)
+		var r := (10.0 + 26.0 * t) * scale
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.75, 0.35, 0.28 * (1.0 - t)))
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 28, Color(1.0, 0.9, 0.6, 0.6 * (1.0 - t)), 2.0)
+	if fade <= 0.0:
+		draw_set_transform(Vector2.ZERO)
+		return
+	if _selected_army != null and _selected_army.alive and not _selected_army.path.is_empty():
+		draw_set_transform(Vector2.ZERO)
+		var prev := army_visual_pos(_selected_army)
+		var col := world.nations[_selected_army.nation].color.lightened(0.4) if _selected_army.nation >= 0 else Color.WHITE
+		col.a = 0.85
+		for rid in _selected_army.path:
+			var p := renderer.cell_center(world.regions[rid].center)
+			draw_dashed_line(prev, p, col, 2.0 / zoom, 6.0 / zoom)
+			prev = p
+		draw_circle(prev, 4.0 / zoom, col)
+	for a in world.armies:
+		if not a.alive or a.cell < 0:
+			continue
+		var pos := army_visual_pos(a)
+		if not view.has_point(pos):
+			continue
+		draw_set_transform(pos, 0.0, inv)
+		var s := 7.0 * scale
+		var dark := Color(0.05, 0.05, 0.08, 0.9 * fade)
+		if a.kind == &"pirates":
+			draw_line(Vector2(-s * 0.6, s), Vector2(-s * 0.6, -s), Color(0.8, 0.75, 0.6, fade), 1.5)
+			draw_colored_polygon(PackedVector2Array([Vector2(-s * 0.6, -s), Vector2(s, -s * 0.6), Vector2(-s * 0.6, -s * 0.1)]), Color(0.05, 0.05, 0.05, fade))
+			continue
+		var n := world.nations[a.nation]
+		var fill := n.color.lightened(0.2)
+		fill.a = fade
+		if a.kind == &"fleet":
+			var hull := PackedVector2Array([Vector2(-s, 0), Vector2(s, 0), Vector2(s * 0.6, s * 0.6), Vector2(-s * 0.6, s * 0.6)])
+			draw_colored_polygon(hull, dark)
+			draw_colored_polygon(PackedVector2Array([Vector2(-s * 0.1, -s), Vector2(s * 0.7, -s * 0.05), Vector2(-s * 0.1, -s * 0.05)]), fill)
+			draw_line(Vector2(-s * 0.1, -s), Vector2(-s * 0.1, 0), dark, 1.5)
+			continue
+		# Щит: тёмная кайма, цвет державы, значок расы.
+		var shield := PackedVector2Array([Vector2(-s, -s), Vector2(s, -s), Vector2(s, s * 0.3), Vector2(0, s * 1.2), Vector2(-s, s * 0.3)])
+		var rim := PackedVector2Array()
+		for p in shield:
+			rim.append(p * 1.22)
+		draw_colored_polygon(rim, dark)
+		draw_colored_polygon(shield, fill)
+		if n.race.icon != null:
+			draw_texture_rect(n.race.icon, Rect2(-s * 0.7, -s * 0.85, s * 1.4, s * 1.4), false, Color(1, 1, 1, fade))
+		if a == _selected_army:
+			draw_arc(Vector2.ZERO, s * 1.9, 0.0, TAU, 24, Color(1, 1, 1, fade), 2.0)
+		if a.state == &"siege":
+			draw_arc(Vector2.ZERO, s * 1.55, -PI * 0.5, PI * 1.5, 20, Color(0.95, 0.35, 0.25, 0.8 * fade), 1.5)
+		if zoom >= 1.2:
+			var label := ArmySystem._num(a.strength(world))
+			var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+			draw_string_outline(_font, Vector2(-w * 0.5, s * 1.25 + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, 3, Color(0, 0, 0, 0.85 * fade))
+			draw_string(_font, Vector2(-w * 0.5, s * 1.25 + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 0.95, 0.85, fade))
+	draw_set_transform(Vector2.ZERO)

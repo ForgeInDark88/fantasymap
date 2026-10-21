@@ -336,10 +336,12 @@ static func on_battle(world: World, war: War, winner: int) -> void:
 	var rng := world.rng
 	var sides := {1: [], -1: []}
 	for h in world.wandering_heroes():
-		for side in [1, -1]:
-			for m in war.members(side):
-				if h.fights_for(m) and not sides[side].has(h):
-					sides[side].append(h)
+		var s1 := war.side_of(h.nation_id) if h.nation_id >= 0 else 0
+		var s2 := war.side_of(h.ally_nation) if h.ally_nation >= 0 else 0
+		if s1 == 1 or s2 == 1:
+			sides[1].append(h)
+		if s1 == -1 or s2 == -1:
+			sides[-1].append(h)
 	for h in sides[winner]:
 		h.add_xp(world, 1.0)
 	for h in sides[-winner]:
