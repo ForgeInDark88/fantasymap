@@ -28,18 +28,24 @@ const MIN_ARMY := 400.0
 ## своя земля, свои командиры) вливаются в армию вождя. Флот — только у вождя.
 const MINOR_ALLY := 0.3
 const ALLIED_SHARE := 0.5
-## Дней на шаг по региону (× рельеф; дорогой — вдвое быстрее), сбор и отступление.
-const STEP_DAYS := 8.0
+## Сбор в столице, отступление (не меньше), дорога домой после войны (не больше), дней.
 const MUSTER_DAYS := 15
 const RETREAT_DAYS := 30
+const HOME_DAYS := 120
+## Встреча врагов: ближе стольких базовых клеток — битва (дальше, в пределах
+## дозора профиля, — идут навстречу); «враг у ворот» — ополчение города выходит
+## навстречу ближе GATES_RANGE, его сила — MILITIA_SHARE горожан.
+const CONTACT := 1.5
+## Противостояние без битвы (рано для новой) дольше стольких суток — слабейший отходит.
+const STANDOFF_DAYS := 30
+const GATES_RANGE := 4.0
+const MILITIA_SHARE := 0.06
 ## Осада: дней на «одну прежнюю годовую осаду» (скорость как раньше, но непрерывно).
 const SIEGE_DAYS := 90.0
 ## Между битвами одной войны — не меньше дней.
 const BATTLE_COOLDOWN := 150
 ## Счёт за битву — доля прежнего «генерального сражения раз в год» (битв теперь больше).
 const BATTLE_SCORE := 0.45
-## Морской переход с десантом (дней + на шаг пути).
-const SAIL_DAYS := 40
 ## Снабжение и дух: изменения в месяц.
 const SUPPLY_HOME := 0.25
 const SUPPLY_NEAR := -0.05
@@ -60,6 +66,7 @@ var wars: WarSystem
 ## загруженный мир продолжает историю так же).
 var _road_pairs := {}
 var _road_tick := -1
+var _road_world := 0
 ## Есть ли у государства гавань (кэш на месяц).
 var _ports := {}
 ## Армии по войнам на текущий ход (строится раз за ход) и число войн государств.
@@ -67,6 +74,9 @@ var _war_armies := {}
 var _war_count := {}
 ## Мощь государств на текущий ход (Nation.power() недёшев, а войн с одними и теми же участниками много).
 var _power := {}
+## Город у ворот на войну и день (кэш «врага у ворот»; пересобирается — результат тот же).
+var _gate_city := {}
+var _gate_world := 0
 
 
 static func today(world: World) -> int:
@@ -93,18 +103,23 @@ static func armies_of(world: World, nation_id: int) -> Array[Army]:
 # Создание и роспуск
 # ---------------------------------------------------------------------------
 
-## Новая армия государства (war = -1 — гарнизон или по воле Бога).
-static func create(world: World, nation: Nation, war_id: int, kind: StringName = &"land", region: int = -1) -> Army:
+## Новая армия государства (war = -1 — гарнизон или по воле Бога). Собирается
+## в столице (флот — у гавани); at_cell >= 0 — прямо там (воля Бога).
+static func create(world: World, nation: Nation, war_id: int, kind: StringName = &"land", region: int = -1, at_cell: int = -1) -> Army:
 	var a := Army.new()
 	a.id = world.armies.size()
 	a.nation = nation.id
 	a.war = war_id
 	a.kind = kind
 	a.created_year = world.year
-	if region < 0:
-		region = _home_region(world, nation, kind)
-	a.region = region
-	a.cell = world.regions[region].center if region >= 0 else -1
+	var cell := at_cell
+	if cell < 0:
+		cell = _home_cell(world, nation, kind) if region < 0 else world.regions[region].center
+	if kind == &"fleet" and cell >= 0 and world.map.is_land(cell):
+		cell = Pathfinder.water_next_to(world, cell)
+	a.m = Mover.new(cell, &"army" if kind == &"land" else &"fleet")
+	a.m.nation = nation.id
+	a.region = world.region_of[cell] if cell >= 0 and world.region_of[cell] >= 0 else (_home_region(world, nation, kind) if region < 0 else region)
 	a.state = &"muster"
 	a.state_until = today(world) + MUSTER_DAYS
 	a.morale = _base_morale(world, nation)
@@ -112,6 +127,19 @@ static func create(world: World, nation: Nation, war_id: int, kind: StringName =
 	if kind == &"land":
 		assign_general(world, a)
 	return a
+
+
+## Где собирается армия: столица (флот — город с гаванью); -1 — нет городов.
+static func _home_cell(world: World, nation: Nation, kind: StringName) -> int:
+	if kind == &"fleet":
+		for id in nation.city_ids:
+			if world.cities[id].buildings.has(&"harbor"):
+				return world.cities[id].cell
+	if nation.capital_city >= 0:
+		return world.cities[nation.capital_city].cell
+	for rid in nation.region_counts:
+		return world.regions[rid].center
+	return -1
 
 
 static func _home_region(world: World, nation: Nation, kind: StringName) -> int:
@@ -128,7 +156,7 @@ static func _home_region(world: World, nation: Nation, kind: StringName) -> int:
 
 static func disband(world: World, a: Army) -> void:
 	a.alive = false
-	a.path = PackedInt32Array()
+	a.m.stop()
 	if a.general >= 0:
 		world.generals[a.general].army = -1
 
@@ -238,6 +266,8 @@ static func _general_dies(world: World, g: Dictionary, how: String) -> void:
 # ---------------------------------------------------------------------------
 
 func tick_day(world: World) -> void:
+	# Каждые сутки: армии идут по карте, встречаются и бьются там, где сошлись.
+	_daily(world)
 	if world.day % TICK != 0:
 		return
 	var d := world.diplomacy
@@ -256,10 +286,10 @@ func tick_day(world: World) -> void:
 		by_war[war.id] = war
 	for a in world.armies:
 		if a.alive and a.kind != &"pirates":
-			# Война кончилась или государство пало — армия распускается.
-			if not world.nations[a.nation].alive or (a.war >= 0 and not by_war.has(a.war)):
+			# Государство пало — армия распускается; война кончилась — идёт домой (_daily).
+			if not world.nations[a.nation].alive:
 				disband(world, a)
-			elif a.war < 0:
+			elif a.war < 0 or a.state == &"home" or not by_war.has(a.war):
 				pass
 			elif _war_armies.has(a.war):
 				_war_armies[a.war].append(a)
@@ -281,13 +311,12 @@ func tick_day(world: World) -> void:
 			if monthly:
 				_count_wars(world)
 				_monthly(world, a, by_war)
-			if a.alive and a.state != &"siege" and a.state != &"idle":
-				_move(world, a, by_war, day, {})
 	_month_end(world, by_war)
 
 
-## Ход одной войны: армии идут, встречаются, бьются, осаждают.
-func _war_turn(world: World, war: War, by_war: Dictionary, day: int, monthly: bool) -> void:
+## Ход одной войны (раз в месяц): приказы, снабжение, дух, осада. Движение и
+## битвы — каждые сутки (_daily): армии сходятся на карте и бьются там, где встретились.
+func _war_turn(world: World, war: War, by_war: Dictionary, _day: int, monthly: bool) -> void:
 	var list: Array = _of_war(war.id)
 	if list.is_empty():
 		return
@@ -296,39 +325,14 @@ func _war_turn(world: World, war: War, by_war: Dictionary, day: int, monthly: bo
 		for a in list:
 			if a.alive:
 				_monthly(world, a, by_war)
-	# Где стоят армии сторон (для остановки марша при встрече с врагом).
-	var where := {}
-	for a in list:
-		if a.alive and a.kind == &"land" and a.state != &"sail" and a.state != &"retreat":
-			where[Vector2i(a.region, war.side_of(a.nation))] = true
 	var by_region := {}
 	for a in list:
-		if not a.alive:
-			continue
-		if a.state != &"siege" and a.state != &"idle":
-			_move(world, a, by_war, day, where)
-		# Отступающие и плывущие в бой не вступают и осаде не мешают.
-		if a.alive and a.kind == &"land" and a.state != &"sail" and a.state != &"retreat" and a.region >= 0:
+		# Отступающие и плывущие осаде не мешают.
+		if a.alive and a.kind == &"land" and a.state != &"retreat" and a.state != &"home" and a.region >= 0 and not a.at_sea(world):
 			if by_region.has(a.region):
 				by_region[a.region].append(a)
 			else:
 				by_region[a.region] = [a]
-	# Столкновения: армии разных сторон в одном регионе.
-	for rid in by_region:
-		var here: Array = by_region[rid]
-		if here.size() < 2 or day - war.last_battle < BATTLE_COOLDOWN:
-			continue
-		var side := war.side_of((here[0] as Army).nation)
-		var enemies: Array[Army] = []
-		var friends: Array[Army] = []
-		for o in here:
-			var s := war.side_of((o as Army).nation)
-			if s == side:
-				friends.append(o)
-			elif s == -side:
-				enemies.append(o)
-		if not enemies.is_empty():
-			battle(world, war, friends, enemies, rid)
 	_siege_day(world, war, by_region)
 
 
@@ -342,7 +346,7 @@ func _month_end(world: World, by_war: Dictionary) -> void:
 	compact(world)
 
 
-## У каждого участника войны — по армии (и флоту, если есть гавань); ушедшие — распускаются.
+## У каждого участника войны — по армии (и флоту, если есть гавань); вышедшие из войны — идут домой.
 func _ensure_armies(world: World, war: War) -> void:
 	var members := war.attackers + war.defenders
 	var have := {}
@@ -350,8 +354,12 @@ func _ensure_armies(world: World, war: War) -> void:
 	for a in _of_war(war.id):
 		if not a.alive:
 			continue
-		if not members.has(a.nation) or not world.nations[a.nation].alive:
+		if not world.nations[a.nation].alive:
 			disband(world, a)
+			changed = true
+			continue
+		if not members.has(a.nation):
+			_go_home(world, a)  # вышли из войны — домой
 			changed = true
 			continue
 		have[Vector2i(a.nation, 0 if a.kind == &"land" else 1)] = true
@@ -408,8 +416,10 @@ func _ensure_armies(world: World, war: War) -> void:
 		for a in _of_war(war.id):
 			if not a.alive or war.side_of(a.nation) != side:
 				continue
+			if a.state == &"home":
+				continue
 			if a.nation != leader and (a.nation != second or a.kind != &"land"):
-				disband(world, a)
+				_go_home(world, a)
 			elif a.kind == &"land":
 				a.allied = allied if a.nation == leader else 0.0
 
@@ -464,21 +474,22 @@ func _monthly(world: World, a: Army, by_war: Dictionary) -> void:
 		disband(world, a)
 		return
 	var war: War = by_war.get(a.war, null)
-	if a.war >= 0 and war == null:
-		disband(world, a)
-		return
+	if a.state == &"home" or (a.war >= 0 and war == null):
+		return  # идёт домой (_daily)
 	if a.war < 0 and world.year - a.created_year > 5:
 		disband(world, a)
 		return
 	a.share = 1.0 / maxf(1.0, float(_war_count.get(a.nation, 1)))
 	if a.kind == &"fleet":
+		if war != null:
+			_fleet_orders(world, a, war)
 		return
 	_supply(world, a, war)
 	var base := _base_morale(world, nation)
 	if a.general >= 0:
 		base += float(world.generals[a.general].skill) * 0.15
 	a.morale = clampf(lerpf(a.morale, base, 0.15), 0.05, 1.0)
-	if war != null and a.state != &"retreat" and a.state != &"sail" and a.state != &"muster":
+	if war != null and a.state != &"retreat" and a.state != &"muster" and not a.at_sea(world):
 		_orders(world, a, war)
 
 
@@ -521,9 +532,10 @@ func _road_between_any(world: World, rid: int, others: PackedInt32Array) -> bool
 
 
 func _refresh_roads(world: World) -> void:
-	if _road_tick == world.road_version:
+	if _road_tick == world.road_version and _road_world == world.get_instance_id():
 		return
 	_road_tick = world.road_version
+	_road_world = world.get_instance_id()
 	_road_pairs.clear()
 	for road in world.roads:
 		if not road.alive or road.sea:
@@ -534,46 +546,79 @@ func _refresh_roads(world: World) -> void:
 			_road_pairs[Vector2i(mini(ra, rb), maxi(ra, rb))] = true
 
 
-## Приказ армии: наступающая сторона идёт к осаждаемому региону, обороняющаяся —
-## перехватывать туда же; нет пути посуху — десант морем (если есть флот или гавань).
+## Приказ армии (раз в месяц): наступающая сторона идёт к осаждаемому городу,
+## обороняющаяся — туда же навстречу; посуху не дойти — десант морем из своей
+## гавани (если война морская), иначе ждать.
 func _orders(world: World, a: Army, war: War) -> void:
 	var side := war.side_of(a.nation)
 	if side == 0:
+		return
+	if a.kind == &"fleet":
+		_fleet_orders(world, a, war)
 		return
 	# Цель осады выбирается раз в месяц на войну (_ensure_armies), а не каждой армией.
 	var goal := war.siege_region
 	if goal < 0:
 		goal = _home_region(world, world.nations[a.nation], &"land")
-	if a.region == goal:
+	if goal < 0:
+		return
+	if a.region == goal and not a.at_sea(world):
 		a.target = goal
-		a.path = PackedInt32Array()
+		a.m.stop()
+		a.goal = -1
 		a.state = &"siege" if side == war.siege_side else &"idle"
 		if a.state == &"siege":
 			_log_siege(world, war, a)
 		return
+	var cell := _goal_cell(world, war, goal, side)
 	# Путь пересчитывается, только если цель сменилась (или путь кончился);
-	# недостижимую цель (eta = -1) не ищем заново каждый месяц.
-	if a.target == goal and ((not a.path.is_empty() and a.state == &"march") or (a.state == &"idle" and a.eta == -1)):
-		return
-	var path := plan(world, a.region, goal)
-	if path.is_empty():
-		# Посуху не дойти: десант (наступающие) — или ждать дома.
-		if side == war.siege_side and war.siege_landing and world.regions[goal].coastal \
-				and (wars._has_port(world, PackedInt32Array([a.nation])) or _fleet_of(world, war, a.nation) != null):
-			a.state = &"sail"
-			a.state_until = today(world) + SAIL_DAYS
-			a.target = goal
-			a.path = PackedInt32Array()
-		else:
-			a.state = &"idle"
-			a.target = goal
-			a.eta = -1  # не дойти: ждать, пока цель не сменится
+	# недостижимую цель не ищем заново каждый месяц.
+	if a.target == goal and ((a.m.walking() and a.goal == cell) or a.unreachable == cell):
 		return
 	a.target = goal
-	a.path = path
-	a.state = &"march"
-	if a.eta <= 0:
-		a.eta = _step_cost(world, a.region, path[0], a.nation)
+	a.goal = cell
+	var ok := false
+	var land := Pathfinder.land_path(world, a.cell, cell, MoveDB.profile(&"army"))
+	if not land.is_empty():
+		a.m.set_path(land)
+		ok = true
+	elif side == war.siege_side and war.siege_landing and world.regions[goal].coastal:
+		# Десант: из своей (союзной) гавани морем к берегу цели.
+		ok = MovementSystem.send(world, a.m, cell, war.members(side))
+	if ok:
+		a.unreachable = -1
+		a.state = &"march"
+	else:
+		a.m.stop()
+		a.state = &"idle"
+		a.unreachable = cell
+
+
+## Клетка цели в регионе: город, который осаждают (или центр региона).
+func _goal_cell(world: World, war: War, rid: int, side: int) -> int:
+	var city := wars._region_city(world, rid, war.members(-side))
+	if city == null:
+		city = wars._region_city(world, rid, war.members(side))
+	return city.cell if city != null else world.regions[rid].center
+
+
+## Флот: в морской войне — к берегу осаждаемого края (прикрыть десант), иначе у своей гавани.
+func _fleet_orders(world: World, a: Army, war: War) -> void:
+	var goal := -1
+	if war.siege_landing and war.siege_region >= 0:
+		var landing := Pathfinder.landing_cell(world, _goal_cell(world, war, war.siege_region, war.side_of(a.nation)))
+		if landing >= 0:
+			goal = Pathfinder.water_next_to(world, landing)
+	if goal < 0:
+		var home := _home_cell(world, world.nations[a.nation], &"fleet")
+		goal = Pathfinder.water_next_to(world, home) if home >= 0 else -1
+	if goal < 0 or goal == a.cell or (a.m.walking() and a.m.dest == goal) or a.unreachable == goal:
+		return
+	if MovementSystem.send(world, a.m, goal):
+		a.state = &"march"
+		a.unreachable = -1
+	else:
+		a.unreachable = goal
 
 
 ## Армия встала под стенами крупного города — запись в летописи (раз на осаду).
@@ -594,151 +639,318 @@ func _fleet_of(world: World, war: War, nation_id: int) -> Army:
 	return null
 
 
-## Путь по графу регионов (поиск в ширину), без стартового региона; пусто — не дойти.
-static var _prev := PackedInt32Array()
-static var _queue := PackedInt32Array()
+# ---------------------------------------------------------------------------
+# Сутки: движение и встречи
+# ---------------------------------------------------------------------------
+
+## Каждые сутки: встречи армий врагов (битва там, где сошлись; дозор замечает
+## врага издали и идёт навстречу), затем шаг по пути, затем события прихода.
+func _daily(world: World) -> void:
+	if world.armies.is_empty():
+		return
+	var day := today(world)
+	var by_war := {}
+	for war in world.diplomacy.wars:
+		by_war[war.id] = war
+	# Где стоят сухопутные армии — для узких мест (брод, перевал: одна колонна за раз).
+	var occupied := {}
+	for a in world.armies:
+		if not a.blocked and a.standoff > 0:
+			a.standoff = 0
+		a.blocked = false
+		if a.alive and a.kind == &"land" and a.cell >= 0:
+			occupied[a.cell] = a
+	_contacts(world, by_war, day)
+	for a in world.armies:
+		if not a.alive:
+			continue
+		if a.kind != &"pirates":
+			if a.nation < 0 or not world.nations[a.nation].alive:
+				disband(world, a)
+				continue
+			if a.war >= 0 and not by_war.has(a.war) and a.state != &"home":
+				_go_home(world, a)
+		var am := a.m
+		if am.step >= am.path.size() and (a.state == &"siege" or a.state == &"idle"):
+			# Стоит (осада, ожидание): только сутки без движения.
+			am.prev_cell = am.cell
+			am.moved = 0
+			am.arrived = false
+			continue
+		if a.m.walking() and not a.blocked and a.kind == &"land":
+			var nxt := a.m.next_cell()
+			var other: Army = occupied.get(nxt, null)
+			# Затор: по броду или перевалу сейчас идёт другая колонна (стоящую — обходят).
+			if other != null and other != a and other.alive and other.m.walking() and narrow(world, nxt):
+				a.blocked = true
+		if a.m.walking() and not a.blocked:
+			var from := a.cell
+			MovementSystem.advance(world, a.m)
+			if occupied.get(from, null) == a:
+				occupied.erase(from)
+			occupied[a.cell] = a
+		else:
+			a.m.prev_cell = a.m.cell
+			a.m.moved = 0
+			a.m.arrived = false
+		if a.cell >= 0 and world.region_of[a.cell] >= 0:
+			a.region = world.region_of[a.cell]
+		if a.m.stuck > 3:
+			# Путь негоден (рельеф изменился) — встать, приказ — в следующий месяц.
+			a.m.stop()
+			a.goal = -1
+			a.unreachable = -1
+			if a.state == &"march":
+				a.state = &"idle"
+		_after_step(world, a, by_war.get(a.war, null), day)
 
 
-static func plan(world: World, from: int, to: int) -> PackedInt32Array:
-	if from < 0 or to < 0 or from == to:
-		return PackedInt32Array()
-	# Без словарей: массив «откуда пришли» на все регионы (-2 — не посещён).
-	var n := world.regions.size()
-	if _prev.size() != n:
-		_prev.resize(n)
-		_queue.resize(n)
-	_prev.fill(-2)
-	_prev[from] = -1
-	_queue[0] = from
-	var tail := 1
-	var qi := 0
-	var found := false
-	while qi < tail:
-		var r := _queue[qi]
-		qi += 1
-		if r == to:
-			found = true
-			break
-		for nb in world.regions[r].neighbors:
-			if _prev[nb] == -2 and not world.regions[nb].cells.is_empty():
-				_prev[nb] = r
-				_queue[tail] = nb
-				tail += 1
-	if not found:
-		return PackedInt32Array()
-	var prev := _prev
-	var path := PackedInt32Array()
-	var cur := to
-	while cur != from:
-		path.append(cur)
-		cur = prev[cur]
-	path.reverse()
-	return path
-
-
-## Дней на переход в регион to: рельеф, дорога, своя земля.
-func _step_cost(world: World, from: int, to: int, nation_id: int) -> int:
-	_refresh_roads(world)
-	var b := world.map.biome[world.regions[to].center]
-	var k := 1.0
-	if b == Biome.MOUNTAINS:
-		k = 2.0
-	elif b == Biome.HILLS or b == Biome.SNOW:
-		k = 1.5
-	elif b == Biome.FOREST or b == Biome.JUNGLE or b == Biome.SWAMP:
-		k = 1.35
-	if _road_pairs.has(Vector2i(mini(from, to), maxi(from, to))):
-		k *= 0.5
-	if world.regions[to].controller() == nation_id:
-		k *= 0.9
-	return maxi(2, roundi(STEP_DAYS * k))
-
-
-## where — регионы, где стоят армии сторон войны (Vector2i(регион, сторона)):
-## войдя в регион с врагом, армия останавливается — мимо друг друга не проходят.
-func _move(world: World, a: Army, by_war: Dictionary, day: int, where: Dictionary) -> void:
+## Что делать армии после шага: сбор кончился, дошла до цели, отступила, вернулась домой, высадилась.
+func _after_step(world: World, a: Army, war: War, day: int) -> void:
 	match a.state:
+		&"home":
+			if not a.m.walking() or day >= a.state_until:
+				disband(world, a)
 		&"muster":
 			if day >= a.state_until:
 				a.state = &"idle"
-				var war: War = by_war.get(a.war, null)
-				if war != null and a.kind == &"land":
-					_orders(world, a, war)
-		&"retreat", &"march":
-			if a.state == &"retreat" and day >= a.state_until and a.path.is_empty():
-				a.state = &"idle"
-				var war: War = by_war.get(a.war, null)
 				if war != null:
 					_orders(world, a, war)
-				return
-			if a.path.is_empty():
-				if a.state == &"march":
-					var war: War = by_war.get(a.war, null)
-					a.state = &"siege" if war != null and a.region == war.siege_region and war.side_of(a.nation) == war.siege_side else &"idle"
-					if a.state == &"siege":
-						_log_siege(world, war, a)
-				return
-			a.eta -= PERIOD
-			var enemy := 0
-			if not where.is_empty() and a.war >= 0 and by_war.has(a.war):
-				enemy = -(by_war[a.war] as War).side_of(a.nation)
-			while a.eta <= 0 and not a.path.is_empty():
-				a.region = a.path[0]
-				a.path.remove_at(0)
-				a.cell = world.regions[a.region].center
-				if not a.path.is_empty():
-					a.eta += _step_cost(world, a.region, a.path[0], a.nation)
-				if enemy != 0 and where.has(Vector2i(a.region, enemy)):
-					a.eta = maxi(a.eta, 1)
-					break
-		&"sail":
-			if day >= a.state_until:
-				_land(world, a, by_war.get(a.war, null))
+		&"retreat":
+			if not a.m.walking() and day >= a.state_until:
+				a.state = &"idle"
+				if war != null:
+					_orders(world, a, war)
+		&"march":
+			if a.kind == &"land" and war != null and a.m.moved > 0 and a.m.prev_cell >= 0 \
+					and not world.map.is_land(a.m.prev_cell) and world.map.is_land(a.cell):
+				_landing(world, a, war)
+				if not a.alive or a.state != &"march":
+					return
+			if a.kind == &"land" and war != null and a.m.walking():
+				_gates(world, a, war)
+			if not a.m.walking():
+				if a.kind == &"land" and war != null and a.region == war.siege_region and war.side_of(a.nation) == war.siege_side:
+					a.state = &"siege"
+					_log_siege(world, war, a)
+				else:
+					a.state = &"idle"
 
 
-## Десант: если у врага флот сильнее — морской бой; проиграли — армия возвращается с потерями.
-func _land(world: World, a: Army, war: War) -> void:
-	if war == null:
-		a.state = &"idle"
-		return
+static var _scout := -1.0
+
+
+static func _scout_range() -> float:
+	if _scout < 0.0:
+		_scout = MoveDB.profile(&"army").scout_range
+	return _scout
+
+
+## Встречи армий одной войны: в пределах CONTACT клеток — битва (если пора);
+## в пределах дозора — идут навстречу; рано для битвы — стоят, мимо не проходят.
+static func _cheb(map: WorldMap, a: int, b: int) -> int:
+	if a < 0 or b < 0:
+		return 1 << 20
+	var pa := map.cell_pos(a)
+	var pb := map.cell_pos(b)
+	return maxi(absi(pa.x - pb.x), absi(pa.y - pb.y))
+
+
+func _contacts(world: World, by_war: Dictionary, day: int) -> void:
+	var lists := {}
+	for a in world.armies:
+		if a.alive and a.kind == &"land" and a.war >= 0 and by_war.has(a.war) and a.state != &"home" and a.state != &"muster" \
+				and a.cell >= 0 and not a.at_sea(world):
+			if lists.has(a.war):
+				lists[a.war].append(a)
+			else:
+				lists[a.war] = [a]
+	var contact := world.gd(CONTACT)
+	var scout := world.gd(_scout_range())
+	var map := world.map
+	for wid in lists:
+		var list: Array = lists[wid]
+		if list.size() < 2:
+			continue
+		var war: War = by_war[wid]
+		var ready := day - war.last_battle >= BATTLE_COOLDOWN
+		var fought := false
+		for i in list.size():
+			var a: Army = list[i]
+			if fought or not a.alive:
+				break
+			var sa := war.side_of(a.nation)
+			for j in range(i + 1, list.size()):
+				var b: Army = list[j]
+				if not b.alive or war.side_of(b.nation) != -sa:
+					continue
+				var pa := map.cell_pos(a.cell)
+				var pb := map.cell_pos(b.cell)
+				var d := maxi(absi(pa.x - pb.x), absi(pa.y - pb.y))
+				if d <= contact:
+					if ready and (a.state != &"retreat" or b.state != &"retreat"):
+						_engage(world, war, a, b, list, scout)
+						fought = true
+						break
+					# Рано для новой битвы: стоят друг против друга, мимо не проходят;
+					# долгое противостояние — слабейший отходит к своим.
+					# После противостояния у сильного — «прорыв» (standoff < 0): идёт мимо.
+					for x in [a, b]:
+						var ar: Army = x
+						if ar.state == &"retreat":
+							continue
+						if ar.standoff < 0:
+							ar.standoff += 1
+							continue
+						ar.blocked = true
+						ar.standoff += 1
+					if maxi(a.standoff, b.standoff) >= STANDOFF_DAYS:
+						var weak := a if a.fighting_power(world) < b.fighting_power(world) else b
+						var strong := b if weak == a else a
+						weak.standoff = 0
+						strong.standoff = -STANDOFF_DAYS
+						strong.blocked = false
+						weak.morale = maxf(0.05, weak.morale - 0.05)
+						if weak.state != &"retreat":
+							_retreat(world, weak)
+				elif d <= scout and ready:
+					# Дозор заметил врага: обороняющиеся перехватывают, наступающие на марше — тоже.
+					for pair in [[a, b], [b, a]]:
+						var me: Army = pair[0]
+						var foe: Army = pair[1]
+						if me.state == &"retreat" or (me.state == &"siege" and war.side_of(me.nation) == war.siege_side):
+							continue
+						# Путь — заново, только если враг ушёл от прежней цели дальше клетки
+						# (иначе — каждые сутки поиск пути на каждую пару в дозоре).
+						if not me.m.walking() or _cheb(map, me.m.dest, foe.cell) > world.gd(1):
+							# Враг рядом — прямо по суше; не выходит — общий путь.
+							var p := Pathfinder.line(world, me.cell, foe.cell, -1)
+							if p.is_empty():
+								p = Pathfinder.land_path(world, me.cell, foe.cell, MoveDB.profile(&"army"))
+							if not p.is_empty():
+								me.m.set_path(p)
+								me.state = &"march"
+
+
+## Битва там, где сошлись a и b; к ним присоединяются армии сторон в пределах дозора.
+func _engage(world: World, war: War, a: Army, b: Army, list: Array, scout: float) -> void:
+	var map := world.map
+	var sa := war.side_of(a.nation)
+	var side_a: Array[Army] = []
+	var side_b: Array[Army] = []
+	var pa := map.cell_pos(a.cell)
+	for x in list:
+		var o: Army = x
+		if not o.alive or o.state == &"retreat":
+			continue
+		var po := map.cell_pos(o.cell)
+		if maxi(absi(po.x - pa.x), absi(po.y - pa.y)) > scout and o != a and o != b:
+			continue
+		if war.side_of(o.nation) == sa:
+			side_a.append(o)
+		elif war.side_of(o.nation) == -sa:
+			side_b.append(o)
+	if not side_a.has(a):
+		side_a.append(a)
+	if not side_b.has(b):
+		side_b.append(b)
+	# Поле боя — там, где стоит сторона, что держит эту землю (иначе — где стоит a).
+	var cell := a.cell
+	var ctrl := world.owner[b.cell]
+	if ctrl >= 0 and war.side_of(ctrl) == -sa:
+		cell = b.cell
+	battle(world, war, side_a, side_b, cell)
+
+
+## Армия на берегу после моря: у врага флот сильнее — разбит у берега и отходит домой.
+func _landing(world: World, a: Army, war: War) -> void:
 	var side := war.side_of(a.nation)
 	var ours := 0.0
 	var theirs := 0.0
-	for f in _of_war(war.id):
-		if f.kind == &"fleet":
+	for f in world.armies:
+		if f.alive and f.kind == &"fleet" and f.war == war.id:
 			if war.side_of(f.nation) == side:
 				ours += f.fighting_power(world)
 			else:
 				theirs += f.fighting_power(world)
 	var n := world.nations[a.nation]
+	var region := world.regions[a.region] if a.region >= 0 else null
 	if theirs > 0.0 and world.rng.randf() > (ours + 1.0) / (ours + theirs + 1.0):
 		n.army -= n.army * a.share * 0.25
-		a.region = _home_region(world, n, &"land")
-		a.cell = world.regions[a.region].center if a.region >= 0 else -1
-		a.state = &"retreat"
-		a.state_until = today(world) + RETREAT_DAYS
 		a.morale = maxf(0.05, a.morale - 0.25)
-		world.log_event(&"battle", "Флот врага разбил десант государства %s у берегов региона %s." % [n.short_name, world.regions[war.siege_region].name if war.siege_region >= 0 else "?"],
+		world.log_event(&"battle", "Флот врага разбил десант государства %s у берегов региона %s." % [n.short_name, region.name if region != null else "?"],
 				PackedInt32Array(war.attackers + war.defenders))
+		_retreat(world, a)
 		return
-	a.region = a.target if a.target >= 0 else war.siege_region
-	if a.region < 0:
-		a.state = &"idle"
-		return
-	a.cell = world.regions[a.region].center
-	a.state = &"siege"
 	war.siege_landing = true
-	world.log_event(&"siege", "%s высаживает десант в регионе %s." % [n.short_name, world.regions[a.region].name],
-			PackedInt32Array(war.attackers + war.defenders))
+	if region != null:
+		world.ensure_region_name(region)
+		world.log_event(&"siege", "%s высаживает десант в регионе %s." % [n.short_name, region.name],
+				PackedInt32Array(war.attackers + war.defenders))
+
+
+## «Враг у ворот»: наступающие подошли к городу, гарнизон и ополчение выходят навстречу.
+func _gates(world: World, a: Army, war: War) -> void:
+	if war.side_of(a.nation) != war.siege_side or war.siege_region < 0 or war.gates == war.siege_region:
+		return
+	# Город цели — один на войну за сутки (кэш), а не поиск для каждой армии.
+	# Кэш — id города, а не сам город, и только для своего мира: одна Simulation может
+	# вести два мира (тесты сохранения), и чужой город менял бы чужую историю.
+	if _gate_world != world.get_instance_id():
+		_gate_world = world.get_instance_id()
+		_gate_city.clear()
+	var key := Vector2i(war.id, ArmySystem.today(world))
+	if not _gate_city.has(key):
+		if _gate_city.size() > 64:
+			_gate_city.clear()
+		var found: City = wars._region_city(world, war.siege_region, war.members(-war.siege_side))
+		_gate_city[key] = found.id if found != null else -1
+	var cid: int = _gate_city[key]
+	if cid < 0:
+		return
+	var city := world.cities[cid]
+	var pa := world.map.cell_pos(a.cell)
+	var pc := world.map.cell_pos(city.cell)
+	if maxi(absi(pa.x - pc.x), absi(pa.y - pc.y)) > world.gd(GATES_RANGE):
+		return
+	war.gates = war.siege_region
+	var n := world.nations[a.nation]
+	var defender := world.nations[city.nation_id]
+	# Ополчение — горожане и стража: держится тем дольше, чем крупнее город и крепче стены.
+	var militia := city.population * MILITIA_SHARE * (1.5 if city.buildings.has(&"walls") else 1.0)
+	var power := a.fighting_power(world)
+	var loss := minf(n.army * a.share * 0.04, militia * 0.6) * clampf(militia / maxf(1.0, power), 0.1, 1.0)
+	n.army = maxf(0.0, n.army - loss)
+	a.morale = maxf(0.05, a.morale - 0.05 * clampf(militia / maxf(1.0, power), 0.0, 1.0))
+	defender.stability = maxf(0.0, defender.stability - 0.01)
+	if city.tier() >= 2:
+		world.log_event(&"siege", "Враг у ворот: войско государства %s подошло к городу %s — ополчение вышло навстречу." % [n.short_name, city.name],
+				PackedInt32Array(war.attackers + war.defenders))
+
+
+## Война кончилась: армия идёт домой и распускается там (не дольше HOME_DAYS).
+func _go_home(world: World, a: Army) -> void:
+	a.state = &"home"
+	a.state_until = today(world) + HOME_DAYS
+	a.goal = -1
+	if a.kind == &"pirates":
+		return
+	var home := _home_cell(world, world.nations[a.nation], a.kind)
+	if a.kind == &"fleet" and home >= 0:
+		home = Pathfinder.water_next_to(world, home)
+	if home < 0 or not MovementSystem.send(world, a.m, home, PackedInt32Array([a.nation])):
+		disband(world, a)
 
 
 # ---------------------------------------------------------------------------
 # Битвы и осады
 # ---------------------------------------------------------------------------
 
-## Битва армий (сторона a — в регионе region). Логика потерь, счёта и осад —
-## как у прежнего генерального сражения, но силы — армий на месте.
-func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], region: int) -> void:
+## Битва армий в клетке cell (там, где они встретились). Логика потерь, счёта и
+## осад — как у прежнего генерального сражения, но силы — армий на месте, а
+## рельеф поля боя помогает тем, кто держит эту землю.
+func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], cell: int) -> void:
+	var region := world.region_of[cell] if cell >= 0 and world.region_of[cell] >= 0 else side_a[0].region
 	var rng := world.rng
 	var sa := war.side_of(side_a[0].nation)
 	var pa := 0.0
@@ -749,10 +961,11 @@ func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], re
 		pb += x.fighting_power(world)
 	# Обороняющимся на своей земле помогает рельеф и знание местности.
 	var ctrl := world.regions[region].controller()
+	var ground := terrain_bonus(world, cell)
 	if ctrl >= 0 and war.side_of(ctrl) == sa:
-		pa *= 1.1
+		pa *= 1.1 * ground
 	elif ctrl >= 0 and war.side_of(ctrl) == -sa:
-		pb *= 1.1
+		pb *= 1.1 * ground
 	var share := pa / (pa + pb) if pa + pb > 0.0 else 0.5
 	var p := clampf(0.5 + (share - 0.5) * 1.4, 0.05, 0.95)
 	var a_wins := rng.randf() < p
@@ -795,7 +1008,7 @@ func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], re
 		var n := world.nations[m]
 		n.stability = maxf(0.0, n.stability - 0.006 * BATTLE_SCORE)
 		n.stock[Goods.GOLD] -= n.army * 0.002 * BATTLE_SCORE
-	world.recent_battles.append({"region": region, "year": world.year, "month": world.month, "day": world.day,
+	world.recent_battles.append({"region": region, "cell": cell, "year": world.year, "month": world.month, "day": world.day,
 		"war": war.id, "winner": winners[0].nation, "fallen": fallen})
 	while world.recent_battles.size() > RECENT_BATTLES:
 		world.recent_battles.remove_at(0)
@@ -822,20 +1035,52 @@ static func _num(v: float) -> String:
 	return str(roundi(v))
 
 
+## Узкое место: брод (река без моста-дороги) или горный перевал — проходит одна колонна за раз.
+static func narrow(world: World, cell: int) -> bool:
+	if cell < 0:
+		return false
+	var map := world.map
+	if map.biome[cell] == Biome.MOUNTAINS:
+		return true
+	return map.river[cell] > 0 and not MovementSystem.on_road(world, cell)
+
+
+## Помощь рельефа обороняющимся на поле боя: холмы и горы, лес, болото, река (брод).
+static func terrain_bonus(world: World, cell: int) -> float:
+	if cell < 0:
+		return 1.0
+	var k := 1.0
+	match world.map.biome[cell]:
+		Biome.HILLS, Biome.MOUNTAINS:
+			k = 1.15
+		Biome.FOREST, Biome.JUNGLE:
+			k = 1.08
+		Biome.SWAMP:
+			k = 1.05
+	if world.map.river[cell] > 0:
+		k *= 1.1
+	return k
+
+
+## Разбитая армия отходит к ближайшему своему городу (по карте; её могут настигнуть).
 func _retreat(world: World, a: Army) -> void:
-	var home := _home_region(world, world.nations[a.nation], &"land")
-	a.path = plan(world, a.region, home)
-	if a.path.size() > 3:
-		a.path = a.path.slice(0, 3)
-	if a.path.is_empty():
-		# Уже дома (или пути нет): отходим в соседний свой край.
-		for nb in world.regions[a.region].neighbors:
-			if world.regions[nb].controller() == a.nation:
-				a.path = PackedInt32Array([nb])
-				break
 	a.state = &"retreat"
 	a.state_until = today(world) + RETREAT_DAYS
-	a.eta = _step_cost(world, a.region, a.path[0], a.nation) if not a.path.is_empty() else 0
+	a.goal = -1
+	var n := world.nations[a.nation]
+	var p := world.map.cell_pos(a.cell)
+	var best := -1
+	var best_d := INF
+	for id in n.city_ids:
+		var c := world.cities[id]
+		var d := Vector2(world.map.cell_pos(c.cell) - p).length_squared()
+		if d > 0.0 and d < best_d and Pathfinder.landmass(world, c.cell) == Pathfinder.landmass(world, a.cell):
+			best_d = d
+			best = c.cell
+	if best < 0:
+		best = _home_cell(world, n, &"land")
+	if best < 0 or not MovementSystem.send(world, a.m, best, PackedInt32Array([a.nation])):
+		a.m.stop()
 
 
 ## Герой игрока служит в одной из армий битвы (PlayerWorld решает его судьбу).

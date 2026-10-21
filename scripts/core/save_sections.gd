@@ -196,7 +196,7 @@ static func _load_intrigue(world: World, data: Dictionary) -> void:
 static func _hero_dict(h: Hero) -> Dictionary:
 	return {
 		"id": h.id, "name": h.name, "race": str(h.race_id), "class": str(h.hero_class.id), "level": h.level, "xp": h.xp,
-		"age": h.age, "max_age": h.max_age, "born": h.born_year, "cell": h.cell, "nation": h.nation_id,
+		"age": h.age, "max_age": h.max_age, "born": h.born_year, "cell": h.cell, "m": h.m.to_dict(), "follow": h.follow, "nation": h.nation_id,
 		"alive": h.alive, "ruler": h.is_ruler, "kills": h.kills, "monsters": h.monsters_slain, "epithet": h.epithet,
 		"deeds": h.deeds, "move_in": h.move_in, "karma": h.karma, "artifact": h.artifact, "artifact_mult": h.artifact_mult,
 		"fate": str(h.fate), "returns": h.returns, "goal": h.goal_cell, "bonds": _int_dict(h.bonds),
@@ -319,10 +319,20 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 		a.share = ad.share
 		a.own_strength = ad.own
 		a.region = int(ad.region)
-		a.cell = int(ad.cell)
-		a.path = PackedInt32Array(ad.path)
-		a.eta = int(ad.eta)
+		# Положение и путь по клеткам (этап 12.B); старые сохранения — стоит в своей клетке,
+		# путь найдёт месячный приказ.
+		if ad.has("m"):
+			a.m = Mover.from_dict(ad.m)
+		else:
+			a.m = Mover.new(int(ad.cell), &"army" if a.kind == &"land" else &"fleet")
+			a.m.nation = a.nation
+		a.goal = int(ad.get("goal", -1))
+		a.unreachable = int(ad.get("unreach", -1))
+		a.blocked = bool(ad.get("blocked", false))
+		a.standoff = int(ad.get("standoff", 0))
 		a.state = StringName(ad.state)
+		if a.state == &"sail":
+			a.state = &"march"
 		a.state_until = int(ad.until)
 		a.morale = ad.morale
 		a.supply = ad.supply
@@ -338,7 +348,7 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 			"born": int(g.born), "alive": bool(g.alive), "captured_by": int(g.captured_by), "hero": int(g.hero),
 			"army": remap.get(int(g.army), -1) if int(g.army) >= 0 else -1, "parent": int(g.parent), "wins": int(g.wins)})
 	for b in lore.get("battles", []):
-		world.recent_battles.append({"region": int(b.region), "year": int(b.year), "month": int(b.month), "day": int(b.day),
+		world.recent_battles.append({"region": int(b.region), "cell": int(b.get("cell", -1)), "year": int(b.year), "month": int(b.month), "day": int(b.day),
 			"war": int(b.war), "winner": int(b.winner), "fallen": float(b.fallen)})
 	for e in lore.get("staged", []):
 		world.staged_effects.append({"nation": int(e.nation), "months": int(e.months), "step": int(e.step), "pop": float(e.pop),
@@ -373,7 +383,7 @@ static func _load_lore(world: World, data: Dictionary) -> void:
 
 static func _army_dict(a: Army) -> Dictionary:
 	return {"id": a.id, "nation": a.nation, "war": a.war, "kind": str(a.kind), "share": a.share, "own": a.own_strength,
-		"region": a.region, "cell": a.cell, "path": Array(a.path), "eta": a.eta, "state": str(a.state), "until": a.state_until,
+		"region": a.region, "cell": a.cell, "m": a.m.to_dict(), "goal": a.goal, "unreach": a.unreachable, "blocked": a.blocked, "standoff": a.standoff, "state": str(a.state), "until": a.state_until,
 		"morale": a.morale, "supply": a.supply, "general": a.general, "year": a.created_year, "battles": a.battles,
 		"wins": a.wins, "target": a.target, "allied": a.allied}
 
@@ -382,7 +392,7 @@ static func _war_dict(w: War) -> Dictionary:
 	return {"id": w.id, "name": w.name, "cause": str(w.cause), "start": w.start_year, "end": w.end_year,
 		"first": [w.first_attacker, w.first_defender], "att": Array(w.attackers), "def": Array(w.defenders), "score": w.score, "siege": w.siege_region,
 		"siege_side": w.siege_side, "progress": w.siege_progress, "landing": w.siege_landing,
-		"month": w.month, "day": w.day, "battles": w.battles, "casualties": w.casualties, "active": w.active, "lb": w.last_battle, "rate": w.siege_rate, "slog": w.siege_logged}
+		"month": w.month, "day": w.day, "battles": w.battles, "casualties": w.casualties, "active": w.active, "lb": w.last_battle, "rate": w.siege_rate, "slog": w.siege_logged, "gates": w.gates}
 
 
 static func _restore_nation(nd: Dictionary) -> Nation:
@@ -462,7 +472,9 @@ static func _restore_hero(hd: Dictionary) -> Hero:
 	h.age = int(hd.age)
 	h.max_age = int(hd.max_age)
 	h.born_year = int(hd.born)
-	h.cell = int(hd.cell)
+	# Путь по клеткам (этап 12.B); старые сохранения — стоит на месте.
+	h.m = Mover.from_dict(hd.m) if hd.has("m") else Mover.new(int(hd.cell), &"hero")
+	h.follow = int(hd.get("follow", -1))
 	h.nation_id = int(hd.nation)
 	h.alive = hd.alive
 	h.is_ruler = hd.ruler
@@ -545,6 +557,7 @@ static func _restore_war(wd: Dictionary) -> War:
 	w.last_battle = int(wd.get("lb", -100000))
 	w.siege_rate = float(wd.get("rate", 0.0))
 	w.siege_logged = int(wd.get("slog", -1))
+	w.gates = int(wd.get("gates", -1))
 	return w
 
 
@@ -552,11 +565,11 @@ static func _restore_war(wd: Dictionary) -> War:
 static func _wild_dict(world: World) -> Dictionary:
 	return {
 		"tribes": world.tribes.filter(func(t: Tribe) -> bool: return t.alive).map(func(t: Tribe) -> Dictionary: return {
-			"def": str(t.def.id), "name": t.name, "race": str(t.race.id), "region": t.region, "cell": t.cell, "str": t.strength,
+			"def": str(t.def.id), "name": t.name, "race": str(t.race.id), "region": t.region, "cell": t.cell, "m": t.m.to_dict(), "str": t.strength,
 			"horde": t.horde, "hy": t.horde_year, "born": t.born, "day": t.day, "raids": t.raids, "target": t.target}),
 		"lairs": world.lairs.filter(func(l: Lair) -> bool: return l.alive).map(func(l: Lair) -> Dictionary: return {
 			"def": str(l.def.id), "name": l.name, "cell": l.cell, "home": l.home, "region": l.region, "str": l.strength,
-			"born": l.born, "day": l.day, "raids": l.raids}),
+			"born": l.born, "day": l.day, "raids": l.raids, "m": l.m.to_dict(), "raid": l.raid_target}),
 		"outbreaks": world.outbreaks.filter(func(o: Outbreak) -> bool: return o.alive).map(func(o: Outbreak) -> Dictionary: return {
 			"def": str(o.def.id), "regions": _int_dict(o.regions), "origin": o.origin, "born": o.born, "day": o.day,
 			"deaths": o.deaths, "peak": o.peak, "nations": o.nations.keys()}),
@@ -599,7 +612,7 @@ static func _load_wild(world: World, data: Dictionary) -> void:
 		t.name = str(td.name)
 		t.race = RaceDB.get_race(StringName(td.race))
 		t.region = int(td.region)
-		t.cell = int(td.cell)
+		t.m = Mover.from_dict(td.m) if td.has("m") else Mover.new(int(td.cell), &"tribe")
 		t.strength = td.str
 		t.horde = bool(td.horde)
 		t.horde_year = int(td.get("hy", -1000))
@@ -621,6 +634,12 @@ static func _load_wild(world: World, data: Dictionary) -> void:
 		l.born = int(ld.born)
 		l.day = int(ld.day)
 		l.raids = int(ld.raids)
+		# Чудовище на карте (этап 12.B); старые сохранения — там, где было (центр края набега).
+		if ld.has("m"):
+			l.m = Mover.from_dict(ld.m)
+		else:
+			l.m = Mover.new(l.cell if l.region == l.home or l.region < 0 or l.region >= world.regions.size() else world.regions[l.region].center, &"monster")
+		l.raid_target = int(ld.get("raid", -1))
 		if l.def != null:
 			world.lairs.append(l)
 	for od in wild.get("outbreaks", []):
@@ -645,9 +664,9 @@ static func _market_dict(world: World) -> Dictionary:
 	return {
 		"caravans": world.caravans.filter(func(c: Caravan) -> bool: return c.alive).map(func(c: Caravan) -> Dictionary: return {
 			"road": c.road, "from": c.from_city, "to": c.to_city, "fn": c.from_nation, "tn": c.to_nation, "good": c.good,
-			"amount": c.amount, "price": c.price, "months": c.months, "done": c.done, "day": c.day, "escort": c.escort}),
+			"amount": c.amount, "price": c.price, "m": c.m.to_dict(), "length": c.length, "day": c.day, "escort": c.escort}),
 		"mercs": world.mercs.filter(func(m: MercCompany) -> bool: return m.alive).map(func(m: MercCompany) -> Dictionary: return {
-			"name": m.name, "race": str(m.race.id), "str": m.strength, "wage": m.wage, "employer": m.employer, "cell": m.cell,
+			"name": m.name, "race": str(m.race.id), "str": m.strength, "wage": m.wage, "employer": m.employer, "cell": m.cell, "m": m.m.to_dict(),
 			"born": m.born, "unpaid": m.unpaid, "battles": m.battles}),
 		"loans": world.loans, "serial": world.loan_serial, "defaults": world.defaults, "totals": world.market_totals,
 	}
@@ -666,8 +685,16 @@ static func _load_market(world: World, data: Dictionary) -> void:
 		c.good = int(cd.good)
 		c.amount = cd.amount
 		c.price = cd.price
-		c.months = int(cd.months)
-		c.done = int(cd.done)
+		if cd.has("m"):
+			c.m = Mover.from_dict(cd.m)
+			c.length = int(cd.length)
+		else:
+			# Старое сохранение (месяцы в пути): караван — у города-отправителя, путь — вдоль дороги.
+			c.m = Mover.new(world.cities[c.from_city].cell, &"caravan")
+			c.m.nation = c.from_nation
+			if c.road >= 0 and c.road < world.roads.size():
+				c.m.set_path(MovementSystem.along_road(world, world.roads[c.road], c.from_city))
+			c.length = maxi(1, c.m.remaining())
 		c.day = int(cd.day)
 		c.escort = int(cd.get("escort", -1))
 		world.caravans.append(c)
@@ -679,7 +706,7 @@ static func _load_market(world: World, data: Dictionary) -> void:
 		x.strength = md.str
 		x.wage = md.wage
 		x.employer = int(md.employer)
-		x.cell = int(md.cell)
+		x.m = Mover.from_dict(md.m) if md.has("m") else Mover.new(int(md.cell), &"army")
 		x.born = int(md.born)
 		x.unpaid = int(md.unpaid)
 		x.battles = int(md.battles)
@@ -698,7 +725,9 @@ static func _load_market(world: World, data: Dictionary) -> void:
 ## Дипломатия и ИИ (этап 11.E): журнал и слухи.
 static func _diplo_dict(world: World) -> Dictionary:
 	return {"journal": world.diplo_journal, "rumors": world.rumors, "serial": world.rumor_serial,
-		"branch": world.branch, "branch_from": world.branch_from, "watch": [Array(world.watch_nations), Array(world.watch_heroes)]}
+		"branch": world.branch, "branch_from": world.branch_from, "watch": [Array(world.watch_nations), Array(world.watch_heroes)],
+		"agents": world.agents.filter(func(a: Agent) -> bool: return a.alive).map(func(a: Agent) -> Dictionary: return {
+			"kind": str(a.kind), "from": a.from, "to": a.to, "task": str(a.task), "m": a.m.to_dict(), "born": a.born})}
 
 
 static func _load_diplo(world: World, data: Dictionary) -> void:
@@ -710,6 +739,16 @@ static func _load_diplo(world: World, data: Dictionary) -> void:
 		world.rumors.append({"id": int(r.id), "year": int(r.year), "kind": StringName(r.kind), "about": int(r.about), "target": int(r.target),
 			"source": int(r.source), "truth": bool(r.truth), "cred": float(r.cred), "until": int(r.until), "text": str(r.text)})
 	world.rumor_serial = int(d.get("serial", 0))
+	for ad in d.get("agents", []):
+		var a := Agent.new()
+		a.id = world.agents.size()
+		a.kind = StringName(ad.kind)
+		a.from = int(ad.from)
+		a.to = int(ad.to)
+		a.task = StringName(ad.task)
+		a.m = Mover.from_dict(ad.m)
+		a.born = int(ad.born)
+		world.agents.append(a)
 	world.branch = int(d.get("branch", 0))
 	var bf: Dictionary = d.get("branch_from", {})
 	if not bf.is_empty():
@@ -717,3 +756,70 @@ static func _load_diplo(world: World, data: Dictionary) -> void:
 	var watch: Array = d.get("watch", [[], []])
 	world.watch_nations = PackedInt32Array(watch[0])
 	world.watch_heroes = PackedInt32Array(watch[1])
+
+
+## Освоение (этап 12.C): поселения, поселенцы в пути, влияние и фронты держав.
+static func _settle_dict(world: World) -> Dictionary:
+	var fronts := []
+	for n in world.nations:
+		if n.frontier == null:
+			fronts.append(null)
+		else:
+			var f := {"i": _zb64(n.frontier.raw_items().to_byte_array()),
+				"p": _zb64(n.frontier.raw_priorities().to_byte_array()), "dirty": n.infl_dirty}
+			if n.infl_work != null:
+				f["wi"] = _zb64(n.infl_work.raw_items().to_byte_array())
+				f["wp"] = _zb64(n.infl_work.raw_priorities().to_byte_array())
+			fronts.append(f)
+	return {
+		"infl": _zb64(world.infl.to_byte_array()),
+		"fronts": fronts,
+		"settlements": world.settlements.filter(func(s: Settlement) -> bool: return s.alive).map(func(s: Settlement) -> Array:
+			return [str(s.kind), s.name, s.cell, s.nation, s.founded]),
+		"settlers": world.settlers.filter(func(s: Settler) -> bool: return s.alive).map(func(s: Settler) -> Dictionary: return {
+			"nation": s.nation, "from": s.from_city, "target": s.target, "kind": str(s.kind), "people": s.people,
+			"reason": str(s.reason), "m": s.m.to_dict(), "born": s.born}),
+	}
+
+
+static func _load_settle(world: World, data: Dictionary) -> void:
+	var d: Dictionary = data.get("settle", {})
+	if d.is_empty():
+		return  # старое сохранение: влияние соберётся заново в год каждой державы
+	var infl := _raw(d.infl).to_float32_array()
+	if infl.size() == world.infl.size():
+		world.infl = infl
+	var fronts: Array = d.get("fronts", [])
+	for k in mini(fronts.size(), world.nations.size()):
+		var f: Variant = fronts[k]
+		if f is Dictionary:
+			var n := world.nations[k]
+			n.frontier = MinHeap.from_raw(_raw(f.i).to_int32_array(), _raw(f.p).to_float32_array())
+			n.infl_dirty = bool(f.dirty)
+			if f.has("wi"):
+				n.infl_work = MinHeap.from_raw(_raw(f.wi).to_int32_array(), _raw(f.wp).to_float32_array())
+	for sd in d.get("settlements", []):
+		var def := SettlementDB.find(StringName(sd[0]))
+		if def == null:
+			continue
+		var s := Settlement.new()
+		s.id = world.settlements.size()
+		s.def = def
+		s.kind = def.id
+		s.name = str(sd[1])
+		s.cell = int(sd[2])
+		s.nation = int(sd[3])
+		s.founded = int(sd[4])
+		world.settlements.append(s)
+	for sd in d.get("settlers", []):
+		var s := Settler.new()
+		s.id = world.settlers.size()
+		s.nation = int(sd.nation)
+		s.from_city = int(sd.from)
+		s.target = int(sd.target)
+		s.kind = StringName(sd.kind)
+		s.people = float(sd.people)
+		s.reason = StringName(sd.reason)
+		s.m = Mover.from_dict(sd.m)
+		s.born = int(sd.born)
+		world.settlers.append(s)

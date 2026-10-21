@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SettlementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/settlement_def.gd" id="1_st"]
+
+[resource]
+script = ExtResource("1_st")
+id = &"fort"
+display_name = "Форт"
+description = "Пограничная крепость: держит влияние у спорной границы и помогает обороне края."
+reach = 3.5
+cost_pop = 50.0
+cost_gold = 80.0
+cost_wood = 10.0
+cost_stone = 30.0
+defense = 0.4
+town_after = 0
+color = Color(0.75, 0.7, 0.7, 1)

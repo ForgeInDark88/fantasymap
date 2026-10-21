@@ -91,6 +91,7 @@ static func spawn(world: World, def: LairDef, cell: int) -> Lair:
 	l.home = region.id
 	l.region = region.id
 	l.cell = region.cells[rng.randi_range(0, region.cells.size() - 1)]
+	l.m = Mover.new(l.cell, &"monster")
 	l.strength = rng.randf_range(def.strength.x, def.strength.y)
 	l.born = world.year
 	l.day = rng.randi_range(0, Simulation.DAYS - 1)
@@ -135,6 +136,21 @@ var _days_key := Vector3i(-1, -1, -1)
 
 
 func tick_day(world: World) -> void:
+	# Чудовища идут в набег и обратно по карте; набег — когда дошли до края цели.
+	for l in world.lairs:
+		if not l.alive or not l.m.walking():
+			continue
+		MovementSystem.advance(world, l.m)
+		var c := l.m.cell
+		if world.region_of[c] >= 0:
+			l.region = world.region_of[c]
+		if l.m.arrived and l.raid_target >= 0:
+			var target := l.raid_target
+			l.raid_target = -1
+			_raid_hit(world, l, world.regions[target])
+			# Великое чудовище остаётся в краю добычи; ватага простого логова возвращается.
+			if l.alive and not l.def.great:
+				MovementSystem.send(world, l.m, l.cell)
 	var key := Vector3i(world.get_instance_id() % 1000000007, world.lairs.size(), world.year)
 	if key != _days_key:
 		_days_key = key
@@ -180,6 +196,10 @@ func _month(world: World, l: Lair) -> void:
 		else:
 			l.alive = false
 			return
+	# Земля ушла из-под чудовища — его выносит на берег (допустимый телепорт).
+	if not world.map.is_land(l.m.cell):
+		MovementSystem.teleport(world, l.m, l.cell, &"terrain")
+		l.raid_target = -1
 		if l.region >= world.regions.size() or world.regions[l.region].cells.is_empty():
 			l.region = l.home
 	if l.def.great or l.strength < MAX_STRENGTH:
@@ -201,7 +221,7 @@ func _month(world: World, l: Lair) -> void:
 			n.stock[Goods.GOLD] += l.def.loot
 			_slain(world, l, "войско государства %s" % n.short_name, PackedInt32Array([n.id]))
 			return
-	if rng.randf() < l.def.raid_chance:
+	if rng.randf() < l.def.raid_chance and not l.m.walking():
 		_raid(world, l)
 
 
@@ -222,12 +242,23 @@ func _raid(world: World, l: Lair) -> void:
 	if world.regions[l.home].controller() >= 0:
 		options.append(l.home)
 	if options.is_empty():
-		if l.def.great:
-			l.region = l.home
+		if l.def.great and l.region != l.home:
+			MovementSystem.send(world, l.m, l.cell)  # домой, в логово
 		return
 	var target := world.regions[options[rng.randi_range(0, options.size() - 1)]]
-	if l.def.great:
-		l.region = target.id
+	# Чудовище уже в краю цели — бьёт сразу; иначе идёт туда по карте (набег — по приходе).
+	if world.region_of[l.m.cell] == target.id or target.center < 0:
+		_raid_hit(world, l, target)
+		return
+	if MovementSystem.send(world, l.m, target.center):
+		l.raid_target = target.id
+
+
+## Набег на край: урон хозяину края; пострадавшие могут собрать поход на логово.
+func _raid_hit(world: World, l: Lair, target: Region) -> void:
+	var rng := world.rng
+	if target.controller() < 0:
+		return
 	var n := world.nations[target.controller()]
 	if not n.alive:
 		return

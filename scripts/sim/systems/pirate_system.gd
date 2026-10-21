@@ -3,7 +3,9 @@ extends RefCounted
 ## Пираты (этап 11.B): флоты без государства у морских путей. Появляются у
 ## портов на морских дорогах, грабят казну порта и делают морские пути
 ## опасными, переходят от порта к порту; держава с сильным флотом их топит.
-## Пират — Army вида &"pirates" (nation = -1), срок — state_until.
+## Пират — Army вида &"pirates" (nation = -1), срок — state_until. Пираты стоят
+## у гавани и плывут к другой (этап 12.B: по морю, со скоростью флота); грабят,
+## только когда стоят у порта.
 
 const MAX := 4
 const SPAWN_CHANCE := 0.03
@@ -44,7 +46,8 @@ static func spawn(world: World, city: City) -> Army:
 	a.war = -1
 	a.own_strength = world.rng.randf_range(STRENGTH.x, STRENGTH.y)
 	a.region = world.region_of[city.cell]
-	a.cell = city.cell
+	var water := Pathfinder.water_next_to(world, city.cell)
+	a.m = Mover.new(water if water >= 0 else city.cell, &"fleet")
 	a.state = &"idle"
 	a.created_year = world.year
 	a.state_until = world.year + world.rng.randi_range(YEARS.x, YEARS.y)
@@ -77,6 +80,8 @@ static func tick_month(world: World) -> void:
 		if city == null or not city.alive:
 			_move(world, p, ports)
 			continue
+		if p.m.walking():
+			continue  # ещё в пути к порту
 		var nation := world.nations[city.nation_id]
 		# Держава с флотом (гаванью) бьёт пиратов, если сильнее.
 		var navy := nation.army * ArmySystem.FLEET_SHARE * nation.effect(&"naval_mult") * (1.5 if city.buildings.has(&"shipyard") else 1.0)
@@ -102,6 +107,9 @@ static func _move(world: World, p: Army, ports: PackedInt32Array) -> void:
 		p.alive = false
 		return
 	var city := world.cities[ports[world.rng.randi_range(0, ports.size() - 1)]]
+	var water := Pathfinder.water_next_to(world, city.cell)
+	# Плывут к новому порту морем; не доплыть (другое море) — остаются, где были.
+	if water < 0 or not MovementSystem.send(world, p.m, water):
+		return
 	p.target = city.id
 	p.region = world.region_of[city.cell]
-	p.cell = city.cell

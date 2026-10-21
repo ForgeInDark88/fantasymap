@@ -41,6 +41,10 @@ func _initialize() -> void:
 		_resolve_safe(world)
 		months += 1
 	_expect(not hero.alive or world.region_of[hero.cell] == target, "герой не дошёл (%d мес.)" % months)
+	# Этап 12.B: герой дошёл посреди месяца (идёт по клеткам) — приход отмечается в его ход.
+	if hero.alive and not world.player_journal.any(func(j: Dictionary) -> bool: return String(j.text).begins_with("Вы пришли")):
+		sim.step_month(world)
+		_resolve_safe(world)
 	_expect(not hero.alive or world.player_journal.any(func(j: Dictionary) -> bool: return String(j.text).begins_with("Вы пришли")), "в журнале нет прихода")
 	# Событие с выбором: мир ждёт решения.
 	_expect(PlayerSystem.start_event(world, hero) and not world.player_choice.is_empty(), "событие не началось")
@@ -167,6 +171,18 @@ func _scripted_economy(world: World, sim: Simulation) -> void:
 			"artifact":
 				ArtifactSystem.give(world, world.artifacts[int(q.target)], h, "тест")
 				PlayerQuests.check(world, h, &"month")
+			"caravan":
+				# Охрана каравана: задание закрывается приходом в город назначения.
+				for c in world.caravans:
+					if c.alive and c.escort == h.id:
+						h.cell = world.cities[c.to_city].cell
+						c.alive = false
+						PlayerWorld.on_caravan(world, c, true)
+				PlayerQuests.check(world, h, &"arrive")
+			"trade":
+				# Торговое поручение: товар в обозе героя — сдаётся в городе назначения.
+				h.cargo[int(q.good)] = float(q.amount)
+				PlayerQuests.check(world, h, &"arrive")
 			_:
 				PlayerQuests.check(world, h, &"arrive")
 		_expect(world.player_quests.is_empty() and h.gold > gold, "задание %s не выполнено" % q.kind)

@@ -44,6 +44,8 @@ static func paint_world(world: World, mode: int) -> Image:
 		_paint_population(world, colors)
 	elif mode == MapMode.RESOURCES:
 		_paint_resources(world, colors)
+	elif mode == MapMode.INFLUENCE:
+		_paint_influence(world, colors)
 	else:
 		return paint(map, mode)
 	return Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, colors.to_byte_array())
@@ -83,6 +85,31 @@ static func _paint_population(world: World, out: PackedInt32Array) -> void:
 		# Плотность — на базовую клетку (клетка мелкой сетки кормит в scale² раз меньше).
 		var density := cap[i] * fill[o * races + r] * area if r != World.NO_RACE else 0.0
 		out[i] = _density_lut[clampi(int(sqrt(density / 1500.0) * 63.0), 0, 63)]
+
+
+## Влияние (этап 12.C): земля державы ярче у её городов и поселений и тускнеет к
+## краю влияния; земля вне влияния (завоёванная, без гарнизона) — тёмная.
+static func _paint_influence(world: World, out: PackedInt32Array) -> void:
+	var map := world.map
+	var water := Color(0.06, 0.09, 0.16).to_abgr32()
+	var empty := Color(0.2, 0.21, 0.22).to_abgr32()
+	var far := Color(0.12, 0.11, 0.12)
+	var cols: Array[Color] = []
+	for n in world.nations:
+		cols.append(n.color)
+	var owner := world.owner
+	var infl := world.infl
+	for i in map.cell_count():
+		var o := owner[i]
+		if o < 0:
+			out[i] = empty if map.is_land(i) else water
+			continue
+		var v := infl[i]
+		var c := cols[o]
+		if v > 0.0:
+			out[i] = c.lerp(far, 0.75).to_abgr32()
+		else:
+			out[i] = c.darkened(0.55).lerp(c.lightened(0.25), clampf(-v / 8.0, 0.0, 1.0)).to_abgr32()
 
 
 ## Ресурсы: приглушённый рельеф, лес, камень и руда оттенками, месторождения — яркими клетками.

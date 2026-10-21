@@ -21,6 +21,7 @@ static func create(s: MapSettings) -> World:
 	TribeSystem.seed_world(world)
 	LairSystem.seed_world(world)
 	MarketSystem.region_goods(world)  # кэш товаров краёв — при создании, а не в первом ходе
+	Pathfinder.prepare(world)  # материки и грубая сетка моря для путей (этап 12.B)
 	return world
 
 
@@ -33,6 +34,8 @@ func _init(world_map: WorldMap, generate: bool = true) -> void:
 	var n := map.cell_count()
 	owner.resize(n)
 	owner.fill(-1)
+	infl.resize(n)
+	infl.fill(INFL_FAR)
 	cell_slot.resize(n)
 	cell_slot.fill(-1)
 	city_cell.resize(n)

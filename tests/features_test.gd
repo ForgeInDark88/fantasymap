@@ -15,12 +15,15 @@ func _initialize() -> void:
 	s.apply_size_preset(0)
 	var world := World.create(s)
 	var sim := Simulation.new()
-	for y in 10:
-		sim.step(world)
 	var hero: Hero = null
-	for h in world.wandering_heroes():
-		if h.alive and not h.is_ruler:
-			hero = h
+	# Первый герой-странник (история зависит от освоения и движения — ждём до 60 лет).
+	for y in 60:
+		sim.step(world)
+		for h in world.wandering_heroes():
+			if h.alive and not h.is_ruler:
+				hero = h
+				break
+		if hero != null and y >= 9:
 			break
 	_expect(hero != null, "нет героя-странника")
 	if hero == null:

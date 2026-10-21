@@ -97,6 +97,12 @@ var allies: Dictionary[int, bool] = {}
 var trade_partners: Dictionary[int, bool] = {}
 ## Сколько лет подряд экспансии некуда расти (повод для войны и колоний).
 var stalled_years := 0
+## Фронт освоения (InfluenceSystem): ничьи клетки у края влияния по запасу;
+## null — собрать заново; infl_dirty — земля менялась чужой рукой.
+var frontier: MinHeap = null
+var infl_dirty := false
+## Отложенный пересчёт влияния (InfluenceSystem.WORK_BUDGET шагов в сутки); null — нет.
+var infl_work: MinHeap = null
 ## Сколько лет подряд стабильность на дне (повод для распада).
 var collapse_years := 0
 ## Временные эффекты событий: {id, until, army_mult, growth_mult, science_mult}.

@@ -9,9 +9,16 @@ var race: RaceDef
 ## Воинов (сила в бою — Nation.merc_power нанимателя) и плата в год.
 var strength := 0.0
 var wage := 0.0
-## Наниматель (-1 — вольный) и клетка, где стоит отряд.
+## Наниматель (-1 — вольный) и где стоит отряд; к нанимателю идёт по карте
+## (этап 12.B, профиль «army»).
 var employer := -1
-var cell := -1
+var m := Mover.new(-1, &"army")
+var cell: int:
+	get:
+		return m.cell
+	set(v):
+		m.cell = v
+		m.prev_cell = v
 var alive := true
 var born := 0
 ## Сколько раз подряд не заплатили.

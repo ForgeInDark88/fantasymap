@@ -31,6 +31,8 @@ var last_battle := -100000
 var siege_rate := 0.0
 ## О какой осаде уже написано в летописи (регион; чтобы не повторяться).
 var siege_logged := -1
+## У ворот какого осаждаемого региона уже вышло ополчение («враг у ворот», ArmySystem).
+var gates := -1
 var first_attacker := -1
 var first_defender := -1
 

@@ -16,12 +16,14 @@ const UNDERGROUND := 11
 const DANGER := 12
 const LANGUAGE := 13
 const GOODS := 14
+## Влияние держав и поселения (этап 12.C).
+const INFLUENCE := 15
 
 const NAMES: Array[String] = ["Политика", "Расы", "Население", "Ресурсы", "Биомы", "Высоты", "Темп.", "Влажн.",
-	"Религии", "Культура", "Торговля", "Подземелья", "Опасности", "Языки", "Товары"]
+	"Религии", "Культура", "Торговля", "Подземелья", "Опасности", "Языки", "Товары", "Влияние"]
 ## Клавиши режимов по порядку: 1–9, 0, −, =, [, ], \.
 const HOTKEYS: Array[Key] = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUAL,
-	KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_BACKSLASH]
+	KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_BACKSLASH, KEY_APOSTROPHE]
 
 
 ## Какой «базовый» рисунок нужен режиму (политика и расы рисуются поверх биомов).
@@ -41,4 +43,4 @@ static func hotkey_label(mode: int) -> String:
 
 ## Режимы, чей рисунок зависит от хода симуляции (перерисовываются на лету).
 static func is_dynamic(mode: int) -> bool:
-	return mode == POPULATION
+	return mode == POPULATION or mode == INFLUENCE

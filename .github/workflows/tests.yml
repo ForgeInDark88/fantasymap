@@ -96,4 +96,5 @@ jobs:
           ~/godot/godot --headless --path . --import || true
           ~/godot/godot --headless --path . --import || true
           # Бюджет — мс симуляции на игровой месяц в среднем (с запасом на медленные раннеры CI).
-          ~/godot/godot --headless --path . -s res://tests/profile_systems.gd -- 150 3 40 5 8.0
+          # 12.C: освоение (+~2 мс) и больше войн между цельными державами — около 13 мс.
+          ~/godot/godot --headless --path . -s res://tests/profile_systems.gd -- 150 3 40 5 15.0

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TeleportDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/teleport_def.gd" id="1_tp"]
+
+[resource]
+script = ExtResource("1_tp")
+id = &"terrain"
+display_name = "Земля ушла из-под ног"
+description = "Суша под юнитом исчезла (наводнение, Бог, пучина) — его выносит на ближайший берег."
+effect = &"mist"
+color = Color(0.5, 0.75, 1, 1)

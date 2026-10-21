@@ -87,6 +87,12 @@ func _process(delta: float) -> void:
 		EventBus.year_passed.emit(world.year)
 
 
+## Доля текущих суток, прошедшая с последнего шага (0..1) — для плавного показа
+## движения между сутками (MapOverlay). Только отображение.
+func day_fraction() -> float:
+	return clampf(_day_accum, 0.0, 1.0)
+
+
 func set_speed(index: int) -> void:
 	speed_index = clampi(index, 0, SPEEDS.size() - 1)
 	if speed_index > 0:

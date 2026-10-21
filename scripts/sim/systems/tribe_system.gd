@@ -90,7 +90,7 @@ static func spawn(world: World, def: TribeDef, cell: int) -> Tribe:
 	t.race = race
 	t.name = NameGenerator.place_name(race, rng)
 	t.region = region.id
-	t.cell = region.center
+	t.m = Mover.new(region.center, &"tribe")
 	t.strength = rng.randf_range(def.strength.x, def.strength.y)
 	t.born = world.year
 	t.day = rng.randi_range(0, Simulation.DAYS - 1)
@@ -142,6 +142,12 @@ var _days_key := Vector3i(-1, -1, -1)
 
 ## Каждый день — племена «этого» дня.
 func tick_day(world: World) -> void:
+	# Кочующие племена идут по карте каждые сутки; край — тот, где они сейчас.
+	for t in world.tribes:
+		if t.alive and t.m.walking():
+			MovementSystem.advance(world, t.m)
+			if world.region_of[t.cell] >= 0:
+				t.region = world.region_of[t.cell]
 	var key := Vector3i(world.get_instance_id() % 1000000007, world.tribes.size(), world.year)
 	if key != _days_key:
 		_days_key = key
@@ -200,12 +206,13 @@ func _month(world: World, t: Tribe) -> void:
 			return
 		if rng.randf() < HORDE_CONQUER_CHANCE and _conquer(world, t, region):
 			return
-	if rng.randf() < MOVE_CHANCE:
+	if rng.randf() < MOVE_CHANCE and not t.m.walking():
 		_wander(world, t, region)
 
 
-## Соседний ничейный край (любимый биом — чаще); нет — стоять.
-func _wander(world: World, t: Tribe, region: Region) -> void:
+## Соседний ничейный край (любимый биом — чаще): племя откочёвывает туда по карте;
+## false — некуда (стоять).
+func _wander(world: World, t: Tribe, region: Region) -> bool:
 	var options := PackedInt32Array()
 	for nb in region.neighbors:
 		var r := world.regions[nb]
@@ -214,10 +221,9 @@ func _wander(world: World, t: Tribe, region: Region) -> void:
 			if t.def.biomes.has(_biome_id(world, r.center)):
 				options.append(nb)
 	if options.is_empty():
-		return
+		return false
 	var to := options[world.rng.randi_range(0, options.size() - 1)]
-	t.region = to
-	t.cell = world.regions[to].center
+	return MovementSystem.send(world, t.m, world.regions[to].center)
 
 
 ## Набег на государство соседнего края: золото, люди, воины; сильный сосед отбивается.
@@ -263,13 +269,14 @@ func _meet_state(world: World, t: Tribe, region: Region) -> void:
 				free.append(nb)
 		# Оседлые сильнее держатся за землю: слабое государство не может их вобрать — они уходят.
 		if not t.def.nomad and n.power() * 0.5 <= t.strength and not free.is_empty():
-			t.region = free[world.rng.randi_range(0, free.size() - 1)]
-			t.cell = world.regions[t.region].center
-			return
+			# Уходят из края — по карте, в свободный соседний.
+			if MovementSystem.send(world, t.m, world.regions[free[world.rng.randi_range(0, free.size() - 1)]].center):
+				return
 		_absorb(world, t, n)
 		return
-	_wander(world, t, region)
-	if t.region == region.id:
+	if t.m.walking():
+		return  # уже уходят
+	if not _wander(world, t, region):
 		_absorb(world, t, n)
 
 

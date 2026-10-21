@@ -16,7 +16,7 @@ const CHRONICLE_COLORS := {
 	&"ruler": "#d6b3ff", &"famine": "#ff9a7a",
 	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b",
 	&"treaty": "#8fd0c8", &"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070",
-	&"fall": "#d06060", &"colony": "#7fc8ff", &"plague": "#b8d070", &"disaster": "#e0a070",
+	&"fall": "#d06060", &"colony": "#7fc8ff", &"settle": "#d8c48a", &"plague": "#b8d070", &"disaster": "#e0a070",
 	&"monsters": "#e08cc0", &"hero": "#ffe680", &"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
 	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"battle": "#ff9a6a", &"pirates": "#9ab8d8",
 	&"tribe": "#d8b080", &"lair": "#e07a6a", &"disease": "#a8c860", &"language": "#c0c8f0",
@@ -403,7 +403,7 @@ func _on_year_passed(year: int) -> void:
 	if _nation_panel.visible and now - _panel_refresh_ms >= PANEL_REFRESH_MS:
 		_panel_refresh_ms = now
 		_nation_panel.refresh(WorldState.world)
-	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND, MapMode.DANGER, MapMode.LANGUAGE, MapMode.GOODS] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
+	if _mode in [MapMode.POLITICAL, MapMode.RACES, MapMode.RELIGION, MapMode.CULTURE, MapMode.TRADE, MapMode.UNDERGROUND, MapMode.DANGER, MapMode.LANGUAGE, MapMode.GOODS, MapMode.INFLUENCE] and now - _legend_refresh_ms >= LEGEND_REFRESH_MS:
 		_legend_refresh_ms = now
 		_rebuild_legend()
 
@@ -503,6 +503,21 @@ func _rebuild_legend() -> void:
 			for st in steps:
 				_legend_row(st[1], null, st[0], "")
 			_legend_row(Color(0.2, 0.21, 0.22), null, "ничья земля", "")
+		MapMode.INFLUENCE:
+			_legend_title.text = "Влияние и освоение"
+			_legend_row(Color(0.9, 0.85, 0.7), null, "ярче — ближе к городу или поселению", "Земля держится влиянием её городов и поселений; дальше предела растут только поселенцы.")
+			_legend_row(Color(0.25, 0.22, 0.22), null, "вне влияния (завоёвано, без гарнизона)", "")
+			_legend_row(Color(0.2, 0.21, 0.22), null, "ничья земля", "")
+			for def in SettlementDB.all():
+				var sd := def as SettlementDef
+				var n := 0
+				if world != null:
+					for s in world.settlements:
+						if s.alive and s.kind == sd.id:
+							n += 1
+				_legend_row(sd.color, null, "%s — %d" % [sd.display_name, n], sd.description)
+			if world != null:
+				_legend_row(Color(0.85, 0.75, 0.55), null, "поселенцев в пути — %d" % world.settlers.size(), "")
 		MapMode.RESOURCES:
 			_legend_title.text = "Ресурсы"
 			for dep in EconomyDB.deposits():

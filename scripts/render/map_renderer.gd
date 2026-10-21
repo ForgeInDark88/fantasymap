@@ -275,7 +275,7 @@ func _apply_mode_uniforms() -> void:
 	_material.set_shader_parameter("region_fill", MapMode.is_region_mode(mode))
 	# В режимах биомов, населения, ресурсов и по регионам оставляем тонкие границы — видно, кто где живёт.
 	_material.set_shader_parameter("show_borders", political or mode == MapMode.BIOMES
-			or mode == MapMode.POPULATION or mode == MapMode.RESOURCES or MapMode.is_region_mode(mode) or mode == MapMode.TRADE or mode == MapMode.UNDERGROUND)
+			or mode == MapMode.POPULATION or mode == MapMode.RESOURCES or MapMode.is_region_mode(mode) or mode == MapMode.TRADE or mode == MapMode.UNDERGROUND or mode == MapMode.INFLUENCE)
 	_material.set_shader_parameter("darken", 0.62 if mode == MapMode.UNDERGROUND else 0.0)
 	# «Торговля»: приглушённая карта, на ней ярче видны пути.
 	_material.set_shader_parameter("unowned_desaturate", 0.6 if mode == MapMode.TRADE else (0.35 if political else 0.0))

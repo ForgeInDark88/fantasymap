@@ -274,7 +274,9 @@ func _performance() -> void:
 		var e: Array = sim.timings.get(k, [0, 0])
 		var per_month: float = e[0] / 1000.0 / years / 12.0
 		line += " %s %.3f мс/мес. (худший %.1f мс);" % [k, per_month, e[1] / 1000.0]
-		_expect(per_month < 0.4, "%s дольше 0,4 мс в месяц" % k)
+		# Этап 12.B: племена и чудовища ходят по карте каждые сутки — бюджет выше (всё равно ≪ кадра).
+		var limit := 1.5 if k == "tribes" or k == "lairs" else 0.4
+		_expect(per_month < limit, "%s дольше %.1f мс в месяц" % [k, limit])
 		_expect(e[1] / 1000.0 < 10.0, "%s: худший вызов дольше 10 мс" % k)
 	print(line)
 	_check(world, "огромная карта")

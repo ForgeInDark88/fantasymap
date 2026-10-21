@@ -87,8 +87,15 @@ func _initialize() -> void:
 	var db := SaveSystem.to_dict(loaded)
 	for key in NEW_KEYS:
 		if JSON.stringify(da.get(key)) != JSON.stringify(db.get(key)):
-			for i in da[key].size():
-				if JSON.stringify(da[key][i]) != JSON.stringify(db[key][i]): print(JSON.stringify(da[key][i]), "\n", JSON.stringify(db[key][i]))
+			# Что именно разошлось (раздел — массив или словарь).
+			var va: Variant = da[key]
+			var vb: Variant = db[key]
+			var ks: Array = va.keys() if va is Dictionary else range(mini(va.size(), vb.size()))
+			for i in ks:
+				var ea := JSON.stringify(va.get(i) if va is Dictionary else va[i])
+				var eb := JSON.stringify(vb.get(i) if vb is Dictionary else vb[i])
+				if ea != eb:
+					print(key, " ", i, ": ", ea.left(300), "\n  ", eb.left(300))
 		_expect(JSON.stringify(da.get(key)) == JSON.stringify(db.get(key)), "после 15 лет разошлось: " + key)
 	_expect(JSON.stringify(da.regions.map(func(r): return r.faith)) == JSON.stringify(db.regions.map(func(r): return r.faith)), "после 15 лет разошлась вера регионов")
 	_expect(JSON.stringify(da.regions.map(func(r): return [r.culture, r.assim])) == JSON.stringify(db.regions.map(func(r): return [r.culture, r.assim])), "после 15 лет разошлась культура регионов")

@@ -19,6 +19,10 @@ const GREAT_DEED_CHANCE := 0.012
 const MIN_GREAT_LEVEL := 7
 ## Сколько встреч с другими героями в месяц успевает герой.
 const MAX_MEETINGS := 1
+## Встречаются герои не дальше стольких базовых клеток друг от друга (в одном крае,
+## «на дороге»); за вожаком идут, отставая не больше чем на FOLLOW_SLACK клеток.
+const MEET_RANGE := 7.0
+const FOLLOW_SLACK := 2
 
 
 ## Появление героя в регионе государства. Возвращает героя или null (лимит;
@@ -76,6 +80,8 @@ func tick_day(world: World) -> void:
 	# Сила героев в армиях — раз в месяц (уровни растут медленно).
 	if world.day == 0:
 		_update_power(world)
+	# Каждые сутки герои идут по карте (решают, куда идти, — раз в месяц).
+	_walk(world)
 	var acting := world.heroes_acting_on(world.day)
 	if acting.is_empty():
 		return
@@ -107,9 +113,15 @@ func tick_day(world: World) -> void:
 		if not hero.alive or hero.is_ruler or hero.cell < 0 or (world.month + hero.id) % 2 != 0:
 			continue
 		var rid := region_of[hero.cell]
+		var hp := world.map.cell_pos(hero.cell)
+		var meet := world.gd(MEET_RANGE)
 		met.clear()
 		for other in wandering:
 			if other.cell < 0 or region_of[other.cell] != rid or other == hero or not other.alive or other.is_ruler:
+				continue
+			# Встреча — там, где герои сошлись (рядом, а не просто «в одном краю»).
+			var op := world.map.cell_pos(other.cell)
+			if maxi(absi(op.x - hp.x), absi(op.y - hp.y)) > meet:
 				continue
 			if other.id % Simulation.DAYS == world.day and other.id < hero.id:
 				continue  # пара уже рассмотрена
@@ -212,64 +224,129 @@ func _yearly(world: World, hero: Hero) -> void:
 # ---------------------------------------------------------------------------
 
 
-## Странники бродят по соседним регионам (или идут к цели), слуги государства
-## идут к осаждённым регионам или держатся своих земель.
+## Сутки: герои идут по своим путям; спутник отряда и супруг в пути — за вожаком;
+## герой игрока на службе — за своим войском.
+func _walk(world: World) -> void:
+	var player := world.player
+	for h in world.wandering_heroes():
+		var m := h.m
+		# Стоит и ни за кем не идёт — сутки без дел (быстрый выход: таких большинство).
+		if h.follow < 0 and m.step >= m.path.size() and h.id != player:
+			if m.moved != 0 or m.arrived:
+				m.moved = 0
+				m.arrived = false
+			m.prev_cell = m.cell
+			continue
+		if not h.alive or h.is_ruler or m.cell < 0:
+			continue
+		var lead := -1
+		if h.follow >= 0 and h.follow < world.heroes.size() and world.heroes[h.follow].alive and not world.heroes[h.follow].is_ruler:
+			lead = world.heroes[h.follow].cell
+		elif h.follow >= 0:
+			h.follow = -1
+		if h.id == world.player and not world.player_army.is_empty():
+			var a := PlayerWorld.player_army(world)
+			if a != null:
+				lead = a.cell
+		if lead >= 0:
+			_follow(world, h, lead)
+		if h.m.walking():
+			MovementSystem.advance(world, h.m)
+		else:
+			h.m.prev_cell = h.m.cell
+			h.m.moved = 0
+			h.m.arrived = false
+		if h.m.stuck > 3:
+			h.m.stop()
+
+
+## Идти за клеткой lead (вожак, супруг, войско): путь перестраивается, только когда
+## цель ушла от конца пути дальше FOLLOW_SLACK клеток.
+static func _follow(world: World, h: Hero, lead: int) -> void:
+	var map := world.map
+	var p := map.cell_pos(h.cell)
+	var q := map.cell_pos(lead)
+	if maxi(absi(p.x - q.x), absi(p.y - q.y)) <= 1:
+		h.m.stop()
+		return
+	if h.m.walking():
+		var d := map.cell_pos(h.m.dest)
+		if maxi(absi(d.x - q.x), absi(d.y - q.y)) <= FOLLOW_SLACK * world.grid_scale:
+			return
+	# Вожак рядом — прямо по суше (дёшево); иначе — общий путь.
+	var straight := Pathfinder.line(world, h.cell, lead, -1)
+	if not straight.is_empty():
+		h.m.set_path(straight)
+	else:
+		MovementSystem.send(world, h.m, lead)
+
+
+## Раз в несколько месяцев — куда идти: странник — в соседний край, к цели — по
+## пути (за море — через гавань), слуга государства — к осаждённым краям или по
+## своим землям, мститель — по следу врага, спутник и супруг — за вожаком. Сам
+## путь проходится по клеткам каждые сутки (_walk).
 func _move(world: World, hero: Hero) -> void:
 	var rng := world.rng
 	# К цели идут без остановок, остальные — не спеша.
 	hero.move_in = 1 if hero.goal_cell >= 0 else rng.randi_range(2, 6)
-	var target_region := -1
+	# В море (на корабле) — сначала доплыть.
+	if hero.m.walking() and not world.map.is_land(hero.cell):
+		return
+	hero.follow = -1
 	# Отряд и супруги держатся вместе; мститель идёт за врагом.
 	if hero.party_leader >= 0 and world.heroes[hero.party_leader].alive:
-		hero.cell = world.heroes[hero.party_leader].cell
+		hero.follow = hero.party_leader
 		return
 	if hero.spouse >= 0 and world.heroes[hero.spouse].alive and rng.randf() < 0.7:
-		hero.cell = world.heroes[hero.spouse].cell
+		hero.follow = hero.spouse
 		return
-	if hero.vendetta >= 0 and world.heroes[hero.vendetta].alive and hero.goal_cell < 0:
-		hero.cell = world.heroes[hero.vendetta].cell if rng.randf() < 0.3 else hero.cell
+	if hero.vendetta >= 0 and world.heroes[hero.vendetta].alive and hero.goal_cell < 0 and rng.randf() < 0.3:
+		MovementSystem.send(world, hero.m, world.heroes[hero.vendetta].cell)
+		return
 	if hero.ally_nation >= 0:
 		for war in world.diplomacy.wars_of(hero.ally_nation):
-			if war.siege_region >= 0:
-				var cells := world.regions[war.siege_region].cells
-				hero.cell = cells[rng.randi_range(0, cells.size() - 1)]
+			if war.siege_region >= 0 and world.regions[war.siege_region].center >= 0:
+				MovementSystem.send(world, hero.m, world.regions[war.siege_region].center)
 				return
 	if hero.goal_cell >= 0:
-		# Путь к цели — прямо через регионы, по шагу за раз.
-		var region := world.region_at(hero.cell)
-		var goal := Vector2(world.map.cell_pos(hero.goal_cell))
-		if region == null or region.neighbors.is_empty() or world.region_of[hero.goal_cell] == region.id:
-			hero.cell = hero.goal_cell
+		# Путь к цели — по клеткам; за море — через гавань и на корабле.
+		if hero.m.walking() and hero.m.dest == hero.goal_cell:
 			return
-		var best := region.neighbors[0]
-		for nb in region.neighbors:
-			if Vector2(world.map.cell_pos(world.regions[nb].center)).distance_squared_to(goal) \
-					< Vector2(world.map.cell_pos(world.regions[best].center)).distance_squared_to(goal):
-				best = nb
-		target_region = best
-		if Vector2(world.map.cell_pos(world.regions[best].center)).distance_to(goal) \
-				>= Vector2(world.map.cell_pos(region.center)).distance_to(goal):
-			hero.cell = hero.goal_cell  # дальше по суше не пройти — плывёт
-			return
-	elif hero.nation_id >= 0:
+		if not MovementSystem.send(world, hero.m, hero.goal_cell):
+			hero.thought = "До цели не добраться: ни дороги, ни корабля."
+			hero.goal_cell = -1
+		return
+	var target_region := -1
+	if hero.nation_id >= 0:
 		for war in world.diplomacy.wars_of(hero.nation_id):
 			if war.siege_region >= 0:
 				target_region = war.siege_region
 				break
 		if target_region < 0:
+			# Мирное время: объезжает свои края — свой или соседний край державы.
 			var n := world.nations[hero.nation_id]
 			if n.cells.is_empty():
 				return
-			hero.cell = n.cells[rng.randi_range(0, n.cells.size() - 1)]
-			return
+			var here := world.region_at(hero.cell)
+			var own := PackedInt32Array()
+			if here != null:
+				if n.region_counts.has(here.id):
+					own.append(here.id)
+				for nb in here.neighbors:
+					if n.region_counts.has(nb):
+						own.append(nb)
+			if own.is_empty():
+				MovementSystem.send(world, hero.m, n.cells[rng.randi_range(0, n.cells.size() - 1)])
+				return
+			target_region = own[rng.randi_range(0, own.size() - 1)]
 	else:
 		var region := world.region_at(hero.cell)
 		if region == null or region.neighbors.is_empty():
 			return
 		target_region = region.neighbors[rng.randi_range(0, region.neighbors.size() - 1)]
-	var cells := world.regions[target_region].cells
-	if not cells.is_empty():
-		hero.cell = cells[rng.randi_range(0, cells.size() - 1)]
+	# В край — к его сердцу (центр края; общий путь многих героев считается один раз).
+	if world.regions[target_region].center >= 0:
+		MovementSystem.send(world, hero.m, world.regions[target_region].center)
 
 
 func _duel_chance(world: World, a: Hero, b: Hero) -> float:

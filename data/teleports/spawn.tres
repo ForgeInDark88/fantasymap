@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TeleportDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/teleport_def.gd" id="1_tp"]
+
+[resource]
+script = ExtResource("1_tp")
+id = &"spawn"
+display_name = "Появление"
+description = "Новый юнит появляется на месте рождения: армия собирается в столице, герой объявляется в крае, племя — в диких землях, чудовище — в логове."
+effect = &"spawn"
+color = Color(0.95, 0.9, 0.6, 1)

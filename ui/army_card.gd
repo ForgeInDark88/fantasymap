@@ -100,8 +100,15 @@ func refresh() -> void:
 			lines.append("Цель: регион %s%s" % [world.regions[war.siege_region].name,
 				(" · осада %d%%" % roundi(war.siege_progress * 100.0)) if a.state == &"siege" else ""])
 	lines.append("Где: %s · битв %d, побед %d" % [world.region_label(a.cell, "дикие земли"), a.battles, a.wins])
-	if not a.path.is_empty():
-		lines.append("Путь: ещё %d краёв" % a.path.size())
+	if a.m.walking():
+		var days := 0.0
+		var prof := MoveDB.profile(a.m.profile)
+		var prev := a.cell
+		for c in a.m.ahead():
+			days += MovementSystem.step_days(world, prof, prev, c, a.nation)
+			prev = c
+		lines.append("Путь: ещё %d кл. (≈%d дн.)%s" % [a.m.remaining() / world.grid_scale, ceili(days),
+			" · на кораблях" if a.at_sea(world) else ""])
 	_text.text = "\n".join(lines)
 
 

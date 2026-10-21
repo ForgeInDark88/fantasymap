@@ -52,6 +52,9 @@ static func handler_of(q: Dictionary) -> StringName:
 static func city_here(world: World, h: Hero) -> City:
 	if h == null or h.cell < 0:
 		return null
+	# Герой стоит в городе — это он (в крае бывает несколько городов).
+	if world.city_cell[h.cell] >= 0 and world.cities[world.city_cell[h.cell]].alive:
+		return world.cities[world.city_cell[h.cell]]
 	var rid := world.region_of[h.cell]
 	for c in world.cities:
 		if c.alive and world.region_of[c.cell] == rid:

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TeleportDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/teleport_def.gd" id="1_tp"]
+
+[resource]
+script = ExtResource("1_tp")
+id = &"god"
+display_name = "Воля Бога"
+description = "Инструменты панели Бога ставят юнит прямо в выбранное место."
+effect = &"flash"
+color = Color(1, 0.95, 0.5, 1)

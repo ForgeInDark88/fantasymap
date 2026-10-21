@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MoveProfileDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_profile_def.gd" id="1_mv"]
+
+[resource]
+script = ExtResource("1_mv")
+id = &"hero"
+display_name = "Герой"
+speed = 1.8
+biome_mult = {&"plains": 1.0, &"steppe": 1.05, &"forest": 0.85, &"jungle": 0.7, &"swamp": 0.65, &"desert": 0.8, &"tundra": 0.85, &"snow": 0.6, &"hills": 0.75, &"mountains": 0.55}
+road_mult = 1.4
+river_mult = 0.7
+winter_mult = 0.75
+enemy_mult = 0.95
+water_only = false
+can_sail = true
+sea_speed = 2.4
+scout_range = 3.0

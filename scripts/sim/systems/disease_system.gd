@@ -19,6 +19,10 @@ const MAX_REGIONS := 60
 const STABILITY := 0.001
 const PLAGUE := &"black_death"
 
+## Доля прежнего «дорожного» распространения, что остаётся без караванов
+## (вторую половину везут сами караваны — carry()).
+const CARAVAN_SHARE := 0.5
+
 ## Пары краёв, связанных дорогой (суша) и морским путём: кэш по World.road_version.
 var _road_adj := {}
 var _sea_adj := {}
@@ -68,6 +72,20 @@ static func can_infect(world: World, def: DiseaseDef, region: Region) -> bool:
 		return TribeSystem.tribe_in(world, region.id) != null
 	var race := world.nations[c].race
 	return not def.immune_races.has(race.id) and not def.immune_traits.any(func(t: StringName) -> bool: return race.has_trait(t))
+
+
+## Караван из больного края везёт заразу: шанс заразить край прихода (этап 12.B).
+static func carry(world: World, from_cell: int, to_cell: int) -> void:
+	var from := world.region_of[from_cell]
+	var to := world.region_of[to_cell]
+	if from < 0 or to < 0 or from == to:
+		return
+	var o := outbreak_in(world, from)
+	if o == null or not o.alive or o.regions.has(to):
+		return
+	if world.rng.randf() < o.def.road_spread * (1.0 - CARAVAN_SHARE) * 3.0:
+		if start(world, o.def, to) != null:
+			world.count(&"caravan_plague")
 
 
 ## Начать поветрие def в крае region_id (Бог, событие чумы, случай). Уже есть такое — край добавляется к нему.
@@ -178,8 +196,9 @@ func _month(world: World, o: Outbreak) -> void:
 			t.strength *= 1.0 - def.lethality / float(def.months) * 2.0
 		# Куда идёт дальше.
 		if o.regions.size() + spread.size() < MAX_REGIONS:
+			# По дорогам поветрие разносят и караваны (CaravanSystem, этап 12.B) — здесь вдвое реже.
 			for nb in _road_adj.get(rid, PackedInt32Array()):
-				if rng.randf() < def.road_spread:
+				if rng.randf() < def.road_spread * CARAVAN_SHARE:
 					spread.append(nb)
 			for nb in _sea_adj.get(rid, PackedInt32Array()):
 				if rng.randf() < def.sea_spread:

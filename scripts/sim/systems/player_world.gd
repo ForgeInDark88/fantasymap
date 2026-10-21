@@ -254,7 +254,8 @@ static func join_army(world: World, h: Hero) -> String:
 		world.generals[gid].army = a.id
 		a.general = gid
 	world.player_army = {"war": a.war, "nation": a.nation, "role": role, "since": world.year}
-	h.cell = a.cell
+	# К войску герой идёт сам и дальше следует за ним (HeroSystem._walk).
+	MovementSystem.send(world, h.m, a.cell)
 	world.player_cmd = {}
 	h.add_deed(world, "%s войско государства %s" % ["повёл" if role == "general" else "вступил в", nation.short_name])
 	return ""
@@ -310,7 +311,8 @@ static func capture(world: World, h: Hero, nation_id: int, why: String) -> void:
 	world.player_cmd = {}
 	var n := world.nations[nation_id]
 	if n.capital_city >= 0:
-		h.cell = world.cities[n.capital_city].cell
+		# Пленника ведут в столицу — пешком, под конвоем.
+		MovementSystem.send(world, h.m, world.cities[n.capital_city].cell)
 	h.add_deed(world, why)
 	world.count(&"player_captured")
 	world.log_event(&"hero", "Герой %s %s (держава %s)." % [h.display_name(), why, n.short_name], PackedInt32Array([nation_id]))
@@ -390,7 +392,6 @@ static func monthly(world: World, h: Hero) -> bool:
 		if a == null:
 			leave_army(world, h, "Война окончена — войско распущено, вы снова сами по себе.")
 		else:
-			h.cell = a.cell
 			h.gold += GENERAL_PAY if world.player_army.role == "general" else OFFICER_PAY
 			if world.player_army.role == "officer":
 				a.morale = minf(1.0, a.morale + 0.02)

@@ -27,6 +27,15 @@ func set_owner(cell: int, nation_id: int) -> void:
 		return
 	_update_borders(cell, old, nation_id)
 	_update_region(cell, old, nation_id)
+	# Влияние (InfluenceSystem): новый владелец сам проставит запас; земля, ушедшая
+	# чужой рукой, — повод пересобрать влияние и фронт сторон (и соседей ничьей клетки).
+	infl[cell] = INFL_FAR
+	if old >= 0:
+		nations[old].infl_dirty = true
+		if nation_id >= 0:
+			nations[nation_id].infl_dirty = true
+		else:
+			_dirty_neighbors(cell)
 	var r := cell_race[cell]
 	var moved := 0.0
 	if old >= 0:
@@ -56,6 +65,14 @@ func set_owner(cell: int, nation_id: int) -> void:
 	if city_cell[cell] >= 0:
 		_transfer_city(cities[city_cell[cell]], nation_id)
 	ownership_version += 1
+
+
+func _dirty_neighbors(cell: int) -> void:
+	var w := map.width
+	var x := cell % w
+	for nb in [cell - 1 if x > 0 else -1, cell + 1 if x < w - 1 else -1, cell - w, cell + w]:
+		if nb >= 0 and nb < owner.size() and owner[nb] >= 0:
+			nations[owner[nb]].infl_dirty = true
 
 
 ## Длина общих границ: число пар соседних клеток разных владельцев.
@@ -174,6 +191,7 @@ func destroy_city(city: City) -> void:
 	_mark_city_area(city.cell, -1)
 	if city.nation_id >= 0:
 		var nation := nations[city.nation_id]
+		nation.infl_dirty = true  # пропал источник влияния (InfluenceSystem)
 		var idx := nation.city_ids.find(city.id)
 		if idx >= 0:
 			nation.city_ids.remove_at(idx)

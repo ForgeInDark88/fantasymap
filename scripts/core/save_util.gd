@@ -74,6 +74,13 @@ static func _b64(bytes: PackedByteArray) -> String:
 	return Marshalls.raw_to_base64(bytes)
 
 
+## Всегда сжатый base64 (для новых больших массивов, которых нет в старых сохранениях).
+static func _zb64(bytes: PackedByteArray) -> String:
+	if bytes.is_empty():
+		return ""
+	return "z:%d:%s" % [bytes.size(), Marshalls.raw_to_base64(bytes.compress(FileAccess.COMPRESSION_ZSTD))]
+
+
 static func _int_dict(d: Dictionary) -> Dictionary:
 	var out := {}
 	for k in d:

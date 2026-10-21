@@ -8,7 +8,7 @@ const MAX_LINES := 300
 const CATEGORIES := {
 	"Войны": [&"war", &"siege", &"conquest", &"peace"],
 	"Дипломатия": [&"treaty", &"vassal"],
-	"Государства": [&"nation", &"fall", &"collapse", &"rebellion", &"colony"],
+	"Государства": [&"nation", &"fall", &"collapse", &"rebellion", &"colony", &"settle"],
 	"Правители": [&"ruler"],
 	"Города": [&"city", &"building"],
 	"Бедствия": [&"famine", &"plague", &"disaster", &"monsters"],
@@ -36,7 +36,7 @@ const CATEGORIES := {
 const COLORS := {
 	&"nation": "#f0d98a", &"city": "#9fd3ff", &"building": "#b8c4d0", &"ruler": "#d6b3ff", &"famine": "#ff9a7a",
 	&"war": "#ff6b5b", &"siege": "#ff9580", &"conquest": "#ff8a5c", &"peace": "#9be39b", &"treaty": "#8fd0c8",
-	&"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070", &"fall": "#d06060", &"colony": "#7fc8ff",
+	&"vassal": "#c0a0ff", &"rebellion": "#ffb04a", &"collapse": "#ff7070", &"fall": "#d06060", &"colony": "#7fc8ff", &"settle": "#d8c48a",
 	&"plague": "#b8d070", &"disaster": "#e0a070", &"monsters": "#e08cc0", &"hero": "#ffe680",
 	&"great": "#ffd24a", &"fate": "#e6b3ff", &"religion": "#f2e2a8", &"tech": "#a8e0ff", &"culture": "#ffc8e8",
 	&"intrigue": "#c8a0e0", &"org": "#9fd8c0", &"legacy": "#e0c090", &"trade": "#f0c870", &"climate": "#b0d8e8", &"underground": "#c8b090", &"ruins": "#b8a8a0", &"crisis": "#ff8060", &"era": "#ffe9a8", &"lineage": "#f0d0b0", &"battle": "#ff9a6a", &"pirates": "#9ab8d8", &"order": "#a8c8f0", &"gods": "#fff0a0", &"artifact": "#e8c060",

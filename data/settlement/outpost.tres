@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SettlementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/settlement_def.gd" id="1_st"]
+
+[resource]
+script = ExtResource("1_st")
+id = &"outpost"
+display_name = "Аванпост"
+description = "Гарнизон в завоёванном крае — без него влияние новой власти не держится."
+reach = 2.0
+cost_pop = 0.0
+cost_gold = 0.0
+cost_wood = 0.0
+cost_stone = 0.0
+defense = 0.15
+town_after = 0
+color = Color(0.9, 0.5, 0.4, 1)

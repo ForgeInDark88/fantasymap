@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SettlementDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/settlement_def.gd" id="1_st"]
+
+[resource]
+script = ExtResource("1_st")
+id = &"colony"
+display_name = "Колония"
+description = "Поселенцы приплыли из гавани державы и основали колонию за морем."
+reach = 5.5
+cost_pop = 300.0
+cost_gold = 60.0
+cost_wood = 40.0
+cost_stone = 0.0
+defense = 0.0
+town_after = 40
+color = Color(0.55, 0.8, 0.95, 1)

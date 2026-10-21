@@ -37,7 +37,8 @@ static func second_chance(world: World, hero: Hero) -> bool:
 	world.add_wandering(hero)
 	hero.returns += 1
 	hero.fate = &"returned"
-	hero.cell = cell
+	# Воля Судьбы — допустимый телепорт (с дымкой на карте).
+	MovementSystem.teleport(world, hero.m, cell, &"fate")
 	hero.level = maxi(1, hero.level - 1)
 	hero.age = mini(hero.age, hero.max_age - 10)
 	hero.karma = minf(1.0, hero.karma + 0.25)

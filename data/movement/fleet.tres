@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MoveProfileDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_profile_def.gd" id="1_mv"]
+
+[resource]
+script = ExtResource("1_mv")
+id = &"fleet"
+display_name = "Флот"
+speed = 3.0
+biome_mult = {&"ocean": 1.1, &"sea": 1.0, &"lake": 0.8}
+road_mult = 1.0
+river_mult = 1.0
+winter_mult = 0.85
+enemy_mult = 1.0
+water_only = true
+can_sail = false
+sea_speed = 3.0
+scout_range = 6.0

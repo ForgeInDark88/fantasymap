@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MoveProfileDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/move_profile_def.gd" id="1_mv"]
+
+[resource]
+script = ExtResource("1_mv")
+id = &"tribe"
+display_name = "Племя"
+speed = 1.0
+biome_mult = {&"plains": 1.05, &"steppe": 1.15, &"forest": 0.8, &"jungle": 0.65, &"swamp": 0.6, &"desert": 0.9, &"tundra": 0.85, &"snow": 0.55, &"hills": 0.7, &"mountains": 0.5}
+road_mult = 1.2
+river_mult = 0.7
+winter_mult = 0.7
+enemy_mult = 0.9
+water_only = false
+can_sail = false
+sea_speed = 2.4
+scout_range = 4.0
