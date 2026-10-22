@@ -160,20 +160,29 @@ func _prices_and_caravans() -> void:
 	MarketSystem.ensure(world, from)
 	for i in MarketDB.size():
 		from.market_stock[i] += 50.0
-	c = GodTools.send_caravan(world, city.cell)
-	_expect(c != null, "караван не вышел")
-	if c == null:
-		return
-	world.roads[c.road].safety = 1.0
-	var to := world.nations[c.to_nation]
-	var before := to.market_stock[c.good]
 	# Этап 12.B: караван идёт по клеткам дороги — ждём, пока дойдёт (не дольше двух лет).
-	for m in 24:
+	# Засада чудовищ или кочевников по пути (этап 12.B) — не поломка учёта: тогда
+	# пробуем следующий караван (до трёх).
+	var to: Nation = null
+	var before := 0.0
+	for attempt in 3:
+		c = GodTools.send_caravan(world, city.cell)
+		_expect(c != null, "караван не вышел")
+		if c == null:
+			return
 		world.roads[c.road].safety = 1.0
-		sim.step_month(world)
-		if not c.alive:
+		to = world.nations[c.to_nation]
+		before = to.market_stock[c.good]
+		for m in 24:
+			world.roads[c.road].safety = 1.0
+			sim.step_month(world)
+			if not c.alive:
+				break
+		if not c.robbed:
 			break
-	_expect(not c.alive and not c.robbed, "караван не дошёл")
+		for i in MarketDB.size():
+			from.market_stock[i] += 50.0
+	_expect(not c.alive and not c.robbed, "караван не дошёл (жив %s, ограблен %s, пройдено %d%%, осталось %d кл.)" % [c.alive, c.robbed, roundi(c.progress() * 100.0), c.m.remaining()])
 	_expect(to.market_in[c.good] >= c.amount * 0.99 or to.market_stock[c.good] > before, "товар не пришёл получателю")
 	# Небезопасная дорога грабит.
 	var robbed := 0

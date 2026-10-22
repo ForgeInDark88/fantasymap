@@ -132,14 +132,19 @@ func _plague() -> void:
 	var sim := Simulation.new()
 	for y in 30:
 		sim.step(world)
-	var big: Nation = null
-	for n in world.nations:
-		if n.alive and not n.race.has_trait(&"no_food") and (big == null or n.population > big.population):
-			big = n
 	var plague: EventDef = null
 	for e in EconomyDB.events():
 		if e.id == &"plague":
 			plague = e
+	# Крупнейшая держава, которую чума может задеть: не невосприимчивая и без идущей чумы.
+	var big: Nation = null
+	for n in world.nations:
+		if not n.alive or n.capital_city < 0 or n.race.has_trait(&"no_food") or plague.immune_traits.any(func(t: StringName) -> bool: return n.race.has_trait(t)):
+			continue
+		if n.modifiers.any(func(m: Dictionary) -> bool: return m.id == plague.id):
+			continue
+		if big == null or n.population > big.population:
+			big = n
 	var ok := GodTools.trigger_event(world, sim, plague, world.cities[big.capital_city].cell)
 	_expect(ok, "событие чумы не случилось")
 	var o: Outbreak = null

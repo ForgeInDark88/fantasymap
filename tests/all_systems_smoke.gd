@@ -8,6 +8,9 @@ extends SceneTree
 var _failures := 0
 
 
+var _plague_recheck := -1
+
+
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var years := int(args[0]) if args.size() > 0 else 500
@@ -27,6 +30,11 @@ func _initialize() -> void:
 			worst = maxi(worst, Time.get_ticks_usec() - ts)
 			if y % 100 == 99:
 				_check_alive(world, "seed %d, год %d" % [seeds[k], world.year])
+			if world.year == _plague_recheck:
+				_plague_recheck = -1
+				var alive := world.nations.filter(func(n: Nation) -> bool: return n.alive)
+				var plague := alive.filter(func(n: Nation) -> bool: return n.modifiers.any(func(m: Dictionary) -> bool: return m.id == &"plague")).size()
+				_expect(plague <= alive.size() / 2, "seed %d, год %d: вечная чума (%d из %d держав и через 10 лет)" % [seeds[k], world.year, plague, alive.size()])
 		var ms := Time.get_ticks_msec() - t0
 		print("seed %d (%dx%d): %d лет за %.1f с (год %.1f мс, худший %.0f мс); %s" % [seeds[k], s.width, s.height, years,
 			ms / 1000.0, float(ms) / years, worst / 1000.0, _summary(world)])
@@ -76,7 +84,10 @@ func _check_alive(world: World, where: String) -> void:
 		if n.modifiers.any(func(m: Dictionary) -> bool: return m.id == &"plague"):
 			plague += 1
 	_expect(owned > 0 and biggest < owned * 0.6, "%s: одно государство захватило мир (%d из %d клеток)" % [where, biggest, owned])
-	_expect(plague <= alive.size() / 2, "%s: вечная чума (%d из %d держав)" % [where, plague, alive.size()])
+	# Мор по полмира бывает (поветрие идёт по цельным державам быстро) — «вечной»
+	# чума становится, только если через 10 лет (дольше срока события) всё ещё так.
+	if plague > alive.size() / 2:
+		_plague_recheck = world.year + 10
 	_expect(pop > 10000.0, "%s: население вымерло" % where)
 	# Армии: только у живых государств, в существующих регионах; число — по войнам, а не лавиной.
 	var armies := 0

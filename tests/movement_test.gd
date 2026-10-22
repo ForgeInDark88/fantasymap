@@ -62,8 +62,9 @@ static func units(world: World) -> Array:
 
 func _no_teleports(years: int) -> void:
 	var s := MapSettings.new()
-	# Мир с войнами, торговлей и посольствами (seed 9: много войн уже к 50-му году).
-	s.world_seed = 9
+	# Мир с войнами, торговлей и посольствами (seed 4242: войны и караваны между
+	# державами; на seed 9 после этапа 12.C нет дорог между державами — нет и караванов).
+	s.world_seed = 4242
 	s.apply_size_preset(0)
 	var world := World.create(s)
 	var sim := Simulation.new()
