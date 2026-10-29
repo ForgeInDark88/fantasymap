@@ -82,6 +82,18 @@ func _on_map_clicked(pos: Vector2) -> void:
 		EventBus.army_selected.emit(army)
 		return
 	EventBus.army_selected.emit(null)
+	# Клик по значку столкновения (этап 12.E) — просмотр боя.
+	var brad := 8.0 / _camera.zoom.x
+	var clash: BattleRecord = null
+	for r in world.battle_log:
+		if world.year - r.year <= MapOverlay.CLASH_YEARS and r.cell >= 0:
+			var d := _renderer.cell_center(r.cell).distance_to(pos)
+			if d < brad:
+				brad = d
+				clash = r
+	if clash != null:
+		EventBus.battle_selected.emit(clash)
+		return
 	# Клик по логову или племени — карточка дикого края.
 	var wrad := 10.0 / _camera.zoom.x
 	var wild: RefCounted = null

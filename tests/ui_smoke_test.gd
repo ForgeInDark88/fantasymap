@@ -50,6 +50,25 @@ func _run() -> void:
 	if not lairs.is_empty():
 		bus.wild_selected.emit(lairs[0])
 		await _frames(3)
+	# Этап 12.E: просмотр боя открывается и проигрывает пересказ.
+	var log: Array = world.get("battle_log")
+	var rec: BattleRecord = log[log.size() - 1] if not log.is_empty() else null
+	if rec == null:
+		# Боёв ещё не было — запись-образец (просмотр от мира не зависит).
+		rec = BattleRecord.new()
+		rec.cell = 0
+		rec.sides.append({"nation": 0, "name": "Север", "power": 10.0, "losses": 2000.0, "general": "", "hero": -1})
+		rec.sides.append({"nation": 1, "name": "Юг", "power": 8.0, "losses": 4000.0, "general": "", "hero": -1})
+		rec.winner = 0
+		rec.fallen = 6000.0
+		rec.replay_seed = 42
+	if rec != null:
+		bus.battle_selected.emit(rec)
+		await _frames(5)
+		var viewers := _all_nodes(main).filter(func(n: Node) -> bool: return n.get_script() != null and n.get_script().get_global_name() == &"BattleViewer")
+		_expect(not viewers.is_empty() and (viewers[0] as Control).visible, "просмотр боя не открылся")
+		bus.battle_selected.emit(null)
+		await _frames(2)
 	var armies: Array = world.get("armies")
 	if not armies.is_empty():
 		bus.army_selected.emit(armies[0])

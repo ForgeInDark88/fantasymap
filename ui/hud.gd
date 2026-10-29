@@ -220,6 +220,7 @@ func _build_left_panels() -> void:
 	root.add_child(DiplomacyWindow.new())
 	root.add_child(ArmyCard.new())
 	root.add_child(WildCard.new())
+	root.add_child(BattleViewer.new())
 	root.add_child(HeroChoicePopup.new())
 	root.add_child(AchievementsWindow.new())
 	# Мягкие подсветки всех кнопок интерфейса (и тех, что появятся позже).

@@ -152,6 +152,7 @@ func tick_day(world: World) -> void:
 					break
 			elif world.rng.randf() < 0.5:
 				HeroRelations.meet(world, hero, other, where)
+				BattleLog.meeting(world, hero, other)
 
 
 ## Годовые дела героя: возраст, служба, поступки, великие деяния, трон.
@@ -394,7 +395,10 @@ static func duel(world: World, a: Hero, b: Hero, where: String) -> void:
 		winner.thought = "Я отомстил %s. Теперь можно жить дальше." % loser.name
 		winner.add_deed(world, "отомстил герою %s" % loser.name)
 	# Добрые герои чаще щадят побеждённых.
-	if rng.randf() < 0.4 - winner.karma * 0.15:
+	var killed := rng.randf() < 0.4 - winner.karma * 0.15
+	if winner.cell >= 0:
+		BattleLog.duel(world, winner, loser, killed)
+	if killed:
 		winner.add_deed(world, "сразил в поединке героя %s" % loser.name)
 		world.log_event(&"hero", "Поединок в регионе %s: %s (%s) сразил героя %s (%s)." % [
 			where, winner.display_name(), winner.hero_class.display_name.to_lower(),

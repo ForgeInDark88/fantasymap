@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"meet_rival"
+kind = &"meeting"
+lines = PackedStringArray("Расстаются они врагами.", "{a} и {b} обмениваются угрозами.", "Слова ранят сильнее клинков: {a} и {b} — соперники.", "{b} не забудет этой встречи.", "Ещё немного — и дошло бы до драки.", "{a} уходит, не попрощавшись.", "Между {a} и {b} пробежала чёрная кошка.", "«Мы ещё встретимся», — бросает {b}.")

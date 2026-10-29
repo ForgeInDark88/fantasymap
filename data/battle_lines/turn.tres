@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"turn"
+kind = &"battle"
+lines = PackedStringArray("Перелом: строй {l} дрогнул.", "{w} нащупало слабину и бьёт туда раз за разом.", "Фланг {l} рассыпается.", "Знамя {l} уносят с поля — дурной знак.", "{w} получает свежие силы — и это решает дело.", "Командиры {l} кричат «держать строй!», но поздно.", "Удар {w} в центр рассекает войско {l}.", "{l} пытается отойти в порядке — и не успевает.", "Паника ползёт по рядам {l}.", "Ещё натиск — и поле останется за {w}.")

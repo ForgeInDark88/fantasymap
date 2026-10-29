@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"duel_open"
+kind = &"duel"
+lines = PackedStringArray("У {place} сошлись двое: {a} и {b}.", "{a} ({ga}) вызывает на бой {b} ({gb}).", "Слово за слово — и клинки обнажены: {a} против {b}.", "{b} преграждает путь: «Дальше — только через меня, {a}».", "Старая обида: {a} и {b} наконец встретились.", "Под небом над {place} — поединок: {a} и {b}.", "Зеваки расступаются: {a} и {b} кружат друг против друга.", "{a} узнаёт {b} — и тянется к оружию.", "Встреча на дороге у {place} превращается в поединок.", "«Защищайся!» — бросает {a}, и {b} отвечает тем же.")

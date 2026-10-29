@@ -82,14 +82,14 @@ static func region_goods(world: World) -> Array:
 	return world.region_goods
 
 
-static func _goods_of(world: World, region: Region) -> PackedFloat32Array:
-	var goods := MarketDB.all()
+static var _tables: Dictionary = {}
+
+
+static func _cell_table(gs: int, goods: Array) -> Array[float]:
 	var n := goods.size()
-	var deposits := EconomyDB.deposits()
-	var v := PackedFloat32Array()
-	v.resize(n)
-	# Вклад клетки без месторождения зависит лишь от биома и реки — таблица
-	# [биом × река × товар] один раз на край (формула та же, что для клетки).
+	var key := gs * 1000 + n
+	if _tables.has(key):
+		return _tables[key]
 	var biomes := BiomeDB.all().size()
 	var table: Array[float] = []
 	table.resize(biomes * 2 * n)
@@ -102,7 +102,20 @@ static func _goods_of(world: World, region: Region) -> PackedFloat32Array:
 				if r == 1:
 					x += g.river
 				# Клетка мелкой сетки даёт 1/scale² (месторождений же столько же — их не делим).
-				table[(b * 2 + r) * n + i] = GridScale.per_cell(world.grid_scale, x)
+				table[(b * 2 + r) * n + i] = GridScale.per_cell(gs, x)
+	_tables[key] = table
+	return table
+
+
+static func _goods_of(world: World, region: Region) -> PackedFloat32Array:
+	var goods := MarketDB.all()
+	var n := goods.size()
+	var deposits := EconomyDB.deposits()
+	var v := PackedFloat32Array()
+	v.resize(n)
+	# Вклад клетки без месторождения зависит лишь от биома и реки — таблица
+	# [биом × река × товар] (кэш на масштаб сетки; формула та же, что для клетки).
+	var table := _cell_table(world.grid_scale, goods)
 	var biome := world.map.biome
 	var rivers := world.map.river
 	for c in region.cells:

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"aftermath"
+kind = &"battle"
+lines = PackedStringArray("Павших — около {fallen}.", "На поле остались {fallen} воинов.", "Похоронные костры горят до утра: {fallen} павших.", "Вороны кружат над полем — {fallen} не вернутся домой.", "Цена битвы — {fallen} жизней.", "Уцелевшие считают потери: {fallen}.", "У {place} поставят камень в память о {fallen} павших.", "Деревни вокруг надолго запомнят этот день: {fallen} убитых.", "Лекари не знают отдыха: {fallen} павших и много больше раненых.", "Война унесла ещё {fallen} жизней.")

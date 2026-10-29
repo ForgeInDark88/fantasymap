@@ -976,12 +976,14 @@ func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], ce
 	war.battles += 1
 	war.last_battle = today(world)
 	var fallen := 0.0
+	var lost_losers := 0.0
 	_player_battle(world, winners, losers)
 	for x in losers:
 		var n := world.nations[x.nation]
 		var loss := n.army * x.share * rng.randf_range(0.06, 0.14) * (1.5 if n.race.has_trait(&"cowardly") else 1.0)
 		n.army -= loss
 		fallen += loss
+		lost_losers += loss
 		x.morale = maxf(0.05, x.morale - 0.25)
 		x.battles += 1
 		_retreat(world, x)
@@ -1008,6 +1010,10 @@ func battle(world: World, war: War, side_a: Array[Army], side_b: Array[Army], ce
 		var n := world.nations[m]
 		n.stability = maxf(0.0, n.stability - 0.006 * BATTLE_SCORE)
 		n.stock[Goods.GOLD] -= n.army * 0.002 * BATTLE_SCORE
+	# Запись для просмотра боя (этап 12.E; без ГСЧ мира).
+	var lost_winners := fallen - lost_losers
+	BattleLog.battle(world, side_a, side_b, pa, pb, lost_losers if not a_wins else lost_winners,
+			lost_winners if not a_wins else lost_losers, a_wins, cell if cell >= 0 else world.regions[region].center)
 	world.recent_battles.append({"region": region, "cell": cell, "year": world.year, "month": world.month, "day": world.day,
 		"war": war.id, "winner": winners[0].nation, "fallen": fallen})
 	while world.recent_battles.size() > RECENT_BATTLES:

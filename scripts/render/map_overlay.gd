@@ -280,6 +280,7 @@ func _draw() -> void:
 		_draw_settlements(world, zoom)
 		_draw_cities(world, zoom)
 		_draw_sieges(world, zoom)
+		_draw_clashes(world, zoom)
 		_draw_landmarks(world, zoom)
 		_draw_player_route(world, zoom)
 		_draw_armies(world, zoom)
@@ -747,6 +748,43 @@ func _draw_region_labels(world: World, zoom: float) -> void:
 
 
 ## Скрещённые мечи над осаждёнными регионами + дуга прогресса осады.
+## Столкновения последних лет (BattleLog, этап 12.E): скрещённые мечи — битва,
+## клинок — поединок, два кружка — встреча; клик — просмотр (BattleViewer).
+const CLASH_YEARS := 2
+
+
+func _draw_clashes(world: World, zoom: float) -> void:
+	var fade := zoom_fade(zoom, 0.7, 0.95)
+	if fade <= 0.0 or world.battle_log.is_empty():
+		return
+	var view := _visible_rect().grow(20.0 / zoom)
+	var inv := Vector2.ONE / zoom
+	for r in world.battle_log:
+		if world.year - r.year > CLASH_YEARS or r.cell < 0:
+			continue
+		var pos := renderer.cell_center(r.cell)
+		if not view.has_point(pos):
+			continue
+		var age := clampf(1.0 - (world.year - r.year) / float(CLASH_YEARS + 1), 0.35, 1.0)
+		var ink := Color(0.12, 0.1, 0.1, fade * age)
+		draw_set_transform(pos, 0.0, inv)
+		match r.kind:
+			&"battle":
+				var steel := Color(0.9, 0.85, 0.8, fade * age)
+				draw_line(Vector2(-4, -4), Vector2(4, 4), ink, 3.0)
+				draw_line(Vector2(4, -4), Vector2(-4, 4), ink, 3.0)
+				draw_line(Vector2(-4, -4), Vector2(4, 4), steel, 1.5)
+				draw_line(Vector2(4, -4), Vector2(-4, 4), steel, 1.5)
+			&"duel":
+				draw_line(Vector2(0, -5), Vector2(0, 4), ink, 2.5)
+				draw_line(Vector2(-2.5, 1.5), Vector2(2.5, 1.5), ink, 2.0)
+				draw_line(Vector2(0, -5), Vector2(0, 4), Color(0.95, 0.8, 0.5, fade * age), 1.0)
+			_:
+				draw_circle(Vector2(-2, 0), 2.2, Color(0.6, 0.85, 1.0, fade * age))
+				draw_circle(Vector2(2, 0), 2.2, Color(0.95, 0.85, 0.6, fade * age))
+	draw_set_transform(Vector2.ZERO)
+
+
 func _draw_sieges(world: World, zoom: float) -> void:
 	var inv := Vector2.ONE / zoom
 	var scale := clampf(zoom, 0.6, 1.2)

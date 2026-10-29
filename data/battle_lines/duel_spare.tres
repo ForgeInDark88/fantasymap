@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"duel_spare"
+kind = &"duel"
+lines = PackedStringArray("{w} выбивает оружие у {l} — и опускает клинок.", "{l} бежит, зажимая рану.", "{w} дарует побеждённому жизнь.", "«Уходи», — говорит {w}, и {l} уходит.", "{l} признаёт поражение и скрывается.", "{w} победил, но не стал добивать {l}.", "{l} спасается бегством — на этот раз.", "Поединок окончен: {l} уползает, {w} не преследует.")
