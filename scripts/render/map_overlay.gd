@@ -77,7 +77,9 @@ func mover_pos(m: Mover) -> Vector2:
 	if renderer == null or renderer.map == null or m.cell < 0:
 		return Vector2.ZERO
 	var to := renderer.cell_center(m.cell)
-	if m.prev_cell < 0 or m.prev_cell == m.cell or not SmoothSettings.border_anim or WorldState.speed_index > INTERP_SPEED:
+	# Сглаживание по последнему шагу — на любой скорости: иначе при переходе с
+	# быстрой скорости на паузу значки отскакивали бы назад к прошлой клетке.
+	if m.prev_cell < 0 or m.prev_cell == m.cell or not SmoothSettings.border_anim:
 		return to
 	var from := renderer.cell_center(m.prev_cell)
 	if from.distance_to(to) > MapRenderer.cell_size * 8.0:
@@ -116,7 +118,9 @@ func _animate(delta: float) -> void:
 		return
 	var smooth := SmoothSettings.border_anim
 	# Юниты идут по клеткам: пока мир идёт — перерисовка каждый кадр (сглаживание внутри суток).
-	var moving := WorldState.speed_index > 0 and WorldState.speed_index <= INTERP_SPEED and smooth
+	# Пауза — мир ещё замедляется и шагает сутками (WorldState.speed_now): до полной
+	# остановки тоже каждый кадр, иначе значки на торможении идут рывками.
+	var moving := (WorldState.speed_index > 0 or WorldState.speed_now > 0.001) and WorldState.speed_index <= INTERP_SPEED and smooth
 	# Цели заданий и путь героя игрока: плавно появляются и гаснут.
 	var present := {}
 	if world.player >= 0:
