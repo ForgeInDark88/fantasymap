@@ -117,6 +117,9 @@ func _initialize() -> void:
 			var s := MapSettings.new()
 			s.world_seed = int(seed_s)
 			s.apply_size_preset(size)
+			# Детализация: GRID=2 в окружении — замер на сетке ×2 (площади — в базовых клетках).
+			if OS.get_environment("GRID") != "":
+				s.grid_scale = GridScale.valid(int(OS.get_environment("GRID")))
 			var world := World.create(s)
 			var sim := Simulation.new()
 			for y in range(1, years + 1):

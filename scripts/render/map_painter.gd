@@ -35,6 +35,15 @@ static func paint(map: WorldMap, mode: int) -> Image:
 	return Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, colors.to_byte_array())
 
 
+## Часть динамического режима (население, влияние) — клетки [from, to) в out
+## (перерисовка полосами, этап 12.D: на огромной карте ×2 целиком — ~0,25 с).
+static func paint_dynamic_rows(world: World, mode: int, out: PackedInt32Array, from: int, to: int) -> void:
+	if mode == MapMode.POPULATION:
+		_paint_population(world, out, from, to)
+	elif mode == MapMode.INFLUENCE:
+		_paint_influence(world, out, from, to)
+
+
 ## Режимы, которым нужен не только рельеф, но и состояние мира.
 static func paint_world(world: World, mode: int) -> Image:
 	var map := world.map
@@ -55,7 +64,7 @@ static var _density_lut := PackedInt32Array()
 
 
 ## Плотность населения: ёмкость клетки × заселённость её народа в государстве.
-static func _paint_population(world: World, out: PackedInt32Array) -> void:
+static func _paint_population(world: World, out: PackedInt32Array, from: int = 0, to: int = -1) -> void:
 	if _density_lut.is_empty():
 		var g := _make_gradient(PackedFloat32Array([0.0, 0.25, 0.55, 0.8, 1.0]),
 				[Color(0.16, 0.12, 0.25), Color(0.45, 0.15, 0.4), Color(0.85, 0.3, 0.2), Color(0.98, 0.75, 0.25), Color(1.0, 1.0, 0.85)])
@@ -76,7 +85,7 @@ static func _paint_population(world: World, out: PackedInt32Array) -> void:
 	var cell_race := world.cell_race
 	var cap := world.cell_cap
 	var area := float(world.grid_scale * world.grid_scale)
-	for i in map.cell_count():
+	for i in range(from, map.cell_count() if to < 0 else to):
 		var o := owner[i]
 		if o < 0:
 			out[i] = empty if map.is_land(i) else water
@@ -89,7 +98,7 @@ static func _paint_population(world: World, out: PackedInt32Array) -> void:
 
 ## Влияние (этап 12.C): земля державы ярче у её городов и поселений и тускнеет к
 ## краю влияния; земля вне влияния (завоёванная, без гарнизона) — тёмная.
-static func _paint_influence(world: World, out: PackedInt32Array) -> void:
+static func _paint_influence(world: World, out: PackedInt32Array, from: int = 0, to: int = -1) -> void:
 	var map := world.map
 	var water := Color(0.06, 0.09, 0.16).to_abgr32()
 	var empty := Color(0.2, 0.21, 0.22).to_abgr32()
@@ -99,7 +108,7 @@ static func _paint_influence(world: World, out: PackedInt32Array) -> void:
 		cols.append(n.color)
 	var owner := world.owner
 	var infl := world.infl
-	for i in map.cell_count():
+	for i in range(from, map.cell_count() if to < 0 else to):
 		var o := owner[i]
 		if o < 0:
 			out[i] = empty if map.is_land(i) else water

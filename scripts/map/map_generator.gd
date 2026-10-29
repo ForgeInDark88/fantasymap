@@ -224,7 +224,15 @@ func _classify_water() -> void:
 			if cx == 0 or cy == 0 or cx == _w - 1 or cy == _h - 1:
 				touches_edge = true
 			for k in 4:
-				var nb := _neighbor(c, cx, cy, k)
+				var nb := -1
+				if k == 0:
+					nb = c - 1 if cx > 0 else -1
+				elif k == 1:
+					nb = c + 1 if cx < _w - 1 else -1
+				elif k == 2:
+					nb = c - _w if cy > 0 else -1
+				else:
+					nb = c + _w if cy < _h - 1 else -1
 				if nb >= 0 and label[nb] == -1 and elev[nb] < 0.0:
 					label[nb] = start
 					queue[tail] = nb
@@ -240,8 +248,14 @@ func _classify_water() -> void:
 
 	# Мелководье: расстояние от суши по воде (BFS) + относительно небольшая глубина.
 	var coast_width := maxi(2, roundi(_w / 160.0))
-	var dist := _distance_from(func(i: int) -> bool: return elev[i] >= 0.0,
-			func(i: int) -> bool: return biome[i] == Biome.OCEAN, coast_width + 1)
+	var src := PackedByteArray()
+	src.resize(_n)
+	var walk := PackedByteArray()
+	walk.resize(_n)
+	for i in _n:
+		src[i] = 1 if elev[i] >= 0.0 else 0
+		walk[i] = 1 if biome[i] == Biome.OCEAN else 0
+	var dist := _distance_from(src, walk, coast_width + 1)
 	for i in _n:
 		if biome[i] == Biome.OCEAN and (dist[i] <= coast_width or elev[i] > -0.22):
 			biome[i] = Biome.SEA
@@ -280,9 +294,14 @@ func _compute_moisture() -> void:
 	var biome := _map.biome
 	var moist := _map.moisture
 	var max_d := int(140.0 / _scale)
-	var ocean_dist := _distance_from(
-			func(i: int) -> bool: return biome[i] == Biome.OCEAN or biome[i] == Biome.SEA,
-			func(i: int) -> bool: return elev[i] >= 0.0, max_d)
+	var src := PackedByteArray()
+	src.resize(_n)
+	var walk := PackedByteArray()
+	walk.resize(_n)
+	for i in _n:
+		src[i] = 1 if biome[i] == Biome.OCEAN or biome[i] == Biome.SEA else 0
+		walk[i] = 1 if elev[i] >= 0.0 else 0
+	var ocean_dist := _distance_from(src, walk, max_d)
 	for y in _h:
 		var lat := _latitude(y)
 		# Пояса: влажный экватор, сухие субтропики (~30°), влажные умеренные широты, сухие полюса.
@@ -361,7 +380,15 @@ func _compute_rivers() -> void:
 		var cx := c % _w
 		var cy := c / _w
 		for k in 4:
-			var nb := _neighbor(c, cx, cy, k)
+			var nb := -1
+			if k == 0:
+				nb = c - 1 if cx > 0 else -1
+			elif k == 1:
+				nb = c + 1 if cx < _w - 1 else -1
+			elif k == 2:
+				nb = c - _w if cy > 0 else -1
+			else:
+				nb = c + _w if cy < _h - 1 else -1
 			if nb < 0 or visited[nb] == 1:
 				continue
 			visited[nb] = 1
@@ -486,21 +513,11 @@ static func classify_land(e: float, t: float, m: float) -> int:
 # ---------------------------------------------------------------------------
 
 ## k-й из 4 соседей клетки c (или -1 за краем карты).
-func _neighbor(c: int, cx: int, cy: int, k: int) -> int:
-	match k:
-		0:
-			return c - 1 if cx > 0 else -1
-		1:
-			return c + 1 if cx < _w - 1 else -1
-		2:
-			return c - _w if cy > 0 else -1
-		_:
-			return c + _w if cy < _h - 1 else -1
 
 
 ## Мульти-источниковый BFS: расстояние (в клетках, 4-связность) от клеток is_source
-## по клеткам can_pass, не дальше max_dist. Недостижимые получают max_dist + 1.
-func _distance_from(is_source: Callable, can_pass: Callable, max_dist: int) -> PackedInt32Array:
+## по клеткам can_pass (маски 0/1 — без вызова функции на клетку), не дальше max_dist. Недостижимые получают max_dist + 1.
+func _distance_from(is_source: PackedByteArray, can_pass: PackedByteArray, max_dist: int) -> PackedInt32Array:
 	var dist := PackedInt32Array()
 	dist.resize(_n)
 	dist.fill(max_dist + 1)
@@ -509,7 +526,7 @@ func _distance_from(is_source: Callable, can_pass: Callable, max_dist: int) -> P
 	var head := 0
 	var tail := 0
 	for i in _n:
-		if is_source.call(i):
+		if is_source[i] == 1:
 			dist[i] = 0
 			queue[tail] = i
 			tail += 1
@@ -522,8 +539,16 @@ func _distance_from(is_source: Callable, can_pass: Callable, max_dist: int) -> P
 		var cx := c % _w
 		var cy := c / _w
 		for k in 4:
-			var nb := _neighbor(c, cx, cy, k)
-			if nb >= 0 and dist[nb] > d and can_pass.call(nb):
+			var nb := -1
+			if k == 0:
+				nb = c - 1 if cx > 0 else -1
+			elif k == 1:
+				nb = c + 1 if cx < _w - 1 else -1
+			elif k == 2:
+				nb = c - _w if cy > 0 else -1
+			else:
+				nb = c + _w if cy < _h - 1 else -1
+			if nb >= 0 and dist[nb] > d and can_pass[nb] == 1:
 				dist[nb] = d
 				queue[tail] = nb
 				tail += 1

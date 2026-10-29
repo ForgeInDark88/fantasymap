@@ -166,3 +166,4 @@
 Загрузить	Load
 🔔 Уведомлять	🔔 Notify
 Поиск по справочнику	Search the reference
+Детализация	Detail

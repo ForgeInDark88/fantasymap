@@ -75,6 +75,7 @@ func _ready() -> void:
 		var s := MapSettings.SIZE_PRESETS[i]
 		_size_option.add_item("%s (%d×%d)" % [MapSettings.SIZE_NAMES[i], s.x, s.y], i)
 	_size_option.select(MapSettings.DEFAULT_SIZE_PRESET)
+	_build_detail_option()
 
 	_build_mode_buttons()
 	_build_race_checks()
@@ -709,11 +710,34 @@ func _legend_nation_row(nation: Nation) -> void:
 # Генерация
 # ---------------------------------------------------------------------------
 
+## «Детализация» (этап 12.D): тот же мир крупными клетками (×1) или подробно (×2) —
+## строка сетки панели «Мир» сразу под «Размером».
+var _detail_option: OptionButton
+
+
+func _build_detail_option() -> void:
+	var grid := _size_option.get_parent()
+	var label := Label.new()
+	label.text = "Детализация"
+	_detail_option = OptionButton.new()
+	_detail_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_option.tooltip_text = "×2: каждая клетка делится на 2×2 — те же материки и державы, но границы, реки и пути подробнее (медленнее на огромных картах)."
+	for i in MapSettings.GRID_SCALE_NAMES.size():
+		_detail_option.add_item(MapSettings.GRID_SCALE_NAMES[i], i + 1)
+	_detail_option.select(_detail_option.get_item_index(MapSettings.DEFAULT_GRID_SCALE))
+	var at := _size_option.get_index() + 1
+	grid.add_child(label)
+	grid.move_child(label, at)
+	grid.add_child(_detail_option)
+	grid.move_child(_detail_option, at + 1)
+
+
 ## Собирает MapSettings из полей панели и просит мир сгенерироваться.
 func _request_generation() -> void:
 	var s := MapSettings.new()
 	s.world_seed = _parse_seed(_seed_edit.text)
 	s.apply_size_preset(_size_option.get_selected_id())
+	s.grid_scale = _detail_option.get_selected_id()
 	s.land_fraction = _land_slider.value / 100.0
 	s.continents = int(_continents_spin.value)
 	s.river_density = _river_slider.value / 100.0
@@ -761,6 +785,7 @@ func _on_world_generated(world: World, elapsed_ms: int) -> void:
 	var preset := s.size_preset_index()
 	if preset >= 0:
 		_size_option.select(preset)
+	_detail_option.select(_detail_option.get_item_index(world.grid_scale))
 	_land_slider.value = roundf(s.land_fraction * 100.0)
 	_continents_spin.value = s.continents
 	_river_slider.value = roundf(s.river_density * 100.0)

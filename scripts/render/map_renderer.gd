@@ -103,16 +103,47 @@ func _process(delta: float) -> void:
 		_owner_changed()
 	if world != null and MapMode.is_region_mode(mode) and Time.get_ticks_msec() - _region_palette_ms > REGION_PALETTE_MS:
 		refresh_region_palette()
-	if world != null and MapMode.is_dynamic(mode) and Time.get_ticks_msec() - _dynamic_painted_ms > DYNAMIC_REPAINT_MS \
-			and WorldState.speed_index > 0:
-		_painted_base_mode = -1
-		redraw()
+	if world != null and MapMode.is_dynamic(mode) and _painted_base_mode == mode:
+		_repaint_dynamic()
+
+
+## Перерисовка динамического режима полосами (этап 12.D): не дольше
+## DYNAMIC_SLICE_MS за кадр в свой буфер; проход кончился — одна заливка
+## текстуры. Новый проход — не чаще DYNAMIC_REPAINT_MS и только когда время идёт.
+const DYNAMIC_SLICE_MS := 4
+var _dyn_colors := PackedInt32Array()
+var _dyn_pos := -1
+
+
+func _repaint_dynamic() -> void:
+	var n := map.cell_count()
+	if _dyn_pos < 0:
+		if Time.get_ticks_msec() - _dynamic_painted_ms <= DYNAMIC_REPAINT_MS or WorldState.speed_index <= 0:
+			return
+		if _dyn_colors.size() != n:
+			_dyn_colors.resize(n)
+		_dyn_pos = 0
+	var t0 := Time.get_ticks_usec()
+	var rows := maxi(1, 16384 / map.width)
+	while _dyn_pos < n and Time.get_ticks_usec() - t0 < DYNAMIC_SLICE_MS * 1000:
+		var to := mini(n, _dyn_pos + rows * map.width)
+		MapPainter.paint_dynamic_rows(world, mode, _dyn_colors, _dyn_pos, to)
+		_dyn_pos = to
+	if _dyn_pos < n:
+		return
+	_dyn_pos = -1
+	_dynamic_painted_ms = Time.get_ticks_msec()
+	var img := Image.create_from_data(map.width, map.height, false, Image.FORMAT_RGBA8, _dyn_colors.to_byte_array())
+	img.generate_mipmaps()
+	if _base_texture != null and Vector2i(_base_texture.get_size()) == img.get_size() and not _fade_sprite.visible:
+		_base_texture.update(img)
 
 
 func set_mode(new_mode: int) -> void:
 	if new_mode == mode:
 		return
 	_start_mode_fade()
+	_dyn_pos = -1
 	mode = new_mode
 	if MapMode.is_region_mode(mode):
 		refresh_region_palette()

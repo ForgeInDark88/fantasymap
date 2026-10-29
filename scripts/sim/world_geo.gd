@@ -130,15 +130,26 @@ func deposit_at(cell: int) -> DepositDef:
 func _place_deposits() -> void:
 	var n := map.cell_count()
 	var defs := EconomyDB.deposits()
-	for i in n:
-		if not map.is_land(i):
-			continue
-		var biome_id := BiomeDB.get_def(map.biome[i]).id
+	# По биомам — заранее: какие месторождения возможны и с каким шансом (порядок
+	# проверок и вызовов ГСЧ — тот же, что при поиске по каждой клетке).
+	var by_biome: Array = []
+	for b in BiomeDB.all().size():
+		var biome_id := BiomeDB.get_def(b).id
+		var opts: Array = []
 		for d in defs.size():
 			var def := defs[d]
 			var weight: float = def.biome_weights.get(biome_id, 0.0)
-			if weight > 0.0 and rng.randf() < GridScale.per_cell(grid_scale, def.chance * weight):
-				deposit[i] = d + 1
+			if weight > 0.0:
+				opts.append([d, GridScale.per_cell(grid_scale, def.chance * weight)])
+		by_biome.append(opts)
+	var biome := map.biome
+	for i in n:
+		var b := biome[i]
+		if b <= Biome.LAKE:
+			continue
+		for o in by_biome[b]:
+			if rng.randf() < o[1]:
+				deposit[i] = o[0] + 1
 				break
 
 
@@ -154,10 +165,23 @@ func refresh_cell_yield(i: int) -> void:
 func _compute_cell_yields() -> void:
 	var n := map.cell_count()
 	cell_yield.resize(n * Goods.COUNT)
+	# Добыча зависит только от биома (и месторождения): таблица по биомам — один раз,
+	# а не BiomeDB и per_cell на каждую клетку (на карте ×2 их вчетверо больше).
+	var gc := Goods.COUNT
+	var table := PackedFloat32Array()
+	var biomes := BiomeDB.all().size()
+	table.resize(biomes * gc)
+	for b in biomes:
+		var def := BiomeDB.get_def(b)
+		for g in gc:
+			table[b * gc + g] = GridScale.per_cell(grid_scale, def.yield_of(g))
+	var biome := map.biome
 	for i in n:
-		var def := BiomeDB.get_def(map.biome[i])
-		for g in Goods.COUNT:
-			cell_yield[i * Goods.COUNT + g] = GridScale.per_cell(grid_scale, def.yield_of(g))
-		var dep := deposit_at(i)
-		if dep != null:
-			cell_yield[i * Goods.COUNT + Goods.index_of(dep.goods)] += dep.amount
+		var base := i * gc
+		var tb := biome[i] * gc
+		for g in gc:
+			cell_yield[base + g] = table[tb + g]
+		if deposit[i] > 0:
+			var dep := deposit_at(i)
+			if dep != null:
+				cell_yield[base + Goods.index_of(dep.goods)] += dep.amount

@@ -33,6 +33,7 @@ func _ready() -> void:
 
 	var settings := MapSettings.new()
 	settings.world_seed = randi_range(1, 999999)
+	settings.grid_scale = MapSettings.DEFAULT_GRID_SCALE
 	EventBus.generate_requested.emit(settings)
 
 
