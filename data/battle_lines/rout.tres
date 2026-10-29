@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"rout"
+kind = &"battle"
+lines = PackedStringArray("{l} отступает к своим городам.", "Остатки {l} уходят в беспорядке.", "{l} бежит, бросая обозы.", "{l} отходит, огрызаясь, — разгрома нет.", "Разбитое войско {l} рассеивается по лесам.", "{l} уносит раненых и уходит в ночь.", "Отступление {l} похоже на бегство.", "{l} спасает знамёна, но не честь.", "Гонцы {l} спешат с дурной вестью к правителю.", "{l} собирается за рекой — война не окончена.")

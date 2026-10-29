@@ -10,6 +10,10 @@ const SIZE_PRESETS: Array[Vector2i] = [
 ]
 const SIZE_NAMES: Array[String] = ["Маленькая", "Средняя", "Большая", "Огромная"]
 const DEFAULT_SIZE_PRESET := 1
+## Детализация в игре по умолчанию (этап 12.D): ×2. MapSettings.new() остаётся ×1 —
+## на нём эталоны, хэши и тесты; игра и панель «Мир» задают масштаб явно.
+const DEFAULT_GRID_SCALE := 2
+const GRID_SCALE_NAMES: Array[String] = ["×1 — крупные клетки", "×2 — подробно"]
 
 ## Размер карты в «базовых» клетках (пресеты — в них же). Фактическая сетка —
 ## base × grid_scale по каждой оси: cell_width(), cell_height().

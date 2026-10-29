@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"duel_kill"
+kind = &"duel"
+lines = PackedStringArray("{w} наносит последний удар — {l} падает замертво.", "{l} пал от руки {w}.", "Поединок окончен: {w} стоит над телом {l}.", "{w} не щадит побеждённого.", "Клинок {w} находит цель — {l} больше не встанет.", "Так закончился путь героя {l}.", "{w} вытирает клинок: {l} мёртв.", "Барды споют о том, как {w} сразил {l}.")

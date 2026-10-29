@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"meet_talk"
+kind = &"meeting"
+lines = PackedStringArray("Они говорят о дорогах и ценах на хлеб.", "{a} и {b} обмениваются новостями и расходятся.", "Разговор вежливый, но не больше.", "Каждый идёт своей дорогой.", "{b} рассказывает о чудовищах в окрестностях.", "{a} спрашивает о дороге и благодарит.", "Встреча закончилась так же тихо, как началась.", "Они кивают друг другу на прощание.")

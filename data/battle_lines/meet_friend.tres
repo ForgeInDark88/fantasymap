@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"meet_friend"
+kind = &"meeting"
+lines = PackedStringArray("Они расстаются друзьями.", "{a} и {b} договариваются держаться вместе.", "Разговор затянулся до утра — началась дружба.", "{a} делится с {b} хлебом и вестями.", "{b} обещает прийти на помощь {a}.", "Старые раздоры забыты: {a} и {b} — союзники.", "Они пьют за удачу друг друга.", "Крепкое рукопожатие скрепляет дружбу.")

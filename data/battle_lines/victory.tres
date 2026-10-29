@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"victory"
+kind = &"battle"
+lines = PackedStringArray("Победа за {w}!", "{w} остаётся хозяином поля.", "{w} празднует: поле боя за ними.", "Знамёна {w} реют над полем у {place}.", "{w} одержало верх — дорогой ценой.", "Летописцы запишут: у {place} победило {w}.", "{w} гонит врага, пока хватает сил.", "Поле за {w}; пленные бредут в обоз победителей.", "{w} выстояло и победило.", "Ещё одна победа {w} — о ней будут петь.")

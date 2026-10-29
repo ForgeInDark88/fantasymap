@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"duel_exchange"
+kind = &"duel"
+lines = PackedStringArray("{a} бьёт первым — {b} уходит в сторону.", "Сталь звенит о сталь.", "{b} ранит {a} в плечо.", "{a} теснит {b} к краю.", "Удар, ещё удар — никто не уступает.", "{b} пускает в ход хитрость.", "{a} спотыкается, но успевает отразить выпад.", "Оба тяжело дышат; кровь на клинках.", "{b} делает обманный выпад.", "{a} ({ga}) показывает своё искусство.", "{b} ({gb}) отвечает тем же.", "Земля под ногами — {terrain} — мешает обоим.", "Зрители затаили дыхание.", "Ещё миг — и всё решится.")

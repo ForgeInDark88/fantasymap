@@ -85,6 +85,10 @@ func generate(world: World) -> Array[Region]:
 		entry_next.append(head[0])
 		head[0] = entry_cell.size() - 1
 	var bucket := 0
+	# Горячий цикл (на карте ×2 — вчетверо больше клеток): массивы — в локальные
+	# переменные, цена шага — встроенно (тот же порядок вызовов ГСЧ, что в _step_cost).
+	var biome := _map.biome
+	var river := _map.river
 	while bucket < MAX_COST:
 		var e := head[bucket]
 		if e == -1:
@@ -95,16 +99,32 @@ func generate(world: World) -> Array[Region]:
 		if dist[c] != bucket:
 			continue  # устаревшая запись
 		var cx := c % w
+		var in_river := river[c] > 0
 		for k in 4:
 			var nb := -1
-			match k:
-				0: nb = c - 1 if cx > 0 else -1
-				1: nb = c + 1 if cx < w - 1 else -1
-				2: nb = c - w
-				3: nb = c + w
-			if nb < 0 or nb >= n or not _map.is_land(nb):
+			if k == 0:
+				nb = c - 1 if cx > 0 else -1
+			elif k == 1:
+				nb = c + 1 if cx < w - 1 else -1
+			elif k == 2:
+				nb = c - w
+			else:
+				nb = c + w
+			if nb < 0 or nb >= n:
 				continue
-			var nd := mini(bucket + _step_cost(c, nb, rng), MAX_COST - 1)
+			var b := biome[nb]
+			if b <= Biome.LAKE:
+				continue
+			var cost := 4
+			if b == Biome.MOUNTAINS or b == Biome.SNOW:
+				cost = 14
+			elif b == Biome.HILLS:
+				cost = 7
+			elif b == Biome.SWAMP or b == Biome.JUNGLE:
+				cost = 6
+			if (river[nb] > 0) != in_river:
+				cost += 10
+			var nd := mini(bucket + cost + rng.randi_range(0, 2), MAX_COST - 1)
 			if nd < dist[nb]:
 				dist[nb] = nd
 				label[nb] = label[c]

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"meet_open"
+kind = &"meeting"
+lines = PackedStringArray("У {place} встретились {a} и {b}.", "Дороги {a} и {b} пересеклись у {place}.", "{a} ({ga}) и {b} ({gb}) делят ночлег у костра.", "Случайная встреча: {a} и {b} в одном трактире.", "{b} догоняет {a} на дороге у {place}.", "Два героя — {a} и {b} — сходятся без оружия в руках.", "{a} узнаёт в путнике героя {b}.", "У {place} пересеклись пути {a} и {b}.", "{a} и {b} пережидают непогоду под одной крышей.", "На перекрёстке у {place} встретились {a} и {b}.")

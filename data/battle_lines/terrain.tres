@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BattleLinesDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/battle_lines_def.gd" id="1_bl"]
+
+[resource]
+script = ExtResource("1_bl")
+id = &"terrain"
+kind = &"battle"
+lines = PackedStringArray("Бой идёт на местности: {terrain}.", "Местность — {terrain}: строй держать трудно.", "{terrain} — кто знает эти края, тому легче.", "Поле боя — {terrain}; кони вязнут, пешие теснят.", "Хозяева земли пользуются тем, что вокруг — {terrain}.", "{terrain} скрывает засады и ломает ряды.", "Местность ({terrain}) решает многое: фланги прижаты.", "На такой земле ({terrain}) побеждают упорные.")

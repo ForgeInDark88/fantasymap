@@ -13,5 +13,5 @@ cost_gold = 30.0
 cost_wood = 20.0
 cost_stone = 0.0
 defense = 0.0
-town_after = 60
+town_after = 90
 color = Color(0.88, 0.78, 0.5, 1)

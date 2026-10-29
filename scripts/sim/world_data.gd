@@ -128,6 +128,9 @@ var agents: Array[Agent] = []
 ## пути; infl[c] — запас влияния своего хозяина в клетке (≤ 0 — в пределах его
 ## влияния, INFL_FAR — не дотягивается; InfluenceSystem).
 var settlements: Array[Settlement] = []
+## Журнал столкновений для просмотра (BattleLog, этап 12.E) и номер последней записи.
+var battle_log: Array[BattleRecord] = []
+var battle_serial := 0
 var settlers: Array[Settler] = []
 var infl := PackedFloat32Array()
 var mercs: Array[MercCompany] = []

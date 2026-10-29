@@ -145,6 +145,7 @@ static func to_dict(world: World) -> Dictionary:
 		"market": _market_dict(world),
 		"diplo": _diplo_dict(world),
 		"settle": _settle_dict(world),
+		"battles": {"serial": world.battle_serial, "log": world.battle_log.map(func(r: BattleRecord) -> Array: return r.to_array())},
 		"fate_queue": Array(world.fate_queue),
 		"pending_events": world.pending_events.map(func(p: Array) -> Array: return [p[0], str(p[1])]),
 		"diplomacy": {
@@ -392,6 +393,10 @@ static func from_dict(data: Dictionary) -> World:
 	_load_market(world, data)
 	_load_diplo(world, data)
 	_load_settle(world, data)
+	var bl: Dictionary = data.get("battles", {})
+	world.battle_serial = int(bl.get("serial", 0))
+	for a in bl.get("log", []):
+		world.battle_log.append(BattleRecord.from_array(a))
 	world.update_label_anchors()
 	Pathfinder.prepare(world)  # материки и сетка моря — сразу, в фоновом потоке загрузки
 	# Состояние ГСЧ — в самом конце: восстановление не должно его сдвигать.
